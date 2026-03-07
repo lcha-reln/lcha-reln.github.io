@@ -261,13 +261,37 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Sat Mar 07 2026 12:15:58 GMT+0000">2026-03-07 20:15:58</span>
+                    <span class="datetime" data-updated="Sat Mar 07 2026 12:17:35 GMT+0000">2026-03-07 20:17:35</span>
                 </span>
             
         
 
         
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/Aeron/">Aeron</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
 
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/Aeron/">Aeron</a></li>
+                        
+                    
+                </ul>
+            </span>
         
 
         
@@ -288,7 +312,46 @@
                     
 
                     
-                         
+                         <h1 id="1-性能特征"><a href="#1-性能特征" class="headerlink" title="1.性能特征"></a>1.性能特征</h1><ul>
+<li>超低延迟表现：单机环境下可达微秒级</li>
+<li>高吞吐量：微秒级延迟下依然能处理100W+&#x2F;秒</li>
+<li>延迟可预测：提供单位数微妙的可预测延迟，确保系统行为稳定</li>
+</ul>
+<h1 id="2-核心能力"><a href="#2-核心能力" class="headerlink" title="2.核心能力"></a>2.核心能力</h1><ul>
+<li>高可用性保障：为关键任务提供高可用和容错架构，确保系统稳定运行，减少服务中断的风险</li>
+<li>卓越的可扩展性：无缝扩展，满足现代分布式系统的增长需求</li>
+<li>多语言支持：支持 Java，C++等多种语言</li>
+</ul>
+<h1 id="3-架构设计"><a href="#3-架构设计" class="headerlink" title="3.架构设计"></a>3.架构设计</h1><h2 id="3-1-三层架构概述"><a href="#3-1-三层架构概述" class="headerlink" title="3.1.三层架构概述"></a>3.1.三层架构概述</h2><ul>
+<li>ClientAPI：应用程序通过 ClientAPI 与 Aeron 交互，提供统一的编程接口，屏蔽底层的传输细节</li>
+<li>Media Driver：作为中央消息路由和处理引擎，管理所有网络和IPC通信，处理消息的发送、接收、路由、缓冲，可嵌入应用或者独立运行</li>
+<li>Transport Layer：传输层</li>
+</ul>
+<p><img   src="/images/Aeron/Aeron%E6%9E%B6%E6%9E%84.png"  alt="[Aeron架构.png]"></p>
+<h2 id="3-2-Channel、Stream、Session"><a href="#3-2-Channel、Stream、Session" class="headerlink" title="3.2.Channel、Stream、Session"></a>3.2.Channel、Stream、Session</h2><ul>
+<li>Channel：代表一个传输通道，如UDP端口或者IPC连接，通过URI标识，是消息传输的物理路径，一个 Channel 可以承载多个逻辑流</li>
+<li>Stream：是 Channel 内部的有序消息流，由 streamId 标识，同一个 Stream 内的消息保证有序传递，不同应用可创建不同 Session向此 Stream 发布数据</li>
+<li>Session：用于区分同一个 Stream 上的不同 Pub，由 Session ID 标识，用于区分同一 Stream 上的不同数据源，每个 Pub 都有唯一的 Channel+Stream+Session 组合<br><strong>这里怎么去理解 Session 比较好：</strong></li>
+<li>每个 SessionId 都对应一个 Pub 发送端</li>
+<li>多个 pub 可以共同使用一个 Stream 来发送消息</li>
+<li>所以 SessionId 其实是 Pub 的唯一标识，因此 Channel+Stream+Session 能够最小纬度的标识一个消息流</li>
+</ul>
+<h2 id="3-3-Pub，Media-Driver，Sub"><a href="#3-3-Pub，Media-Driver，Sub" class="headerlink" title="3.3 Pub，Media Driver，Sub"></a>3.3 Pub，Media Driver，Sub</h2><p>![[Pub，Media Driver，Sub.png]](&#x2F;images&#x2F;Aeron&#x2F;Pub，Media Driver，Sub.png)</p>
+<p>Publication<br>pub.offer是用来发送消息的，app 调用 publication.offer(Buffer, Offset, Length)发消息<br>数据被写到 term buffer，环形队列缓冲区，非阻塞的发送方式<br><strong>有几种发送响应</strong></p>
+<ul>
+<li>0:成功发送，返回新的位置值</li>
+<li>BACK_PRESSURES：背压状态，需要稍后重试</li>
+<li>NOT_CONNECTED：Pub 未连接到任何的 Sub</li>
+<li>ADMIN_ACTION：正在进行管理操作，请稍后重试</li>
+<li>CLOSED：Pub 关闭</li>
+</ul>
+<p>Media driver<br>sender线程：从 term buffer读取消息数据，对消息进行封装，添加 aeron 消息协议头<br>消息路由：通过 channel + StreamId 确定消息的发送目标<br>流控：监控网络状态，对数据发送进行背压控制<br>消息重传：基于 nak 否定确认机制，对丢失的消息进行重传（参考：[[Aeron通信模式及NAK机制与流控]]）</p>
+<p>Subscription<br>sub.poll是用来接收消息的，app调用 subscription.poll(framenthandler)实现<br>涉及到对数据的重组：他可以对网络数据包重组为完整的消息<br>保序：确保消息按照正确的顺序传递给应用<br>回调：通过framenthandler回调，将消息传递给应用<br>返回值：代表轮询处理的消息片段数量<br>状态反馈机制：</p>
+<ul>
+<li>pos 更新：media driver 会向 pub 报告消息的传输进度</li>
+<li>背压：如果接收端处理不过来，会向发送端发送背压信号</li>
+</ul>
+
                     
                 </div>
 
@@ -296,6 +359,22 @@
 
                 <div class="post-bottom-tags-and-share border-box">
                     <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/Aeron/">Aeron</a>
+                                    </li>
+                                
+                            </ul>
                         
                     </div>
                     <div>
