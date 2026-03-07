@@ -29,6 +29,8 @@ code_block:
 
 # 文章
 post:
+  author_badge:
+    enable: false
   toc:
     enable: true
     number: true
