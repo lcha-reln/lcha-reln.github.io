@@ -93,6 +93,13 @@ include:
 exclude:
 ignore:
 
+# Search
+search:
+  path: content.json
+  field: post
+  content: true
+  format: html
+
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
