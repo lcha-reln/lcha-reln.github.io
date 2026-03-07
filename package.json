@@ -22,7 +22,7 @@
     "hexo-renderer-ejs": "^2.0.0",
     "hexo-renderer-marked": "^7.0.0",
     "hexo-server": "^3.0.0",
-    "hexo-theme-aurora": "^2.5.3",
+    "hexo-theme-keep": "^4.2.5",
     "hexo-theme-landscape": "^1.0.0"
   }
 }

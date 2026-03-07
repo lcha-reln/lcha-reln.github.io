@@ -1,0 +1,49 @@
+version: 4.2.5
+
+# site 基本信息
+site_meta:
+  title: Reln 的小窝
+  sub_title: 记录生活与技术的点滴
+  author: Reln Ding
+  author_site: https://github.com/lcha-reln
+  description: Reln 的个人博客，记录学习与生活
+  keywords: blog,技术,生活
+  favicon: /favicon.ico
+
+# 顶部导航
+nav_more_list:
+  - name: GitHub
+    url: https://github.com/lcha-reln
+    icon: fab fa-github
+
+# 页面顶部菜单
+menu:
+  home: / || fas fa-home
+  archives: /archives || fas fa-archive
+  tags: /tags || fas fa-tags
+  categories: /categories || fas fa-th
+
+# 代码高亮
+code_block:
+  copy: true
+  lang: true
+  highlight_theme: default
+
+# 文章
+post:
+  toc:
+    enable: true
+    number: true
+  copyright:
+    enable: false
+
+# 页脚
+footer:
+  since: 2026
+  icon: fas fa-heart
+  powered:
+    enable: true
+
+# 评论（关闭）
+comment:
+  enable: false
