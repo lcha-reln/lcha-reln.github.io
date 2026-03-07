@@ -50,8 +50,18 @@ recommend:
   mobile_limit: 3
   path: ''
 
+plugins:
+  gitalk:
+    enable: false
+  valine:
+    enable: false
+  waline:
+    enable: false
+  twikoo:
+    enable: false
+
 site_meta:
-  cdn: cn
+  cdn: global
   favicon: ''
 
 copy_protection:
