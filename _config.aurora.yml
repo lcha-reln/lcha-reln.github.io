@@ -1,0 +1,61 @@
+site:
+  subtitle: Reln 的小窝
+  author: Reln Ding
+  nick: Reln
+  description: 记录生活与技术的点滴
+  link: 'https://lcha-reln.github.io'
+  language: zh-CN
+  multi_language: false
+  logo: ''
+  avatar: ''
+  beian:
+    number: ''
+    link: ''
+  busuanzi: false
+
+socials:
+  github: 'https://github.com/lcha-reln'
+  email: '1302304703@qq.com'
+
+theme:
+  dark_mode: true
+  profile_shape: diamond
+  gradient:
+    color_1: '#24c6dc'
+    color_2: '#514a9d'
+    color_3: '#24c6dc'
+
+menu:
+  Home:
+    path: /
+    i18n: home
+  Archives:
+    path: /archives
+    i18n: archives
+  Tags:
+    path: /tags
+    i18n: tags
+  Categories:
+    path: /categories
+    i18n: categories
+
+aurora_bot:
+  enable: false
+
+post_categories_limit: 5
+
+recommend:
+  enable: true
+  limit: 5
+  mobile_limit: 3
+  path: ''
+
+site_meta:
+  cdn: cn
+  favicon: ''
+
+copy_protection:
+  enable: false
+
+experimental:
+  optimized_img: false
