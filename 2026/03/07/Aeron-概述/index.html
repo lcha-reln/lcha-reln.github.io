@@ -261,7 +261,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Sat Mar 07 2026 12:17:35 GMT+0000">2026-03-07 20:17:35</span>
+                    <span class="datetime" data-updated="Sat Mar 07 2026 12:21:11 GMT+0000">2026-03-07 20:21:11</span>
                 </span>
             
         
@@ -336,7 +336,7 @@
 <li>多个 pub 可以共同使用一个 Stream 来发送消息</li>
 <li>所以 SessionId 其实是 Pub 的唯一标识，因此 Channel+Stream+Session 能够最小纬度的标识一个消息流</li>
 </ul>
-<h2 id="3-3-Pub，Media-Driver，Sub"><a href="#3-3-Pub，Media-Driver，Sub" class="headerlink" title="3.3 Pub，Media Driver，Sub"></a>3.3 Pub，Media Driver，Sub</h2><p>![[Pub，Media Driver，Sub.png]](&#x2F;images&#x2F;Aeron&#x2F;Pub，Media Driver，Sub.png)</p>
+<h2 id="3-3-Pub，Media-Driver，Sub"><a href="#3-3-Pub，Media-Driver，Sub" class="headerlink" title="3.3 Pub，Media Driver，Sub"></a>3.3 Pub，Media Driver，Sub</h2><p><img   src="/images/Aeron/%E4%B8%89%E5%A4%A7%E5%B0%86.png"  alt="三大将"></p>
 <p>Publication<br>pub.offer是用来发送消息的，app 调用 publication.offer(Buffer, Offset, Length)发消息<br>数据被写到 term buffer，环形队列缓冲区，非阻塞的发送方式<br><strong>有几种发送响应</strong></p>
 <ul>
 <li>0:成功发送，返回新的位置值</li>
