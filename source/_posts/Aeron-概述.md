@@ -36,7 +36,7 @@ categories:
 - 所以 SessionId 其实是 Pub 的唯一标识，因此 Channel+Stream+Session 能够最小纬度的标识一个消息流
 
 ## 3.3 Pub，Media Driver，Sub
-![[Pub，Media Driver，Sub.png]](/images/Aeron/Pub，Media Driver，Sub.png)
+![三大将](/images/Aeron/三大将.png)
 
 Publication
 pub.offer是用来发送消息的，app 调用 publication.offer(Buffer, Offset, Length)发消息
