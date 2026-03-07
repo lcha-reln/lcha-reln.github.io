@@ -1,13 +1,11 @@
 version: 4.2.5
 
-# site 基本信息
-site_meta:
+base_info:
+  primary_color: "#24c6dc"
   title: Reln 的小窝
-  sub_title: 记录生活与技术的点滴
   author: Reln Ding
-  author_site: https://github.com/lcha-reln
-  description: Reln 的个人博客，记录学习与生活
-  keywords: blog,技术,生活
+  avatar: /images/avatar.svg
+  logo: /images/logo.svg
   favicon: /favicon.ico
 
 # 顶部导航
