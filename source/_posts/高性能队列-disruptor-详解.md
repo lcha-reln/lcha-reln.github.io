@@ -1,16 +1,16 @@
 ---
-title: 高性能队列 disruptor 详解
+title: 高性能队列 Disruptor 详解
 date: 2026-03-07 10:43:08
 tags:
   - 高性能
   - 队列
 categories:
-  - 高性能框架
+  - Disruptor
 ---
 **本文摘录自：https://tech.meituan.com/2016/11/18/disruptor.html**
 # 1.Java 内置队列
 让我们先看看常用的线程安全的内置队列有什么问题：
-![Java常用的线程安全的内置队列](/images/diruptor/disruptor-queues.png)
+![Java常用的线程安全的内置队列](/images/disruptor/disruptor-queues.png)
 队列的底层一般分成三种：数组、链表和堆。其中，堆一般情况下是为了实现带有优先级特性的队列，暂且不考虑。
 
 我们就从数组和链表两种数据结构来看，基于数组线程安全的队列，比较典型的是ArrayBlockingQueue，它主要通过加锁的方式来保证线程安全；基于链表的线程安全队列分成LinkedBlockingQueue和ConcurrentLinkedQueue两大类，前者也通过锁的方式来实现线程安全，而后者以及上面表格中的LinkedTransferQueue都是通过原子变量compare and swap（以下简称“CAS”）这种不加锁的方式来实现的。
@@ -38,7 +38,7 @@ CAS操作比单线程无锁慢了1个数量级；有锁且多线程并发的情�
 ## 2.2.关于锁和CAS
 保证线程安全一般分成两种方式：锁和原子变量。
 ### 2.2.1 锁
-![锁](/images/diruptor/锁.png)
+![锁](/images/disruptor/锁.png)
 采取加锁的方式，默认线程会冲突，访问数据时，先加上锁再访问，访问之后再解锁。通过锁界定一个临界区，同时只有一个线程进入。如上图所示，Thread2访问Entry的时候，加了锁，Thread1就不能再执行访问Entry的代码，从而保证线程安全。
 
 下面是ArrayBlockingQueue通过加锁的方式实现的offer方法，保证线程安全。
@@ -63,7 +63,7 @@ public boolean offer(E e) {
 原子变量能够保证原子性的操作，意思是某个任务在执行过程中，要么全部成功，要么全部失败回滚，恢复到执行之前的初态，不存在初态和成功之间的中间状态。例如CAS操作，要么比较并交换成功，要么比较并交换失败。由CPU保证原子性。
 
 通过原子变量可以实现线程安全。执行某个任务的时候，先假定不会有冲突，若不发生冲突，则直接执行成功；当发生冲突的时候，则执行失败，回滚再重新操作，直到不发生冲突。
-![通过原子变量CAS实现线程安全](/images/diruptor/通过原子变量CAS实现线程安全.png)
+![通过原子变量CAS实现线程安全](/images/disruptor/通过原子变量CAS实现线程安全.png)
 如图所示，Thread1和Thread2都要把Entry加1。若不加锁，也不使用CAS，有可能Thread1取到了myValue=1，Thread2也取到了myValue=1，然后相加，Entry中的value值为2。这与预期不相符，我们预期的是Entry的值经过两次相加后等于3。
 
 CAS会先把Entry现在的value跟线程当初读出的值相比较，若相同，则赋值；若不相同，则赋值执行失败。一般会通过while/for循环来重新执行，直到赋值成功。
@@ -102,13 +102,13 @@ public final boolean compareAndSet(int expect, int update) {
 ## 2.3.伪共享
 ### 2.3.1.共享
 下图是计算的基本结构。L1、L2、L3分别表示一级缓存、二级缓存、三级缓存，越靠近CPU的缓存，速度越快，容量也越小。所以L1缓存很小但很快，并且紧靠着在使用它的CPU内核；L2大一些，也慢一些，并且仍然只能被一个单独的CPU核使用；L3更大、更慢，并且被单个插槽上的所有CPU核共享；最后是主存，由全部插槽上的所有CPU核共享。
-![计算机CPU与缓存示意图](/images/diruptor/计算机CPU与缓存示意图.png)
+![计算机CPU与缓存示意图](/images/disruptor/计算机CPU与缓存示意图.png)
 当CPU执行运算的时候，它先去L1查找所需的数据、再去L2、然后是L3，如果最后这些缓存中都没有，所需的数据就要去主内存拿。走得越远，运算耗费的时间就越长。所以如果你在做一些很频繁的事，你要尽量确保数据在L1缓存中。
 
 另外，线程之间共享一份数据的时候，需要一个线程把数据写回主存，而另一个线程访问主存中相应的数据。
 
 下面是从CPU访问不同层级数据的时间概念:
-![CPU访问](/images/diruptor/CPU访问.png)
+![CPU访问](/images/disruptor/CPU访问.png)
 可见CPU读取主存中的数据会比从L1中读取慢了近2个数量级。
 ### 2.3.2.缓存行
 Cache是由很多个cache line组成的。每个cache line通常是64字节，并且它有效地引用主内存中的一块儿地址。一个Java的long类型变量是8字节，因此在一个缓存行中可以存8个long类型的变量。
@@ -158,7 +158,7 @@ Loop times:30ms Loop times:65ms
 ArrayBlockingQueue有三个成员变量： - takeIndex：需要被取走的元素下标 - putIndex：可被元素插入的位置的下标 - count：队列中元素的数量
 
 这三个变量很容易放到一个缓存行中，但是之间修改没有太多的关联。所以每次修改，都会使之前缓存的数据失效，从而不能完全达到共享的效果。
-![伪共享示意图](/images/diruptor/伪共享示意图.png)
+![伪共享示意图](/images/disruptor/伪共享示意图.png)
 如上图所示，当生产者线程put一个元素到ArrayBlockingQueue时，putIndex会修改，从而导致消费者线程的缓存中的缓存行无效，需要从主存中重新读取。
 
 这种无法充分使用缓存行特性的现象，称为伪共享。
@@ -264,7 +264,7 @@ Disruptor通过以下设计来解决队列速度慢的问题：
 申请写入m个元素；
 若是有m个元素可以入，则返回最大的序列号。这儿主要判断是否会覆盖未读的元素；
 若是返回的正确，则生产者开始写入元素。
-![单生产者生产过程](/images/diruptor/单生产者生产过程.png)
+![单生产者生产过程](/images/disruptor/单生产者生产过程.png)
 ## 3.2.多个生产者
 多个生产者的情况下，会遇到“如何防止多个线程重复写同一个元素”的问题。Disruptor的解决方法是，每个线程获取不同的一段数组空间进行操作。这个通过CAS很容易达到。只需要在分配元素的时候，通过CAS判断一下这段空间是否已经分配出去即可。
 
@@ -282,7 +282,7 @@ Disruptor通过以下设计来解决队列速度慢的问题：
 读线程申请读取到下标从3到11的元素，判断writer cursor>=11。然后开始读取availableBuffer，从3开始，往后读取，发现下标为7的元素没有生产成功，于是WaitFor(11)返回6。
 
 然后，消费者读取下标从3到6共计4个元素。
-![多生产下的消费者](/images/diruptor/多生产下的消费者.png)
+![多生产下的消费者](/images/disruptor/多生产下的消费者.png)
 ### 3.2.2.写数据
 多个生产者写入的时候：
 
@@ -292,7 +292,7 @@ Disruptor通过以下设计来解决队列速度慢的问题：
 如下图所示，Writer1和Writer2两个线程写入数组，都申请可写的数组空间。Writer1被分配了下标3到下表5的空间，Writer2被分配了下标6到下标9的空间。
 
 Writer1写入下标3位置的元素，同时把available Buffer相应位置置位，标记已经写入成功，往后移一位，开始写下标4位置的元素。Writer2同样的方式。最终都写入完成。
-![多生产下的生产者](/images/diruptor/多生产下的生产者.png)
+![多生产下的生产者](/images/disruptor/多生产下的生产者.png)
 防止不同生产者对同一段空间写入的代码，如下所示：
 ```java
 public long tryNext(int n) throws InsufficientCapacityException
@@ -423,4 +423,4 @@ public class DisruptorMain
 LockSupport.parkNanos(1);
 ```
 ## 4.2.消费者的等待策略
-![消费者的等待策略](/images/diruptor/消费者的等待策略.png)
+![消费者的等待策略](/images/disruptor/消费者的等待策略.png)
