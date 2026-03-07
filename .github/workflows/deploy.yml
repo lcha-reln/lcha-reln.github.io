@@ -34,6 +34,10 @@ jobs:
       - name: Generate static files
         run: pnpm run build
 
+      - name: Patch waline unpkg import
+        run: |
+          find public/static/js -name "*.js" -exec sed -i 's|import"https://unpkg\.com/@waline/client@v2/dist/waline\.mjs";||g' {} +
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
