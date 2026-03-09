@@ -261,7 +261,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Mon Mar 09 2026 09:09:56 GMT+0000">2026-03-09 17:09:56</span>
+                    <span class="datetime" data-updated="Mon Mar 09 2026 09:13:33 GMT+0000">2026-03-09 17:13:33</span>
                 </span>
             
         
@@ -343,10 +343,13 @@
 <h2 id="三、深度实例对比"><a href="#三、深度实例对比" class="headerlink" title="三、深度实例对比"></a>三、深度实例对比</h2><p><strong>基础设定：</strong></p>
 <ul>
 <li>交易者本金：<strong>5 BTC</strong>（约 300,000 USDT，1 BTC &#x3D; 60,000 USDT）</li>
-<li>交易 A：10 倍杠杆做多 BTC，开仓价 60,000 USDT，仓位价值 50 BTC</li>
-<li>交易 B：10 倍杠杆做空 ETH，开仓价 3,000 USDT，仓位价值 500 ETH</li>
+<li>交易 A：10 倍杠杆做多 BTC，开仓价 60,000 USDT，分配保证金 2.5 BTC，仓位价值 25 BTC（&#x3D; 2.5 BTC × 10 倍）</li>
+<li>交易 B：10 倍杠杆做空 ETH，开仓价 3,000 USDT，分配保证金 2.5 BTC（&#x3D; 150,000 USDT），仓位价值 500 ETH（&#x3D; 150,000 USDT &#x2F; 3,000 × 10 倍）</li>
 <li>维持保证金率：0.5%</li>
 </ul>
+<blockquote>
+<p><strong>数字说明：</strong> 两笔交易各分配 2.5 BTC 保证金。ETH 仓位价值 500 ETH × 3,000 &#x3D; 1,500,000 USDT，BTC 仓位价值 25 BTC × 60,000 &#x3D; 1,500,000 USDT，两笔仓位名义价值相等，保证金分配对等。</p>
+</blockquote>
 <hr>
 <h3 id="场景一：逐仓模式"><a href="#场景一：逐仓模式" class="headerlink" title="场景一：逐仓模式"></a>场景一：逐仓模式</h3><p><strong>仓位建立：</strong></p>
 <table>
@@ -354,6 +357,7 @@
 <tr>
 <th>仓位</th>
 <th>分配保证金</th>
+<th>仓位名义价值</th>
 <th>强平价格</th>
 <th>与其他仓位关系</th>
 </tr>
@@ -361,12 +365,14 @@
 <tbody><tr>
 <td>BTC 多头</td>
 <td>2.5 BTC（独立锁定）</td>
+<td>1,500,000 USDT（25 BTC）</td>
 <td>约 54,300 USDT</td>
 <td>完全隔离</td>
 </tr>
 <tr>
 <td>ETH 空头</td>
-<td>2.5 BTC 等值 ETH（独立锁定）</td>
+<td>2.5 BTC &#x3D; 150,000 USDT（独立锁定）</td>
+<td>1,500,000 USDT（500 ETH）</td>
 <td>约 3,330 USDT</td>
 <td>完全隔离</td>
 </tr>
@@ -405,7 +411,7 @@
 </ul>
 <p><strong>市场冲击：</strong> BTC 价格跌至 <strong>56,000 USDT</strong>（注意：这里价格仍高于逐仓模式的强平价 54,300，但全仓模式下已足以引发危机）。</p>
 <p><strong>连锁反应：</strong></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">BTC 价格 60,000 → 56,000</span><br><span class="line">      ↓</span><br><span class="line">BTC 多头未实现亏损 = (56,000 - 60,000) × 50 BTC / 10（杠杆）</span><br><span class="line">                  = -20,000 USDT ≈ -0.33 BTC</span><br><span class="line">      ↓</span><br><span class="line">共享保证金池：5 BTC → 约 4.67 BTC</span><br><span class="line">      ↓</span><br><span class="line">账户整体保证金率下降</span><br><span class="line">      ↓</span><br><span class="line">ETH 价格若上涨至 3,100（对空头不利）</span><br><span class="line">      ↓</span><br><span class="line">整体账户保证金率跌破维持要求</span><br><span class="line">      ↓</span><br><span class="line">系统强平「所有仓位」</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">BTC 价格 60,000 → 56,000</span><br><span class="line">      ↓</span><br><span class="line">BTC 多头未实现亏损 = (56,000 - 60,000) × 25 BTC / 10（杠杆）</span><br><span class="line">                  = -10,000 USDT ≈ -0.17 BTC</span><br><span class="line">      ↓</span><br><span class="line">共享保证金池：5 BTC → 约 4.83 BTC</span><br><span class="line">      ↓</span><br><span class="line">账户整体保证金率下降</span><br><span class="line">      ↓</span><br><span class="line">ETH 价格若上涨至 3,100（对空头不利）</span><br><span class="line">      ↓</span><br><span class="line">整体账户保证金率跌破维持要求</span><br><span class="line">      ↓</span><br><span class="line">系统强平「所有仓位」</span><br></pre></td></tr></table></figure>
 
 <p><strong>结果：</strong></p>
 <table>
