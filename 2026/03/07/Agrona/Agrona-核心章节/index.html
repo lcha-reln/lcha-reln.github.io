@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="blog,技术,生活">
+    <meta name="description" content="Reln 的个人博客，记录学习与生活">
+    <meta name="author" content="Reln Ding">
+    
+    <title>
+        
+            Agrona 零基础入门 |
+        
+        Reln 的小窝
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/favicon.ico">
+    
+    
+<link rel="stylesheet" href="/font/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/brands.min.css">
+
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"lcha-reln.github.io","root":"/","language":"zh-CN","path":"content.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#24c6dc","title":"Reln 的小窝","author":"Reln Ding","avatar":"/images/avatar.svg","logo":"/images/logo.svg","favicon":"/favicon.ico"},"menu":{"home":"/ || fas fa-home","archives":"/archives || fas fa-archive","tags":"/tags || fas fa-tags","categories":"/categories || fas fa-th"},"first_screen":{"enable":false,"background_img":"/images/bg.svg","background_img_dark":"/images/bg.svg","description":"Keep writing and Keep loving.","hitokoto":false},"social_contact":{"enable":false,"links":{"github":null,"weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":null}},"scroll":{"progress_bar":false,"percent":false,"hide_header":true},"home":{"announcement":null,"category":false,"tag":false,"post_datetime":"updated"},"post":{"author_badge":{"enable":false,"level_badge":true,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":false,"min2read":false},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null},"toc":{"enable":true,"number":true},"copyright":{"enable":false}},"code_block":{"tools":{"enable":false,"style":"default"},"highlight_theme":"default","copy":true,"lang":true},"toc":{"enable":false,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":false,"preload":false},"comment":{"enable":false,"use":"valine","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":null,"repo_id":null,"category":"Announcements","category_id":null,"reactions_enabled":false},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":false},"lazyload":{"enable":false},"cdn":{"enable":false,"provider":"cdnjs"},"pjax":{"enable":false},"footer":{"since":2026,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]},"icon":"fas fa-heart","powered":{"enable":true}},"inject":{"enable":false,"css":[null],"js":[null]},"version":"4.2.5","nav_more_list":[{"name":"GitHub","url":"https://github.com/lcha-reln","icon":"fab fa-github"}],"root":"","source_data":{}}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/logo.svg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Reln 的小窝
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-home"></i>
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-archive"></i>
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/tags">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-tags"></i>
+                                
+                                标签
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/categories">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-th"></i>
+                                
+                                分类
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-home"></i>
+                                </span>
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-archive"></i>
+                                </span>
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/tags">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-tags"></i>
+                                </span>
+                            
+                            标签
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/categories">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-th"></i>
+                                </span>
+                            
+                            分类
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        Agrona 零基础入门
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/avatar.svg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Reln Ding</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-03-07 20:54:50</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Mon Mar 09 2026 03:06:02 GMT+0000">2026-03-09 11:06:02</span>
+                </span>
+            
+        
+
+        
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/Agrona/">Agrona</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/Java/">Java</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <h1 id="1-Agrona-概述"><a href="#1-Agrona-概述" class="headerlink" title="1.Agrona 概述"></a>1.Agrona 概述</h1><h2 id="1-1-Agrona-的核心价值"><a href="#1-1-Agrona-的核心价值" class="headerlink" title="1.1.Agrona 的核心价值"></a>1.1.Agrona 的核心价值</h2><p>Agrona 提供了许多有用的高性能通用数据结构和常见支持对象,这些组件被广泛应用于 Simple Binary Encoding (SBE)、Aeron 以及相关项目中。</p>
+<p>Agrona 是一个专注于高性能、低延迟的 Java 工具库,它为构建高效的并发系统提供了基础组件。这个库的设计理念是避免不必要的内存分配和垃圾回收开销,从而实现极致的性能。<br><strong>Agrona 的地位</strong></p>
+<p>![Agrona 的地位](&#x2F;images&#x2F;Agrona&#x2F;Agrona 的地位.png)</p>
+<h2 id="1-2-核心架构组件"><a href="#1-2-核心架构组件" class="headerlink" title="1.2.核心架构组件"></a>1.2.核心架构组件</h2><p><img   src="/images/Agrona/%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E7%BB%84%E4%BB%B6.png"  alt="核心架构组件"></p>
+<p>部分组件详细说明</p>
+<ul>
+<li>数据结构层：提供针对性能优化的专用数据结构<ul>
+<li>Int2ObjectHashMap: 整数到对象的映射,避免装箱开销</li>
+<li>Object2ObjectHashMap: 自定义哈希实现,减少碰撞</li>
+<li>ArrayQueue: 基于数组的高性能队列</li>
+</ul>
+</li>
+<li>并发工具层：无锁并发组件,支持高吞吐量线程通信<ul>
+<li>ManyToOneConcurrentArrayQueue: 多生产者单消费者队列</li>
+<li>OneToOneConcurrentArrayQueue: 单生产者单消费者队列</li>
+<li>BroadcastTransmitter&#x2F;Receiver: 一对多广播通信</li>
+</ul>
+</li>
+<li>缓冲区管理层：直接内存访问能力<ul>
+<li>DirectBuffer: 抽象的内存缓冲区接口</li>
+<li>UnsafeBuffer: 使用sun.misc.Unsafe的高性能实现</li>
+<li>MutableDirectBuffer: 可变的直接缓冲区</li>
+</ul>
+</li>
+<li>Agent框架层：任务调度和执行模型<ul>
+<li>Agent: 可执行任务的抽象</li>
+<li>DutyCycle: 任务执行周期管理</li>
+<li>IdleStrategy: 空闲时的CPU策略</li>
+</ul>
+</li>
+</ul>
+<h1 id="2-Duty-Cycles（职责周期）"><a href="#2-Duty-Cycles（职责周期）" class="headerlink" title="2.Duty Cycles（职责周期）"></a>2.Duty Cycles（职责周期）</h1><p>Duty Cycle（职责周期）是 Agrona 中一个核心概念，它定义了一个工作单元在执行过程中应该完成的任务。在高性能系统中，合理设计 Duty Cycle 对于实现低延迟和高吞吐量至关重要。</p>
+<h2 id="2-1-什么是-Duty-Cycles"><a href="#2-1-什么是-Duty-Cycles" class="headerlink" title="2.1.什么是 Duty Cycles"></a>2.1.什么是 Duty Cycles</h2><p>Duty Cycle 本质上是一个可重复执行的工作单元。在 Agrona 的上下文中，它通常指的是 Agent 在每次被调度时执行的工作量。也可以说是忙轮询（Busy-Spin）模式的结构化封装，让每个线程专注于一组固定的任务，反复执行，不依赖锁和阻塞</p>
+<p>如果你玩过电脑游戏，你很可能已经与 Duty Cycle(也称为事件循环 Event Loop)打过交道。Duty Cycle 是系统组件执行的主循环。在循环中执行一些任务，然后可以选择等待一段时间。<br><strong>游戏示例：</strong><br>对于简单的电脑游戏，Duty Cycle 可能是这样的:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">EpochClock</span> <span class="variable">clock</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">SystemEpochClock</span>();</span><br><span class="line"><span class="keyword">while</span> (<span class="literal">true</span>)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">long</span> <span class="variable">time</span> <span class="operator">=</span> clock.time();</span><br><span class="line">    processInput();    <span class="comment">// 处理输入</span></span><br><span class="line">    update();          <span class="comment">// 更新游戏状态</span></span><br><span class="line">    render();          <span class="comment">// 渲染画面</span></span><br><span class="line">    Thread.sleep(MS_PER_FRAME - (clock.time() - time));  <span class="comment">// 控制帧率</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里的 sleep 允许游戏开发者控制两件事:</p>
+<ol>
+<li>游戏的功耗: 通过限制CPU使用率降低能耗</li>
+<li>每秒帧数: 确保一致的游戏体验</li>
+</ol>
+<p>这很重要，因为不同的 CPU 具有不同的性能特征，游戏开发者希望用户在不同硬件上获得一致的体验。</p>
+<h2 id="2-2-在-Aeron-Agrona-中的应用"><a href="#2-2-在-Aeron-Agrona-中的应用" class="headerlink" title="2.2.在 Aeron&#x2F;Agrona 中的应用"></a>2.2.在 Aeron&#x2F;Agrona 中的应用</h2><p>在典型的 Aeron 应用程序中，我们也使用 Duty Cycle。它们在 Agrona Agent 内部运行，游戏示例中的 sleep 由空闲策略(Idle Strategy)管理。Duty Cycle 直接影响:</p>
+<ul>
+<li>服务能力: 每秒处理的消息数(吞吐量)</li>
+<li>CPU 消耗: 进程的资源使用情况</li>
+</ul>
+<h2 id="2-3-两种经典的-Duty-Cycle-类型"><a href="#2-3-两种经典的-Duty-Cycle-类型" class="headerlink" title="2.3.两种经典的 Duty Cycle 类型"></a>2.3.两种经典的 Duty Cycle 类型</h2><ol>
+<li><p>业务逻辑 Duty Cycle</p>
+<p>这是由输入消息驱动的典型 Duty Cycle。为了实现高吞吐量，应用的 sleep(即空闲策略)几乎不会延迟 Duty Cycle。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span> (<span class="literal">true</span>)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">Command</span> <span class="variable">command</span> <span class="operator">=</span> adaptInputBuffer();           <span class="comment">// 从输入缓冲区适配命令</span></span><br><span class="line">    routeToAppropriateBusinessLogic(command);       <span class="comment">// 路由到适当的业务逻辑</span></span><br><span class="line">&#125; </span><br></pre></td></tr></table></figure>
+<p>routeToAppropriateBusinessLogic() 的调用通常会执行类似于在有状态对象(如复制状态机 Replicated State Machine)上调用方法的操作:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">doSomething</span><span class="params">(Command command)</span></span><br><span class="line">&#123;</span><br><span class="line">    processInput();    <span class="comment">// 处理输入</span></span><br><span class="line">    emitEvents();      <span class="comment">// 发出事件</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>基本流程</p>
+<ul>
+<li>适配输入：从网络或队列中接收并解析命令</li>
+<li>路由处理：根据命令类型路由到对应的业务逻辑处理器</li>
+<li>处理输入：执行业务逻辑，更新状态</li>
+<li>发出事件：生成输出事件，通知其他组件</li>
+<li>空闲策略：由于是高吞吐场景，通常使用 BusySpinIdleStrategy 或 BackoffIdleStrategy 的激进配置</li>
+</ul>
+</li>
+<li><p>连接管理 Duty Cycle</p>
+<p>这种 Duty Cycle 不是由消息驱动的，而是由管理与某物连接的需求驱动的。没有必要每秒调用数千次，因此 Duty Cycle 中应用的 sleep 可能是数百毫秒。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span> (<span class="literal">true</span>)</span><br><span class="line">&#123;</span><br><span class="line">    checkConnectionStatus();     <span class="comment">// 检查连接状态</span></span><br><span class="line">    reconnectIfNeeded();        <span class="comment">// 如果需要则重新连接</span></span><br><span class="line">    Thread.sleep(<span class="number">100</span>);          <span class="comment">// 休眠 100ms</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>基本流程</p>
+<ul>
+<li>检查连接：定期检查网络连接、心跳等状态</li>
+<li>条件重连: 只有在检测到连接问题时才执行重连</li>
+<li>长时间休眠: 由于不需要高频率执行，使用较长的休眠时间(100-500ms)</li>
+<li>通常使用 SleepingIdleStrategy 来降低 CPU 使用率</li>
+</ul>
+</li>
+</ol>
+<h2 id="2-4-核心概念"><a href="#2-4-核心概念" class="headerlink" title="2.4.核心概念"></a>2.4.核心概念</h2><p><img   src="/images/Agrona/%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5.png"  alt="核心概念"></p>
+<ul>
+<li>工作量定义：<ul>
+<li>单次任务：每次 Duty Cycle 执行一个独立的工作项</li>
+<li>批量任务：每次 Duty Cycle 批量处理多个工作项，提高吞吐量</li>
+<li>复合任务：在一个 Duty Cycle 中完成多个相关联的任务</li>
+</ul>
+</li>
+<li>执行频率：<ul>
+<li>紧密循环（Tight Loop）：持续快速执行，适合低延迟场景</li>
+<li>定时触发：按固定时间间隔执行，适合周期性任务</li>
+<li>事件驱动：根据外部事件触发执行，适合响应式系统</li>
+</ul>
+</li>
+<li>性能优化：<ul>
+<li>减少线程上下文切换开销</li>
+<li>提高CPU缓存命中率</li>
+<li>优化CPU流水线执行效率</li>
+</ul>
+</li>
+</ul>
+<h2 id="2-5-Duty-Cycle的工作原理"><a href="#2-5-Duty-Cycle的工作原理" class="headerlink" title="2.5.Duty Cycle的工作原理"></a>2.5.Duty Cycle的工作原理</h2><p><img   src="/images/Agrona/DutyCycle%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.png"  alt="DutyCycle的工作原理"></p>
+<ul>
+<li>调度器启动：调度器启动 Agent 的执行循环</li>
+<li>检查工作：Agent 检查是否有待处理的工作</li>
+<li>执行工作：如果有工作，执行并返回已完成的工作项数量</li>
+<li>应用策略：如果没有工作，应用空闲策略来节省CPU资源</li>
+<li>循环继续：重复上述过程</li>
+</ul>
+<h2 id="2-6-Duty-Cycle接口"><a href="#2-6-Duty-Cycle接口" class="headerlink" title="2.6.Duty Cycle接口"></a>2.6.Duty Cycle接口</h2><p>在 Agrona 中，Duty Cycle 主要通过以下接口实现：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Agent 接口 - 定义了 Duty Cycle 的核心方法</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">Agent</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 执行一个 Duty Cycle 的工作</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> 完成的工作项数量，0 表示没有工作完成</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception 如果在执行过程中发生错误</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">int</span> <span class="title function_">doWork</span><span class="params">()</span> <span class="keyword">throws</span> Exception;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Agent 的角色名称</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> 角色名称，用于日志和监控</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    String <span class="title function_">roleName</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 当 Agent 启动时调用</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">void</span> <span class="title function_">onStart</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 当 Agent 关闭时调用</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">void</span> <span class="title function_">onClose</span><span class="params">()</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>简单的实现</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.agrona.concurrent.Agent;</span><br><span class="line"><span class="keyword">import</span> java.util.Queue;</span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.ConcurrentLinkedQueue;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 简单的消息处理 Agent</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MessageProcessorAgent</span> <span class="keyword">implements</span> <span class="title class_">Agent</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Queue&lt;String&gt; messageQueue = <span class="keyword">new</span> <span class="title class_">ConcurrentLinkedQueue</span>&lt;&gt;();</span><br><span class="line">    <span class="keyword">private</span> <span class="type">long</span> <span class="variable">processedCount</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">doWork</span><span class="params">()</span> <span class="keyword">throws</span> Exception</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">workDone</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 批量处理消息，最多处理10条</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">10</span>; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">final</span> <span class="type">String</span> <span class="variable">message</span> <span class="operator">=</span> messageQueue.poll();</span><br><span class="line">            <span class="keyword">if</span> (message == <span class="literal">null</span>)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">break</span>; <span class="comment">// 没有更多消息，退出循环</span></span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 处理消息</span></span><br><span class="line">            processMessage(message);</span><br><span class="line">            workDone++;</span><br><span class="line">            processedCount++;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> workDone;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">roleName</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;MessageProcessor&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onStart</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;MessageProcessor Agent 启动&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onClose</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;MessageProcessor Agent 关闭，总共处理了 &quot;</span></span><br><span class="line">            + processedCount + <span class="string">&quot; 条消息&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 添加消息到队列</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">addMessage</span><span class="params">(<span class="keyword">final</span> String message)</span></span><br><span class="line">    &#123;</span><br><span class="line">        messageQueue.offer(message);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 处理单条消息</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">processMessage</span><span class="params">(<span class="keyword">final</span> String message)</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 实际的消息处理逻辑</span></span><br><span class="line">        <span class="comment">// 这里只是简单打印</span></span><br><span class="line">        <span class="comment">// System.out.println(&quot;处理消息: &quot; + message);</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="3-Agents-Idle-Strategies-代理与空闲策略"><a href="#3-Agents-Idle-Strategies-代理与空闲策略" class="headerlink" title="3.Agents &amp; Idle Strategies (代理与空闲策略)"></a>3.Agents &amp; Idle Strategies (代理与空闲策略)</h1><p>Idle Strategy（空闲策略）决定了当 Agent 没有工作可做时应该采取什么行动。</p>
+<h2 id="3-1-线程的问题"><a href="#3-1-线程的问题" class="headerlink" title="3.1.线程的问题"></a>3.1.线程的问题</h2><blockquote>
+<p>线程作为计算模型具有极高的不确定性，程序员的工作就变成了修剪这种不确定性。虽然许多研究技术通过提供更有效的修剪来改进模型，但我认为这是在倒着解决问题。我们应该从本质上确定性的、可组合的组件开始构建，而不是从需要移除的地方移除不确定性。不确定性应该在需要的地方明确而审慎地引入，而不是在不需要的地方移除。</p>
+</blockquote>
+<p>Agrona 的 Agent 和 Idle Strategy 正是实现这一理念的方式之一。当 Agrona Agent 与 Aeron 一起使用时，允许以安全、一致的方式构建确定性的、资源管理的线程，这对开发者来说易于理解和推理。</p>
+<h2 id="3-2-核心设计理念"><a href="#3-2-核心设计理念" class="headerlink" title="3.2.核心设计理念"></a>3.2.核心设计理念</h2><p><img   src="/images/Agrona/%E6%A0%B8%E5%BF%83%E8%AE%BE%E8%AE%A1%E7%90%86%E5%BF%B5.png"  alt="核心设计理念"></p>
+<p>关键特性:</p>
+<ul>
+<li>确定性: Agent 的行为是可预测的</li>
+<li>可组合: 多个 Agent 可以组合在一起</li>
+<li>资源管理: 通过 Idle Strategy 精确控制 CPU 使用</li>
+<li>易于推理: 简单的编程模型，易于理解和调试</li>
+</ul>
+<h2 id="3-3-Agent（代理）"><a href="#3-3-Agent（代理）" class="headerlink" title="3.3.Agent（代理）"></a>3.3.Agent（代理）</h2><p>Agent 是一个执行特定职责的工作单元，它持续运行并处理分配给它的任务。</p>
+<p>Agrona Agent 是应用程序逻辑的容器，在 Duty Cycle 中执行，例如处理来自 Aeron 订阅的消息。Agent 的 Duty Cycle 间隔以及 CPU 消耗由空闲策略控制。Agent 可以被调度在专用线程上，也可以作为单个线程上的复合代理组的一部分运行。</p>
+<p>典型的 Duty Cycle 工作流程:</p>
+<ol>
+<li>持续轮询 Agent 的 doWork 函数，直到它返回 0</li>
+<li>一旦返回 0，调用空闲策略(Idle Strategy)</li>
+<li>空闲策略决定如何处理无工作状态(自旋、让出CPU、休眠等)</li>
+</ol>
+<p><img   src="/images/Agrona/%E5%85%B8%E5%9E%8B%E7%9A%84DutyCycle%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B.png"  alt="典型的DutyCycle工作流程"></p>
+<h2 id="3-4-Idle-Strategy（空闲策略）"><a href="#3-4-Idle-Strategy（空闲策略）" class="headerlink" title="3.4.Idle Strategy（空闲策略）"></a>3.4.Idle Strategy（空闲策略）</h2><h3 id="3-4-1-空闲策略的重要性"><a href="#3-4-1-空闲策略的重要性" class="headerlink" title="3.4.1.空闲策略的重要性"></a>3.4.1.空闲策略的重要性</h3><p>当 Agent 没有工作可做时，IdleStrategy 决定如何使用 CPU 资源。这直接影响：</p>
+<ul>
+<li>延迟：响应时间的快慢</li>
+<li>CPU 使用率：资源利用效率</li>
+<li>功耗：能源消耗水平</li>
+<li>吞吐量：系统整体处理能力</li>
+</ul>
+<p><img   src="/images/Agrona/%E7%A9%BA%E9%97%B2%E7%AD%96%E7%95%A5%E7%9A%84%E9%87%8D%E8%A6%81%E6%80%A7.png"  alt="空闲策略的重要性"></p>
+<h3 id="3-4-2-IdleStrategy-接口"><a href="#3-4-2-IdleStrategy-接口" class="headerlink" title="3.4.2.IdleStrategy 接口"></a>3.4.2.IdleStrategy 接口</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.agrona.concurrent;</span><br><span class="line"></span><br><span class="line">                <span class="comment">/**</span></span><br><span class="line"><span class="comment">                 * 空闲策略接口</span></span><br><span class="line"><span class="comment">                 */</span></span><br><span class="line">                <span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">IdleStrategy</span></span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="comment">/**</span></span><br><span class="line"><span class="comment">                     * 空闲时调用</span></span><br><span class="line"><span class="comment">                     *</span></span><br><span class="line"><span class="comment">                     * <span class="doctag">@param</span> workCount 最近一次 doWork() 返回的工作量</span></span><br><span class="line"><span class="comment">                     */</span></span><br><span class="line">                    <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">(<span class="type">int</span> workCount)</span>;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">/**</span></span><br><span class="line"><span class="comment">                     * 空闲时调用（无工作量参数）</span></span><br><span class="line"><span class="comment">                     */</span></span><br><span class="line">                    <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">/**</span></span><br><span class="line"><span class="comment">                     * 重置策略状态</span></span><br><span class="line"><span class="comment">                     */</span></span><br><span class="line">                    <span class="keyword">void</span> <span class="title function_">reset</span><span class="params">()</span>;</span><br><span class="line">                &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-3-常用的空闲策略"><a href="#3-4-3-常用的空闲策略" class="headerlink" title="3.4.3.常用的空闲策略"></a>3.4.3.常用的空闲策略</h3><h4 id="3-4-3-1-BusySpinIdleStrategy-忙等待策略"><a href="#3-4-3-1-BusySpinIdleStrategy-忙等待策略" class="headerlink" title="3.4.3.1.BusySpinIdleStrategy (忙等待策略)"></a>3.4.3.1.BusySpinIdleStrategy (忙等待策略)</h4><p>特点：持续自旋，不让出 CPU</p>
+<p>使用场景：</p>
+<ul>
+<li>超低延迟要求（微秒级）</li>
+<li>独占CPU核心</li>
+<li>实时交易系统</li>
+<li>高频消息处理</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.agrona.concurrent;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 忙等待空闲策略</span></span><br><span class="line"><span class="comment"> * 最低延迟，但CPU使用率100%</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">BusySpinIdleStrategy</span> <span class="keyword">implements</span> <span class="title class_">IdleStrategy</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">(<span class="keyword">final</span> <span class="type">int</span> workCount)</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 什么都不做，持续自旋</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 什么都不做，持续自旋</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">reset</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 无状态，无需重置</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-4-3-2-BackoffIdleStrategy-退避策略"><a href="#3-4-3-2-BackoffIdleStrategy-退避策略" class="headerlink" title="3.4.3.2.BackoffIdleStrategy (退避策略)"></a>3.4.3.2.BackoffIdleStrategy (退避策略)</h4><p>特点：渐进式退避，平衡延迟和 CPU 使用</p>
+<p>使用场景：</p>
+<ul>
+<li>负载波动的系统</li>
+<li>需要平衡延迟和CPU使用</li>
+<li>多个Agent共享CPU</li>
+<li>通用的高性能应用</li>
+</ul>
+<p><img   src="/images/Agrona/%E9%80%80%E9%81%BF%E7%AD%96%E7%95%A5%E8%BF%87%E7%A8%8B.png"  alt="退避策略过程"></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.agrona.concurrent;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 退避空闲策略</span></span><br><span class="line"><span class="comment"> * 在忙等待、让出CPU和休眠之间渐进切换</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">BackoffIdleStrategy</span> <span class="keyword">implements</span> <span class="title class_">IdleStrategy</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">long</span> maxSpins;          <span class="comment">// 最大自旋次数</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">long</span> maxYields;         <span class="comment">// 最大让出次数</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">long</span> minParkPeriodNs;   <span class="comment">// 最小休眠时间（纳秒）</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">long</span> maxParkPeriodNs;   <span class="comment">// 最大休眠时间（纳秒）</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="type">long</span> <span class="variable">spins</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">long</span> <span class="variable">yields</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">long</span> <span class="variable">parks</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">BackoffIdleStrategy</span><span class="params">(</span></span><br><span class="line"><span class="params">        <span class="keyword">final</span> <span class="type">long</span> maxSpins,</span></span><br><span class="line"><span class="params">        <span class="keyword">final</span> <span class="type">long</span> maxYields,</span></span><br><span class="line"><span class="params">        <span class="keyword">final</span> <span class="type">long</span> minParkPeriodNs,</span></span><br><span class="line"><span class="params">        <span class="keyword">final</span> <span class="type">long</span> maxParkPeriodNs)</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">this</span>.maxSpins = maxSpins;</span><br><span class="line">        <span class="built_in">this</span>.maxYields = maxYields;</span><br><span class="line">        <span class="built_in">this</span>.minParkPeriodNs = minParkPeriodNs;</span><br><span class="line">        <span class="built_in">this</span>.maxParkPeriodNs = maxParkPeriodNs;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">(<span class="keyword">final</span> <span class="type">int</span> workCount)</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span> (workCount &gt; <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            reset();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">            idle();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 第一阶段：自旋</span></span><br><span class="line">        <span class="keyword">if</span> (spins &lt; maxSpins)</span><br><span class="line">        &#123;</span><br><span class="line">            spins++;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 第二阶段：让出CPU</span></span><br><span class="line">        <span class="keyword">if</span> (yields &lt; maxYields)</span><br><span class="line">        &#123;</span><br><span class="line">            yields++;</span><br><span class="line">            Thread.<span class="keyword">yield</span>();</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 第三阶段：休眠</span></span><br><span class="line">        parks++;</span><br><span class="line">        <span class="keyword">final</span> <span class="type">long</span> <span class="variable">parkTime</span> <span class="operator">=</span> Math.min(</span><br><span class="line">            minParkPeriodNs &lt;&lt; parks,</span><br><span class="line">            maxParkPeriodNs</span><br><span class="line">        );</span><br><span class="line"></span><br><span class="line">        LockSupport.parkNanos(parkTime);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">reset</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        spins = <span class="number">0</span>;</span><br><span class="line">        yields = <span class="number">0</span>;</span><br><span class="line">        parks = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-4-3-3-SleepingIdleStrategy-休眠策略"><a href="#3-4-3-3-SleepingIdleStrategy-休眠策略" class="headerlink" title="3.4.3.3.SleepingIdleStrategy (休眠策略)"></a>3.4.3.3.SleepingIdleStrategy (休眠策略)</h4><p>特点：立即休眠，最低 CPU 使用</p>
+<p>使用场景：</p>
+<ul>
+<li>后台批处理任务</li>
+<li>非时间敏感的操作</li>
+<li>节能场景</li>
+<li>资源受限环境</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.agrona.concurrent;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 休眠空闲策略</span></span><br><span class="line"><span class="comment"> * 最低CPU使用，但延迟较高</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">SleepingIdleStrategy</span> <span class="keyword">implements</span> <span class="title class_">IdleStrategy</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">long</span> sleepPeriodNs;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">SleepingIdleStrategy</span><span class="params">(<span class="keyword">final</span> <span class="type">long</span> sleepPeriodNs)</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">this</span>.sleepPeriodNs = sleepPeriodNs;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">(<span class="keyword">final</span> <span class="type">int</span> workCount)</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span> (workCount &lt;= <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            idle();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        LockSupport.parkNanos(sleepPeriodNs);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">reset</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 无状态</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-4-3-4-YieldingIdleStrategy-让出策略"><a href="#3-4-3-4-YieldingIdleStrategy-让出策略" class="headerlink" title="3.4.3.4.YieldingIdleStrategy (让出策略)"></a>3.4.3.4.YieldingIdleStrategy (让出策略)</h4><p>特点：调用 Thread.yield() 让出 CPU</p>
+<p>使用场景：</p>
+<ul>
+<li>需要快速响应但不需要极低延迟</li>
+<li>CPU核心数充足</li>
+<li>多个线程竞争</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.agrona.concurrent;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 让出空闲策略</span></span><br><span class="line"><span class="comment"> * 中等延迟和CPU使用</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">YieldingIdleStrategy</span> <span class="keyword">implements</span> <span class="title class_">IdleStrategy</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">(<span class="keyword">final</span> <span class="type">int</span> workCount)</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span> (workCount &lt;= <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            Thread.<span class="keyword">yield</span>();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        Thread.<span class="keyword">yield</span>();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">reset</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 无状态</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-4-3-5-NoOpIdleStrategy-无操作策略"><a href="#3-4-3-5-NoOpIdleStrategy-无操作策略" class="headerlink" title="3.4.3.5.NoOpIdleStrategy (无操作策略)"></a>3.4.3.5.NoOpIdleStrategy (无操作策略)</h4><p>特点：什么都不做</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.agrona.concurrent;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 无操作空闲策略</span></span><br><span class="line"><span class="comment"> * 用于测试或特殊场景</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">NoOpIdleStrategy</span> <span class="keyword">implements</span> <span class="title class_">IdleStrategy</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">NoOpIdleStrategy</span> <span class="variable">INSTANCE</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">NoOpIdleStrategy</span>();</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">(<span class="keyword">final</span> <span class="type">int</span> workCount)</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 什么都不做</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">idle</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 什么都不做</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">reset</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 无状态</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-4-空闲策略对比"><a href="#3-4-4-空闲策略对比" class="headerlink" title="3.4.4.空闲策略对比"></a>3.4.4.空闲策略对比</h3><p><img   src="/images/Agrona/%E7%A9%BA%E9%97%B2%E7%AD%96%E7%95%A5%E5%AF%B9%E6%AF%94.png"  alt="空闲策略对比"></p>
+<h2 id="3-5-AgentRunner（Agent-运行器）"><a href="#3-5-AgentRunner（Agent-运行器）" class="headerlink" title="3.5.AgentRunner（Agent 运行器）"></a>3.5.AgentRunner（Agent 运行器）</h2><h3 id="3-5-1-AgentRunner-的作用"><a href="#3-5-1-AgentRunner-的作用" class="headerlink" title="3.5.1.AgentRunner 的作用"></a>3.5.1.AgentRunner 的作用</h3><p>AgentRunner 负责在线程中运行 Agent，并应用 IdleStrategy。</p>
+<p><img   src="/images/Agrona/AgentRunner.png"  alt="AgentRunner"></p>
+<h1 id="4-Threads-Agents-Duty-Cycles-线程、代理与职责周期"><a href="#4-Threads-Agents-Duty-Cycles-线程、代理与职责周期" class="headerlink" title="4.Threads, Agents &amp; Duty Cycles (线程、代理与职责周期)"></a>4.Threads, Agents &amp; Duty Cycles (线程、代理与职责周期)</h1><p>探讨 Agrona 中线程、Agent 和 Duty Cycle 三者之间的关系,以及如何通过合理的设计实现高性能系统。</p>
+<h2 id="4-1-三者关系"><a href="#4-1-三者关系" class="headerlink" title="4.1.三者关系"></a>4.1.三者关系</h2><p><img   src="/images/Agrona/%E4%B8%89%E8%80%85%E5%85%B3%E7%B3%BB.png"  alt="三者关系"></p>
+<ul>
+<li>Thread: 提供执行上下文</li>
+<li>AgentRunner: 管理Agent的生命周期</li>
+<li>Agent: 定义工作逻辑</li>
+<li>Duty Cycle: Agent的单次工作周期</li>
+<li>IdleStrategy: 控制空闲时的行为</li>
+</ul>
+<h2 id="4-2-线程模型"><a href="#4-2-线程模型" class="headerlink" title="4.2.线程模型"></a>4.2.线程模型</h2><h3 id="4-2-1-专用线程模型"><a href="#4-2-1-专用线程模型" class="headerlink" title="4.2.1.专用线程模型"></a>4.2.1.专用线程模型</h3><p>每个Agent运行在独占的线程上:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 创建Agent</span></span><br><span class="line"><span class="keyword">final</span> <span class="type">Agent</span> <span class="variable">agent</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">MyHighPriorityAgent</span>();</span><br><span class="line"><span class="keyword">final</span> <span class="type">IdleStrategy</span> <span class="variable">idleStrategy</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BusySpinIdleStrategy</span>();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 创建Runner</span></span><br><span class="line"><span class="keyword">final</span> <span class="type">AgentRunner</span> <span class="variable">runner</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AgentRunner</span>(</span><br><span class="line">    idleStrategy,</span><br><span class="line">    Throwable::printStackTrace,</span><br><span class="line">    <span class="literal">null</span>,</span><br><span class="line">    agent</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 启动专用线程</span></span><br><span class="line"><span class="keyword">final</span> <span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> AgentRunner.startOnThread(runner);</span><br><span class="line">thread.setName(<span class="string">&quot;HighPriority-Agent&quot;</span>);</span><br><span class="line">thread.setPriority(Thread.MAX_PRIORITY);</span><br></pre></td></tr></table></figure>
+<p>优势: 最低延迟、可预测的性能 劣势: 资源消耗大</p>
+<h3 id="4-2-2-共享线程模型"><a href="#4-2-2-共享线程模型" class="headerlink" title="4.2.2.共享线程模型"></a>4.2.2.共享线程模型</h3><p>多个Agent共享一个线程:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 创建复合Agent</span></span><br><span class="line"><span class="keyword">final</span> <span class="type">Agent</span> <span class="variable">compositeAgent</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">CompositeAgent</span>(</span><br><span class="line">    <span class="string">&quot;SharedThread&quot;</span>,</span><br><span class="line">    <span class="keyword">new</span> <span class="title class_">ReceiveAgent</span>(),</span><br><span class="line">    <span class="keyword">new</span> <span class="title class_">ProcessAgent</span>(),</span><br><span class="line">    <span class="keyword">new</span> <span class="title class_">SendAgent</span>()</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="keyword">final</span> <span class="type">AgentRunner</span> <span class="variable">runner</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AgentRunner</span>(</span><br><span class="line">    <span class="keyword">new</span> <span class="title class_">BackoffIdleStrategy</span>(<span class="number">100</span>, <span class="number">10</span>, <span class="number">1</span>, <span class="number">1_000_000</span>),</span><br><span class="line">    Throwable::printStackTrace,</span><br><span class="line">    <span class="literal">null</span>,</span><br><span class="line">    compositeAgent</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line">AgentRunner.startOnThread(runner);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>优势: 资源利用率高 </li>
+<li>劣势: 可能存在优先级问题</li>
+</ul>
+<h2 id="4-3-性能优化技巧"><a href="#4-3-性能优化技巧" class="headerlink" title="4.3.性能优化技巧"></a>4.3.性能优化技巧</h2><h3 id="4-3-1-CPU亲和性"><a href="#4-3-1-CPU亲和性" class="headerlink" title="4.3.1.CPU亲和性"></a>4.3.1.CPU亲和性</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 将线程绑定到特定CPU核心</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">setThreadAffinity</span><span class="params">(<span class="keyword">final</span> Thread thread, <span class="keyword">final</span> <span class="type">int</span> cpuId)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 使用JNI或Agrona的ThreadHints</span></span><br><span class="line">    ThreadHints.onSpinWait();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-2-批量处理"><a href="#4-3-2-批量处理" class="headerlink" title="4.3.2.批量处理"></a>4.3.2.批量处理</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">int</span> <span class="title function_">doWork</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">work</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 批量处理提高吞吐量</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; BATCH_SIZE; i++)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="type">Task</span> <span class="variable">task</span> <span class="operator">=</span> queue.poll();</span><br><span class="line">        <span class="keyword">if</span> (task == <span class="literal">null</span>) <span class="keyword">break</span>;</span><br><span class="line">        </span><br><span class="line">        processTask(task);</span><br><span class="line">        work++;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> work;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-3-预取优化"><a href="#4-3-3-预取优化" class="headerlink" title="4.3.3.预取优化"></a>4.3.3.预取优化</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">int</span> <span class="title function_">doWork</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">totalWork</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 预取多个数据源</span></span><br><span class="line">    totalWork += processInput1();</span><br><span class="line">    totalWork += processInput2();</span><br><span class="line">    totalWork += processOutput();</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> totalWork;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/Java/">Java</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                            <div class="prev-post">
+                                <a class="prev"
+                                   rel="prev"
+                                   href="/2026/03/08/%E9%AB%98%E5%8F%AF%E7%94%A8%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/"
+                                   title="高可用系统架构解决方案"
+                                >
+                                    <span class="left arrow-icon flex-center">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </span>
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">高可用系统架构解决方案</span>
+                                        <span class="post-nav-item">上一篇</span>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/2026/03/07/Aeron/Aeron-%E6%A6%82%E8%BF%B0/"
+                                   title="Aeron 概述"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">Aeron 概述</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Reln Ding</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+
+        <!-- PC go comment -->
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+
+    <!-- tablet toc -->
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/toggle-theme.js"></script>
+
+<script src="/js/code-block.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+
+<!-- local search -->
+
+
+<!-- lazyload -->
+
+
+<div class="">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        
+<script src="/js/post/post-helper.js"></script>
+
+
+        <!-- toc -->
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+
+<!-- pjax -->
+
+
+
+</body>
+</html>
