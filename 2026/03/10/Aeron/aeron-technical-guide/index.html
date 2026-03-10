@@ -261,7 +261,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Tue Mar 10 2026 08:56:22 GMT+0000">2026-03-10 16:56:22</span>
+                    <span class="datetime" data-updated="Tue Mar 10 2026 12:01:54 GMT+0000">2026-03-10 20:01:54</span>
                 </span>
             
         
@@ -284,10 +284,10 @@
                             <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a></li>
                         
                     
-                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a></li>
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/Aeron/">Aeron</a></li>
                         
                     
-                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/Aeron/">Aeron</a></li>
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a></li>
                         
                     
                 </ul>
@@ -315,24 +315,6 @@
                          <blockquote>
 <p><strong>Aeron</strong> 是由 Real Logic 开发、Adaptive Financial Consulting 维护的高性能消息传输框架，专为金融交易、游戏服务器、低延迟分布式系统等对延迟极度敏感的场景设计。其核心目标：<strong>可预测的超低延迟 + 极高吞吐</strong>。</p>
 </blockquote>
-<hr>
-<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ol>
-<li><a href="#1-%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84%E6%A6%82%E8%A7%88">整体架构概览</a></li>
-<li><a href="#2-media-driver-%E6%B7%B1%E5%BA%A6%E5%89%96%E6%9E%90">Media Driver 深度剖析</a></li>
-<li><a href="#3-channel--stream--session-%E4%B8%89%E5%B1%82%E5%AF%BB%E5%9D%80%E6%A8%A1%E5%9E%8B">Channel &#x2F; Stream &#x2F; Session 三层寻址模型</a></li>
-<li><a href="#4-publication-%E5%8F%91%E5%B8%83%E7%AB%AF%E8%AF%A6%E8%A7%A3">Publication 发布端详解</a></li>
-<li><a href="#5-subscription-%E8%AE%A2%E9%98%85%E7%AB%AF%E8%AF%A6%E8%A7%A3">Subscription 订阅端详解</a></li>
-<li><a href="#6-log-buffer-%E4%B8%8E-image-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B">Log Buffer 与 Image 内存模型</a></li>
-<li><a href="#7-position-%E4%BD%8D%E7%BD%AE%E8%BF%BD%E8%B8%AA%E4%BD%93%E7%B3%BB">Position 位置追踪体系</a></li>
-<li><a href="#8-multi-destination-cast-mdc">Multi-Destination-Cast (MDC)</a></li>
-<li><a href="#9-aeron-archive%E6%8C%81%E4%B9%85%E5%8C%96%E5%BD%95%E5%88%B6%E4%B8%8E%E5%9B%9E%E6%94%BE">Aeron Archive：持久化录制与回放</a></li>
-<li><a href="#10-aeron-clusterraft-%E5%85%B1%E8%AF%86%E4%B8%8E%E9%AB%98%E5%8F%AF%E7%94%A8%E6%9C%8D%E5%8A%A1">Aeron Cluster：RAFT 共识与高可用服务</a></li>
-<li><a href="#11-%E8%BF%90%E7%BB%B4%E5%B7%A5%E5%85%B7%E7%AE%B1">运维工具箱</a></li>
-<li><a href="#12-%E8%83%8C%E5%8E%8B-back-pressure-%E5%A4%84%E7%90%86%E7%AD%96%E7%95%A5">背压 (Back Pressure) 处理策略</a></li>
-<li><a href="#13-%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8%E6%9C%80%E7%AE%80-ipc-%E7%A4%BA%E4%BE%8B">快速入门：最简 IPC 示例</a></li>
-<li><a href="#14-%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98%E8%A6%81%E7%82%B9%E6%80%BB%E7%BB%93">性能调优要点总结</a></li>
-</ol>
-<hr>
 <h2 id="1-整体架构概览"><a href="#1-整体架构概览" class="headerlink" title="1. 整体架构概览"></a>1. 整体架构概览</h2><p>Aeron 的核心设计思路是：<strong>将 ordered log buffer 跨进程&#x2F;跨网络高效复制，并提供可预测的延迟</strong>。与传统消息中间件（Kafka、RabbitMQ）不同，Aeron 不是一个消息 broker，而是一个传输层框架。</p>
 <h3 id="1-1-三大顶层组件"><a href="#1-1-三大顶层组件" class="headerlink" title="1.1 三大顶层组件"></a>1.1 三大顶层组件</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                         Aeron 生态系统                           │</span><br><span class="line">│                                                                 │</span><br><span class="line">│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐ │</span><br><span class="line">│  │  Aeron Transport  │  │  Aeron Archive   │  │Aeron Cluster │ │</span><br><span class="line">│  │  (核心传输层)     │  │  (持久化录制/回放)│  │(RAFT容错集群)│ │</span><br><span class="line">│  │                  │  │                  │  │              │ │</span><br><span class="line">│  │  • UDP / IPC     │  │  • 流录制到磁盘   │  │ • 多节点复制 │ │</span><br><span class="line">│  │  • 发布/订阅模型  │  │  • 任意位置回放   │  │ • 故障自恢复 │ │</span><br><span class="line">│  │  • 零拷贝传输     │  │  • 流复制        │  │ • 有序日志   │ │</span><br><span class="line">│  └──────────────────┘  └──────────────────┘  └──────────────┘ │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
 
@@ -827,11 +809,11 @@
                                     </li>
                                 
                                     <li class="tag-item border-box">
-                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a>
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/Aeron/">Aeron</a>
                                     </li>
                                 
                                     <li class="tag-item border-box">
-                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/Aeron/">Aeron</a>
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a>
                                     </li>
                                 
                             </ul>
