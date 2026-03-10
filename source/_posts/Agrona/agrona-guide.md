@@ -10,36 +10,6 @@ categories:
 
 > 基于 Agrona 1.21.1 | 涵盖核心概念、组件详解与 Cookbook 实战
 
----
-
-## 目录
-
-- [第一部分：概述与定位](#第一部分概述与定位)
-  - [1. Agrona 简介](#1-agrona-简介)
-  - [2. 技术栈位置](#2-技术栈位置)
-  - [3. 核心架构组件](#3-核心架构组件)
-  - [4. 快速开始](#4-快速开始)
-- [第二部分：执行模型](#第二部分执行模型)
-  - [5. Duty Cycle（职责周期）](#5-duty-cycle职责周期)
-  - [6. Agent 与 IdleStrategy](#6-agent-与-idlestrategy)
-  - [7. 线程、Agent 与 Duty Cycle 的协作](#7-线程agent-与-duty-cycle-的协作)
-- [第三部分：核心组件](#第三部分核心组件)
-  - [8. DirectBuffer — 直接内存缓冲区](#8-directbuffer--直接内存缓冲区)
-  - [9. 并发集合与队列](#9-并发集合与队列)
-  - [10. 高性能数据结构](#10-高性能数据结构)
-  - [11. 时钟与时间源](#11-时钟与时间源)
-  - [12. ID 生成器](#12-id-生成器)
-- [第四部分：Cookbook 实战](#第四部分cookbook-实战)
-  - [13. 预分配 Map 与调试技巧](#13-预分配-map-与调试技巧)
-  - [14. 关闭 Unsafe 边界检查](#14-关闭-unsafe-边界检查)
-  - [15. 简单二进制编解码器](#15-简单二进制编解码器)
-  - [16. 组合 Agent（CompositeAgent）](#16-组合-agentcompositeagent)
-  - [17. 优雅终止 Agent](#17-优雅终止-agent)
-  - [18. AgentRunner 与自定义 ThreadFactory](#18-agentrunner-与自定义-threadfactory)
-- [附录：性能对比与选型指南](#附录性能对比与选型指南)
-
----
-
 # 第一部分：概述与定位
 
 ## 1. Agrona 简介
