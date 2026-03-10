@@ -11,27 +11,6 @@ categories:
 
 > **Aeron** 是由 Real Logic 开发、Adaptive Financial Consulting 维护的高性能消息传输框架，专为金融交易、游戏服务器、低延迟分布式系统等对延迟极度敏感的场景设计。其核心目标：**可预测的超低延迟 + 极高吞吐**。
 
----
-
-## 目录
-
-1. [整体架构概览](#1-整体架构概览)
-2. [Media Driver 深度剖析](#2-media-driver-深度剖析)
-3. [Channel / Stream / Session 三层寻址模型](#3-channel--stream--session-三层寻址模型)
-4. [Publication 发布端详解](#4-publication-发布端详解)
-5. [Subscription 订阅端详解](#5-subscription-订阅端详解)
-6. [Log Buffer 与 Image 内存模型](#6-log-buffer-与-image-内存模型)
-7. [Position 位置追踪体系](#7-position-位置追踪体系)
-8. [Multi-Destination-Cast (MDC)](#8-multi-destination-cast-mdc)
-9. [Aeron Archive：持久化录制与回放](#9-aeron-archive持久化录制与回放)
-10. [Aeron Cluster：RAFT 共识与高可用服务](#10-aeron-clusterraft-共识与高可用服务)
-11. [运维工具箱](#11-运维工具箱)
-12. [背压 (Back Pressure) 处理策略](#12-背压-back-pressure-处理策略)
-13. [快速入门：最简 IPC 示例](#13-快速入门最简-ipc-示例)
-14. [性能调优要点总结](#14-性能调优要点总结)
-
----
-
 ## 1. 整体架构概览
 
 Aeron 的核心设计思路是：**将 ordered log buffer 跨进程/跨网络高效复制，并提供可预测的延迟**。与传统消息中间件（Kafka、RabbitMQ）不同，Aeron 不是一个消息 broker，而是一个传输层框架。
