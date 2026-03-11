@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="blog,技术,生活">
+    <meta name="description" content="Reln 的个人博客，记录学习与生活">
+    <meta name="author" content="Reln Ding">
+    
+    <title>
+        
+            Aeron 传输模式与 NAK 流控深度解析 |
+        
+        Reln 的小窝
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/favicon.ico">
+    
+    
+<link rel="stylesheet" href="/font/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/brands.min.css">
+
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"lcha-reln.github.io","root":"/","language":"zh-CN","path":"content.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#24c6dc","title":"Reln 的小窝","author":"Reln Ding","avatar":"/images/avatar.svg","logo":"/images/logo.svg","favicon":"/favicon.ico"},"menu":{"home":"/ || fas fa-home","archives":"/archives || fas fa-archive","tags":"/tags || fas fa-tags","categories":"/categories || fas fa-th"},"first_screen":{"enable":false,"background_img":"/images/bg.svg","background_img_dark":"/images/bg.svg","description":"Keep writing and Keep loving.","hitokoto":false},"social_contact":{"enable":false,"links":{"github":null,"weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":null}},"scroll":{"progress_bar":false,"percent":false,"hide_header":true},"home":{"announcement":null,"category":false,"tag":false,"post_datetime":"updated"},"post":{"author_badge":{"enable":false,"level_badge":true,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":false,"min2read":false},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null},"toc":{"enable":true,"number":true},"copyright":{"enable":false}},"code_block":{"tools":{"enable":false,"style":"default"},"highlight_theme":"default","copy":true,"lang":true},"toc":{"enable":false,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":false,"preload":false},"comment":{"enable":false,"use":"valine","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":null,"repo_id":null,"category":"Announcements","category_id":null,"reactions_enabled":false},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":false},"lazyload":{"enable":false},"cdn":{"enable":false,"provider":"cdnjs"},"pjax":{"enable":false},"footer":{"since":2026,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]},"icon":"fas fa-heart","powered":{"enable":true}},"inject":{"enable":false,"css":[null],"js":[null]},"version":"4.2.5","nav_more_list":[{"name":"GitHub","url":"https://github.com/lcha-reln","icon":"fab fa-github"}],"root":"","source_data":{}}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/logo.svg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Reln 的小窝
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-home"></i>
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-archive"></i>
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/tags">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-tags"></i>
+                                
+                                标签
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/categories">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-th"></i>
+                                
+                                分类
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-home"></i>
+                                </span>
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-archive"></i>
+                                </span>
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/tags">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-tags"></i>
+                                </span>
+                            
+                            标签
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/categories">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-th"></i>
+                                </span>
+                            
+                            分类
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        Aeron 传输模式与 NAK 流控深度解析
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/avatar.svg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Reln Ding</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-03-11 14:00:00</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Wed Mar 11 2026 08:13:12 GMT+0000">2026-03-11 16:13:12</span>
+                </span>
+            
+        
+
+        
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/Aeron/">Aeron</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/Aeron/">Aeron</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <p>Aeron 提供三种传输模式（UDP 单播、UDP 多播、IPC），并在 UDP 层之上实现了基于 NAK（Negative Acknowledgment）的可靠传输机制与精细化流控体系。本文系统梳理各传输模式的工作原理与适用边界，深入剖析 NAK 协议的设计动机与实现细节，并分析滑动窗口流控的位置追踪模型。</p>
+<span id="more"></span>
+
+<h2 id="一、传输模式概览"><a href="#一、传输模式概览" class="headerlink" title="一、传输模式概览"></a>一、传输模式概览</h2><p>Aeron 的三种传输模式共享同一套可靠传输层（NAK 协议、流控窗口、重传机制），差异仅在于底层的数据投递手段：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    Aeron 传输协议体系                        │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐  │</span><br><span class="line">│   │  UDP 单播     │   │  UDP 多播     │   │     IPC      │  │</span><br><span class="line">│   │  (Unicast)   │   │  (Multicast) │   │  (共享内存)   │  │</span><br><span class="line">│   └──────┬───────┘   └──────┬───────┘   └──────┬───────┘  │</span><br><span class="line">│          │                  │                  │           │</span><br><span class="line">│   ┌──────▼──────────────────▼──────────────────▼────────┐  │</span><br><span class="line">│   │              Aeron 可靠传输层                        │  │</span><br><span class="line">│   │   NAK 重传协议  ·  滑动窗口流控  ·  位置计数器体系   │  │</span><br><span class="line">│   └──────────────────────────────────────────────────────┘  │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>传输方式</th>
+<th>延迟（P50）</th>
+<th>吞吐量</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>IPC</td>
+<td>200 ns 级</td>
+<td>极高</td>
+<td>同机进程通信</td>
+</tr>
+<tr>
+<td>UDP 单播</td>
+<td>10 ~ 50 μs</td>
+<td>高</td>
+<td>点对点跨主机通信</td>
+</tr>
+<tr>
+<td>UDP 多播</td>
+<td>10 ~ 50 μs</td>
+<td>极高（单次发送，多端接收）</td>
+<td>一对多广播分发</td>
+</tr>
+</tbody></table>
+<h2 id="二、为何不使用-TCP"><a href="#二、为何不使用-TCP" class="headerlink" title="二、为何不使用 TCP"></a>二、为何不使用 TCP</h2><p>TCP 在数据中心低延迟场景下存在三个结构性缺陷：</p>
+<h3 id="2-1-队头阻塞（Head-of-Line-Blocking）"><a href="#2-1-队头阻塞（Head-of-Line-Blocking）" class="headerlink" title="2.1 队头阻塞（Head-of-Line Blocking）"></a>2.1 队头阻塞（Head-of-Line Blocking）</h3><p>TCP 是严格有序的字节流协议，接收方的内核缓冲区必须按序向应用层交付数据。当中间某个 segment 丢失时，后续已到达的数据全部阻塞在内核缓冲区，应用层无法感知，也无法处理：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">TCP 接收端内核缓冲区：</span><br><span class="line"></span><br><span class="line">已交付应用层     阻塞等待 segment 3      已到达但无法交付</span><br><span class="line">  ┌───┬───┐    ┌─────────────────────┐  ┌───┬───┐</span><br><span class="line">  │ 1 │ 2 │    │  等待 segment 3 ...  │  │ 4 │ 5 │</span><br><span class="line">  └───┴───┘    └─────────────────────┘  └───┴───┘</span><br></pre></td></tr></table></figure>
+
+<p>Aeron 基于 UDP，接收到的数据包直接写入 Log Buffer 的对应 term offset，后续连续帧可立即交付消费端处理，丢失的帧通过异步 NAK 请求重传，两者并行进行，消除了队头阻塞：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Aeron Receiver 的 Log Buffer：</span><br><span class="line"></span><br><span class="line">已处理         可立即处理（无论 seq=3 是否到达）</span><br><span class="line">  ┌───┬───┐   ┌───┬───┐</span><br><span class="line">  │ 1 │ 2 │   │ 4 │ 5 │   ← 后台异步 NAK 请求 seq=3 重传</span><br><span class="line">  └───┴───┘   └───┴───┘</span><br><span class="line">                 ↑</span><br><span class="line">         offset 已写入，可消费</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-慢启动与拥塞控制"><a href="#2-2-慢启动与拥塞控制" class="headerlink" title="2.2 慢启动与拥塞控制"></a>2.2 慢启动与拥塞控制</h3><p>TCP 的慢启动（Slow Start）和拥塞控制（CWND）算法面向广域网设计，其拥塞窗口从 1 MSS 起步，指数增长至 ssthresh 后线性增长。在数据中心 RTT 通常低于 100 μs 的环境下，TCP 的拥塞窗口收敛极慢，初始阶段的带宽利用率极低。</p>
+<p>Aeron 的流控基于接收端显式回报的 receiver window（通过 STATUS_MESSAGE 帧携带），发送端直接按接收端的实际消费能力推进，无需拥塞推断算法，带宽利用率从连接建立的第一帧起即可达到上限。</p>
+<h3 id="2-3-内核协议栈开销"><a href="#2-3-内核协议栈开销" class="headerlink" title="2.3 内核协议栈开销"></a>2.3 内核协议栈开销</h3><p>TCP 数据路径需要经过操作系统内核的完整协议栈处理，涉及：系统调用上下文切换、内核缓冲区到用户空间的内存拷贝、TCP 状态机的锁竞争。</p>
+<p>Aeron 的数据路径在用户态完成：Publication 直接写入 mmap 映射的 Log Buffer（堆外内存），Sender 通过 <code>sendmmsg</code> 系统调用批量发送，Receiver 写入 Image 的 Log Buffer 后由 Subscriber 直接 poll，全程无内核态数据拷贝。</p>
+<h2 id="三、UDP-单播"><a href="#三、UDP-单播" class="headerlink" title="三、UDP 单播"></a>三、UDP 单播</h2><p>UDP 单播是点对点的传输模式，每个 Subscriber 对应一条独立的 UDP 数据流：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">发布端进程                             订阅端进程</span><br><span class="line">┌──────────┐                          ┌──────────┐</span><br><span class="line">│ App A    │                          │ App B    │</span><br><span class="line">│ offer()  │                          │ poll()   │</span><br><span class="line">└────┬─────┘                          └────▲─────┘</span><br><span class="line">     │                                     │</span><br><span class="line">     ▼                                     │</span><br><span class="line">┌──────────────┐    UDP Packet        ┌──────────────┐</span><br><span class="line">│ Media Driver │ ──────────────────→  │ Media Driver │</span><br><span class="line">│     A        │  src: 10.0.0.1:9000  │      B       │</span><br><span class="line">└──────────────┘  dst: 10.0.0.2:9000  └──────────────┘</span><br></pre></td></tr></table></figure>
+
+<p><strong>Channel URI 示例</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">aeron:udp?endpoint=10.0.0.2:9000</span><br></pre></td></tr></table></figure>
+
+<p><strong>适用场景</strong>：</p>
+<ul>
+<li>点对点服务间通信（request&#x2F;response 或单向推送）</li>
+<li>订阅方数量较少（通常 &lt; 10），独立流不会显著放大发送端带宽</li>
+</ul>
+<p><strong>注意</strong>：当 Subscriber 数量增加时，Sender 需要为每个 Subscriber 独立发送数据副本，发送端带宽消耗与订阅方数量线性增长。此时应切换为 UDP 多播。</p>
+<h2 id="四、UDP-多播"><a href="#四、UDP-多播" class="headerlink" title="四、UDP 多播"></a>四、UDP 多播</h2><p>UDP 多播利用 IP 组播协议（组播地址范围 <code>224.0.0.0 ~ 239.255.255.255</code>），网络设备（交换机&#x2F;路由器）负责将数据包复制并转发给所有加入该组播组的成员，发送端仅需发送一次：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">发布端                         订阅端 1        订阅端 2        订阅端 3</span><br><span class="line">┌──────────────┐              ┌────────┐      ┌────────┐      ┌────────┐</span><br><span class="line">│ Media Driver │  组播数据包   │ App B  │      │ App C  │      │ App D  │</span><br><span class="line">│  单次发送     │ ─────────────┴────────┴──────┴────────┴──────┴────────┘</span><br><span class="line">└──────────────┘  239.1.1.1:9000</span><br><span class="line">                  （交换机复制转发至所有组成员）</span><br></pre></td></tr></table></figure>
+
+<p><strong>Channel URI 示例</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># 发布端</span><br><span class="line">aeron:udp?control=10.0.0.1:9001|control-mode=dynamic</span><br><span class="line"></span><br><span class="line"># 订阅端</span><br><span class="line">aeron:udp?control=10.0.0.1:9001</span><br></pre></td></tr></table></figure>
+
+<p><strong>核心优势</strong>：</p>
+<p>网络层的一次发送对应多端接收，发送端的带宽消耗与接收端数量无关。在行情广播、配置下发、状态同步等一对多场景下，多播相比单播的带宽效率提升与接收端数量成正比。</p>
+<p><strong>部署约束</strong>：</p>
+<ul>
+<li>组播需要网络设备支持 IGMP（Internet Group Management Protocol）Snooping，确保组播流量只转发给组成员，不泛洪到全网端口</li>
+<li>跨路由器的组播需要 PIM（Protocol Independent Multicast）等组播路由协议支持</li>
+<li>在部分云环境和 overlay 网络中，组播支持受限，此时需退化为单播</li>
+</ul>
+<h2 id="五、IPC-进程间通信"><a href="#五、IPC-进程间通信" class="headerlink" title="五、IPC 进程间通信"></a>五、IPC 进程间通信</h2><p>IPC 模式完全绕过网络栈，通过操作系统的共享内存（<code>mmap</code>）在同机进程间直接传递数据：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        同一台主机                            │</span><br><span class="line">│                                                             │</span><br><span class="line">│  ┌────────────┐                      ┌────────────┐        │</span><br><span class="line">│  │ Process A  │                      │ Process B  │        │</span><br><span class="line">│  │  offer()   │                      │  poll()    │        │</span><br><span class="line">│  └─────┬──────┘                      └─────▲──────┘        │</span><br><span class="line">│        │ write（无系统调用）                │ read          │</span><br><span class="line">│        ▼                                   │               │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │          Shared Memory（mmap / /dev/shm）           │   │</span><br><span class="line">│  │          Log Buffer（Term Buffer × 3）              │   │</span><br><span class="line">│  └─────────────────────────────────────────────────────┘   │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p><strong>Channel URI</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">aeron:ipc</span><br></pre></td></tr></table></figure>
+
+<p>IPC 的延迟优势来源于三个层面：</p>
+<ol>
+<li><strong>零网络开销</strong>：数据不经过任何网络协议栈，消除了网卡驱动、内核网络子系统的处理延迟</li>
+<li><strong>零拷贝</strong>：Publication 写入共享内存后，Subscriber 直接从相同的物理页读取，无任何数据复制</li>
+<li><strong>缓存亲和性</strong>：同一台机器上的两个进程访问同一块物理内存，L3 Cache 命中率高；若进一步将两个进程绑定到同一 NUMA 节点的不同核心，可完全消除跨 NUMA 的内存访问延迟</li>
+</ol>
+<p><strong>典型延迟</strong>：P50 约 200 ns，P99 约 500 ns（<code>DEDICATED</code> 线程模式 + <code>BusySpinIdleStrategy</code>）。</p>
+<h2 id="六、NAK-协议"><a href="#六、NAK-协议" class="headerlink" title="六、NAK 协议"></a>六、NAK 协议</h2><h3 id="6-1-设计动机：NAK-vs-ACK"><a href="#6-1-设计动机：NAK-vs-ACK" class="headerlink" title="6.1 设计动机：NAK vs ACK"></a>6.1 设计动机：NAK vs ACK</h3><p>传统可靠传输协议（TCP）使用 ACK（Positive Acknowledgment）机制：接收方确认每一个（或每批）成功收到的数据包。在低丢包率网络中，ACK 的成本远高于其提供的价值——绝大多数数据包都能成功投递，为每个成功投递的包发送 ACK 是巨大的带宽和处理浪费。</p>
+<p>Aeron 采用 <strong>NAK（Negative Acknowledgment）</strong>：接收方仅在检测到数据缺失时发送 NAK 帧，请求重传指定范围的数据。在数据中心环境（丢包率通常 &lt; 0.01%）下，NAK 的发送频率极低，接近于零，从而将确认流量的开销降低至接近零。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">ACK 模式（TCP）：</span><br><span class="line"></span><br><span class="line">发送端: [1]  [2]  [3]  [4]  [5]</span><br><span class="line">接收端:  ↑    ↑    ↑    ↑    ↑</span><br><span class="line">        ACK ACK ACK ACK ACK   ← 5 条确认，100% 额外流量</span><br><span class="line"></span><br><span class="line">─────────────────────────────────────────────────</span><br><span class="line"></span><br><span class="line">NAK 模式（Aeron）：</span><br><span class="line"></span><br><span class="line">发送端: [1]  [2]  [X]  [4]  [5]</span><br><span class="line">接收端:  ✓    ✓        ✓    ✓</span><br><span class="line">                  ↑</span><br><span class="line">              NAK(3)           ← 仅 1 条 NAK，丢包才触发</span><br></pre></td></tr></table></figure>
+
+<p><strong>适用前提</strong>：NAK 模式假设网络丢包率低（&lt; 0.1%）。在高丢包率网络中，大量 NAK 请求可能引发 NAK 风暴（NAK Implosion），导致发送端被重传请求淹没，此时应考虑引入 NAK 抑制（NAK Suppression）或切换为基于 ACK 的可靠传输。</p>
+<h3 id="6-2-NAK-完整工作流程"><a href="#6-2-NAK-完整工作流程" class="headerlink" title="6.2 NAK 完整工作流程"></a>6.2 NAK 完整工作流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">时间轴 ──────────────────────────────────────────────────────────────→</span><br><span class="line"></span><br><span class="line">阶段 1：正常传输</span><br><span class="line">  Sender:   ──[1]──[2]──[3]──[4]──[5]──────────────────────────────→</span><br><span class="line">  Receiver:   ✓    ✓    ✓    ✓    ✓</span><br><span class="line"></span><br><span class="line">阶段 2：丢包发生</span><br><span class="line">  Sender:   ──[1]──[2]──[X]──[4]──[5]──────────────────────────────→</span><br><span class="line">  Receiver:   ✓    ✓         ✓    ✓</span><br><span class="line">                        ↑</span><br><span class="line">              Receiver 检测到 seq gap（term offset 不连续）</span><br><span class="line"></span><br><span class="line">阶段 3：NAK 延迟等待（默认 20 μs）</span><br><span class="line">  目的：等待乱序帧可能在延迟后到达，避免对乱序帧误发 NAK</span><br><span class="line"></span><br><span class="line">阶段 4：NAK 发送</span><br><span class="line">  Receiver: ───────────────────────────── NAK(termId=X, offset=Y) →</span><br><span class="line">  Sender:   ← 接收 NAK</span><br><span class="line"></span><br><span class="line">阶段 5：重传</span><br><span class="line">  Sender:   ──────────────────────────────────[3]重传──────────────→</span><br><span class="line">  Receiver:   ✓  gap 填充，恢复连续性</span><br><span class="line"></span><br><span class="line">阶段 6：正常传输继续</span><br><span class="line">  Sender:   ─────────────────────────────────────────[6]──[7]──────→</span><br><span class="line">  Receiver:   ✓    ✓</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-NAK-帧结构"><a href="#6-3-NAK-帧结构" class="headerlink" title="6.3 NAK 帧结构"></a>6.3 NAK 帧结构</h3><p>Aeron 的 NAK 帧是标准的 Aeron 数据帧，帧类型字段为 <code>NAK</code>（<code>0x08</code>），携带以下关键字段：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>sessionId</code></td>
+<td>标识发布者会话</td>
+</tr>
+<tr>
+<td><code>streamId</code></td>
+<td>标识逻辑数据流</td>
+</tr>
+<tr>
+<td><code>termId</code></td>
+<td>请求重传的 Term 编号</td>
+</tr>
+<tr>
+<td><code>termOffset</code></td>
+<td>请求重传的 Term 内偏移量（字节）</td>
+</tr>
+<tr>
+<td><code>length</code></td>
+<td>请求重传的数据长度（字节）</td>
+</tr>
+</tbody></table>
+<p>Receiver 将 NAK 帧发送回 Sender 端的 <code>control</code> 地址（UDP 单播回路），Sender 的重传逻辑从 Log Buffer 中定位对应的 term + offset，读取原始帧数据并重新发送。</p>
+<h3 id="6-4-NAK-延迟（nakDelay）"><a href="#6-4-NAK-延迟（nakDelay）" class="headerlink" title="6.4 NAK 延迟（nakDelay）"></a>6.4 NAK 延迟（nakDelay）</h3><p>NAK 延迟是接收端在检测到 gap 后、实际发出 NAK 帧之前的等待时间（默认 20 μs）。其设计目的是抑制乱序帧触发的误 NAK：</p>
+<ul>
+<li>若网络存在轻微乱序（帧到达顺序与发送顺序有微小偏差），等待期间乱序帧可能自然到达，gap 自然填补，无需触发重传</li>
+<li>若等待期满仍未收到该 term offset 的数据，则确认为真实丢包，发送 NAK</li>
+</ul>
+<p>NAK 延迟的取值应与网络的乱序程度相匹配：</p>
+<ul>
+<li>数据中心内部单路径网络：<code>20 ~ 100 μs</code></li>
+<li>跨数据中心或存在 ECMP 多路径的网络：<code>500 μs ~ 1 ms</code></li>
+</ul>
+<p>配置方式：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">final</span> MediaDriver.<span class="type">Context</span> <span class="variable">ctx</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">MediaDriver</span>.Context()</span><br><span class="line">    .nakDelayNs(<span class="number">20_000L</span>)              <span class="comment">// NAK 延迟：20 μs</span></span><br><span class="line">    .retransmitUnicastDelayNs(<span class="number">0L</span>)     <span class="comment">// 收到 NAK 后立即重传（单播）</span></span><br><span class="line">    .retransmitUnicastLingerNs(<span class="number">60_000_000_000L</span>); <span class="comment">// 重传后保持 linger 状态 60s</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-5-NAK-抑制（Multicast-场景）"><a href="#6-5-NAK-抑制（Multicast-场景）" class="headerlink" title="6.5 NAK 抑制（Multicast 场景）"></a>6.5 NAK 抑制（Multicast 场景）</h3><p>在 UDP 多播场景下，多个接收端可能同时检测到同一个 gap，若每个接收端都独立发送 NAK，Sender 将收到大量重复的 NAK 请求（NAK Implosion）。</p>
+<p>Aeron 通过以下机制抑制多播 NAK 风暴：</p>
+<ol>
+<li><strong>随机化 NAK 延迟</strong>：每个接收端在 <code>[0, nakDelay]</code> 范围内随机选取等待时间再发送 NAK</li>
+<li><strong>NAK 监听</strong>：接收端在等待期间监听组播地址上是否已有其他接收端发出相同的 NAK；若收到相同 NAK，则取消自己的 NAK 发送</li>
+<li><strong>Sender 批量重传</strong>：Sender 在收到第一个 NAK 后等待 <code>retransmitMulticastDelay</code> 时间（默认 0），合并同一 gap 的多个 NAK 请求后执行单次重传</li>
+</ol>
+<h2 id="七、流控窗口与位置追踪"><a href="#七、流控窗口与位置追踪" class="headerlink" title="七、流控窗口与位置追踪"></a>七、流控窗口与位置追踪</h2><h3 id="7-1-位置计数器体系"><a href="#7-1-位置计数器体系" class="headerlink" title="7.1 位置计数器体系"></a>7.1 位置计数器体系</h3><p>Aeron 的流控建立在一组共享内存中的 64 位原子位置计数器之上，记录数据流在各环节的处理进度：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">Publication 写入位置</span><br><span class="line">         │</span><br><span class="line">         ▼</span><br><span class="line">┌────────────────────────────────────────────────────────────┐</span><br><span class="line">│                       Log Buffer                           │</span><br><span class="line">│                                                            │</span><br><span class="line">│  [已消费] ─── consumerPosition                            │</span><br><span class="line">│  [已处理] ─── subscriberPosition（每个 Subscriber 独立）  │</span><br><span class="line">│  [已接收] ─── receiverHwm（High Water Mark）               │</span><br><span class="line">│  [已发送] ─── senderPosition                              │</span><br><span class="line">│  [可写上限]── publisherLimit（由 Conductor 更新）          │</span><br><span class="line">│                                                            │</span><br><span class="line">└────────────────────────────────────────────────────────────┘</span><br><span class="line">         │</span><br><span class="line">         ▼</span><br><span class="line">      Network</span><br></pre></td></tr></table></figure>
+
+<p>各位置计数器的语义：</p>
+<table>
+<thead>
+<tr>
+<th>计数器</th>
+<th>维护方</th>
+<th>语义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>publisherLimit</code></td>
+<td>Driver Conductor</td>
+<td>Publication 可写入的最大 position 上限，由接收端 receiver window 决定</td>
+</tr>
+<tr>
+<td><code>senderPosition</code></td>
+<td>Sender</td>
+<td>已通过网络发出的最大 position</td>
+</tr>
+<tr>
+<td><code>receiverHwm</code></td>
+<td>Receiver</td>
+<td>接收到的最高 position（不要求连续）</td>
+</tr>
+<tr>
+<td><code>subscriberPosition</code></td>
+<td>Subscriber</td>
+<td>应用层已消费的最大连续 position</td>
+</tr>
+</tbody></table>
+<h3 id="7-2-发送端滑动窗口"><a href="#7-2-发送端滑动窗口" class="headerlink" title="7.2 发送端滑动窗口"></a>7.2 发送端滑动窗口</h3><p>发送端的可发送范围由 <code>publisherLimit</code> 约束：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">Publication 可写范围：</span><br><span class="line"></span><br><span class="line">已发送确认区         飞行中数据区           未发送可写区</span><br><span class="line"> ──────────────  ──────────────────────  ──────────────────</span><br><span class="line">│              │ │                     │ │                 │</span><br><span class="line">│   consumed   │ │     in-flight       │ │   can write     │</span><br><span class="line">│              │ │                     │ │                 │</span><br><span class="line"> ──────────────  ──────────────────────  ──────────────────</span><br><span class="line">               ↑                        ↑                  ↑</span><br><span class="line">        senderPosition           publisherLimit     termBufferEnd</span><br><span class="line"></span><br><span class="line">飞行中数据量 = publisherLimit - senderPosition</span><br><span class="line">             ≤ receiverWindow（接收端回报的窗口大小）</span><br></pre></td></tr></table></figure>
+
+<p>当 Publication 的 <code>offer()</code> 调用发现当前写入 position 已达到 <code>publisherLimit</code> 时，返回 <code>BACK_PRESSURED</code>（<code>-2</code>），发布端需要等待 <code>publisherLimit</code> 推进后重试。</p>
+<h3 id="7-3-接收端流控反馈"><a href="#7-3-接收端流控反馈" class="headerlink" title="7.3 接收端流控反馈"></a>7.3 接收端流控反馈</h3><p>接收端通过定期发送 <strong>STATUS_MESSAGE（SM）</strong> 帧向发送端汇报当前消费状态：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">STATUS_MESSAGE 帧关键字段：</span><br><span class="line">  - consumptionTermId：当前消费位置的 term 编号</span><br><span class="line">  - consumptionTermOffset：当前消费位置在 term 内的偏移量</span><br><span class="line">  - receiverWindowLength：接收端愿意接收的数据量上限（字节）</span><br><span class="line"></span><br><span class="line">发送端收到 SM 后：</span><br><span class="line">  publisherLimit = consumptionTermPosition + receiverWindowLength</span><br></pre></td></tr></table></figure>
+
+<p>STATUS_MESSAGE 的发送频率受 <code>statusMessageTimeoutNs</code> 控制（默认 200 μs），即接收端至多每 200 μs 发送一次 SM。在高吞吐场景下，Receiver 还会在 position 推进超过 <code>receiverWindowLength / 4</code> 时立即发送 SM（Fast Feedback），避免发送端因 SM 间隔过长而被迫降速。</p>
+<h3 id="7-4-Term-Buffer-大小对流控的影响"><a href="#7-4-Term-Buffer-大小对流控的影响" class="headerlink" title="7.4 Term Buffer 大小对流控的影响"></a>7.4 Term Buffer 大小对流控的影响</h3><p><code>publicationTermBufferLength</code>（默认 16 MB）决定了 Log Buffer 中单个 Term 的大小，进而影响最大允许的 in-flight 数据量：</p>
+<ul>
+<li><strong>较小的 Term Buffer</strong>（如 1 MB）：in-flight 窗口小，高带宽长延迟（BDP 大）的链路上发送端容易触发 <code>BACK_PRESSURED</code>，吞吐受限</li>
+<li><strong>较大的 Term Buffer</strong>（如 64 MB）：in-flight 窗口大，充分填充 BDP，吞吐提升，但内存占用增加（Log Buffer 由 3 个 Term 组成，实际占用 <code>3 × termBufferLength</code>），且重传代价增大</li>
+</ul>
+<p><strong>Term Buffer 大小的经验选择</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">recommendedTermLength ≈ 2 × BDP</span><br><span class="line">BDP（带宽时延积）= 带宽（bytes/s）× RTT（s）</span><br><span class="line"></span><br><span class="line">示例：</span><br><span class="line">  10 Gbps 网络，RTT = 100 μs</span><br><span class="line">  BDP = (10 × 10^9 / 8) bytes/s × 100 × 10^-6 s = 125 KB</span><br><span class="line">  → Term Buffer = 256 KB ~ 1 MB 即可满足需求</span><br><span class="line"></span><br><span class="line">  100 Gbps 网络，RTT = 500 μs（跨数据中心）</span><br><span class="line">  BDP = (100 × 10^9 / 8) × 500 × 10^-6 = 6.25 MB</span><br><span class="line">  → Term Buffer = 16 MB ~ 32 MB</span><br></pre></td></tr></table></figure>
+
+<h2 id="八、传输方式选型"><a href="#八、传输方式选型" class="headerlink" title="八、传输方式选型"></a>八、传输方式选型</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">   ┌─────────────────────────┐</span><br><span class="line">   │      开始选择传输方式     │</span><br><span class="line">   └────────────┬────────────┘</span><br><span class="line">                │</span><br><span class="line">                ▼</span><br><span class="line">   ┌─────────────────────────┐</span><br><span class="line">   │  通信双方是否在同一主机？  │</span><br><span class="line">   └──────┬──────────┬────────┘</span><br><span class="line">          │ 是        │ 否</span><br><span class="line">          ▼           ▼</span><br><span class="line">┌──────────────┐  ┌──────────────────────┐</span><br><span class="line">│  使用 IPC    │  │ 订阅方是否 &gt; 1 个？   │</span><br><span class="line">│（最低延迟）   │  └────┬───────────┬──────┘</span><br><span class="line">└──────────────┘       │ 是         │ 否</span><br><span class="line">                       ▼            ▼</span><br><span class="line">          ┌────────────────┐  ┌───────────────┐</span><br><span class="line">          │ 网络是否支持   │  │  UDP 单播      │</span><br><span class="line">          │  IP 组播？     │  └───────────────┘</span><br><span class="line">          └──────┬─────┬──┘</span><br><span class="line">                 │ 是  │ 否</span><br><span class="line">                 ▼     ▼</span><br><span class="line">        ┌──────────┐ ┌──────────────────┐</span><br><span class="line">        │ UDP 多播  │ │ UDP 单播（多份）  │</span><br><span class="line">        │（推荐）   │ │ 或代理广播        │</span><br><span class="line">        └──────────┘ └──────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h2 id="九、性能参考数据"><a href="#九、性能参考数据" class="headerlink" title="九、性能参考数据"></a>九、性能参考数据</h2><p>以下数据来自基准测试环境（Intel Xeon E5-2680 v4，10 Gbps 以太网，Jumbo Frame MTU 9000，<code>DEDICATED</code> 线程模式，<code>BusySpinIdleStrategy</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>传输方式</th>
+<th>P50 延迟</th>
+<th>P99 延迟</th>
+<th>吞吐量</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>IPC</td>
+<td>213 ns</td>
+<td>450 ns</td>
+<td>4.6M msg&#x2F;s</td>
+<td>同机进程，无网络开销</td>
+</tr>
+<tr>
+<td>UDP 单播（本机回环）</td>
+<td>12 μs</td>
+<td>35 μs</td>
+<td>800K msg&#x2F;s</td>
+<td></td>
+</tr>
+<tr>
+<td>UDP 单播（跨主机）</td>
+<td>150 μs</td>
+<td>500 μs</td>
+<td>500K msg&#x2F;s</td>
+<td>受网络 RTT 限制</td>
+</tr>
+<tr>
+<td>UDP 多播</td>
+<td>15 μs</td>
+<td>40 μs</td>
+<td>1.2M msg&#x2F;s</td>
+<td>多接收端场景优势明显</td>
+</tr>
+</tbody></table>
+<p>IPC 比 UDP 单播快约 10 ~ 20 倍，原因可以分解为：</p>
+<ol>
+<li><strong>无系统调用</strong>：UDP 发送需要 <code>sendmmsg</code> 系统调用（约 1 ~ 2 μs），IPC 为纯内存写入</li>
+<li><strong>无序列化&#x2F;反序列化</strong>：UDP 需要在用户态和内核态之间拷贝数据（即便使用 <code>SO_ZEROCOPY</code>，仍有额外 completion 通知开销）；IPC 直接读写共享物理页，无任何拷贝</li>
+<li><strong>缓存亲和性</strong>：写端写入的数据行在读端 poll 时大概率仍在 L3 Cache 中（同一 NUMA 节点），避免了主存访问延迟（约 60 ~ 100 ns&#x2F;access）</li>
+</ol>
+<h2 id="十、关键配置汇总"><a href="#十、关键配置汇总" class="headerlink" title="十、关键配置汇总"></a>十、关键配置汇总</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">final</span> MediaDriver.<span class="type">Context</span> <span class="variable">ctx</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">MediaDriver</span>.Context()</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ── 传输层通用 ──────────────────────────────────────────</span></span><br><span class="line">    <span class="comment">// Term Buffer 大小（3 个 Term 组成 Log Buffer，需为 2 的幂次）</span></span><br><span class="line">    .publicationTermBufferLength(<span class="number">16</span> * <span class="number">1024</span> * <span class="number">1024</span>)   <span class="comment">// UDP，默认 16 MB</span></span><br><span class="line">    .ipcTermBufferLength(<span class="number">64</span> * <span class="number">1024</span> * <span class="number">1024</span>)           <span class="comment">// IPC，默认 64 MB</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// ── NAK 相关 ────────────────────────────────────────────</span></span><br><span class="line">    <span class="comment">// 单播 NAK 延迟（检测到 gap 后等待乱序帧的时间）</span></span><br><span class="line">    .nakDelayNs(<span class="number">20_000L</span>)                             <span class="comment">// 默认 20 μs</span></span><br><span class="line">    <span class="comment">// 多播 NAK 延迟（随机化区间上限）</span></span><br><span class="line">    .nakMulticastMaxBackoffNs(<span class="number">60_000_000L</span>)           <span class="comment">// 默认 60 ms</span></span><br><span class="line">    <span class="comment">// 单播重传延迟（收到 NAK 后延迟重传的时间）</span></span><br><span class="line">    .retransmitUnicastDelayNs(<span class="number">0L</span>)                    <span class="comment">// 立即重传</span></span><br><span class="line">    <span class="comment">// 重传 linger 时间（重传后保持重传状态的持续时间，防止重复 NAK）</span></span><br><span class="line">    .retransmitUnicastLingerNs(<span class="number">60_000_000_000L</span>)      <span class="comment">// 60 s</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// ── 流控相关 ────────────────────────────────────────────</span></span><br><span class="line">    <span class="comment">// STATUS_MESSAGE 发送间隔</span></span><br><span class="line">    .statusMessageTimeoutNs(<span class="number">200_000L</span>)                <span class="comment">// 默认 200 μs</span></span><br><span class="line">    <span class="comment">// 初始 receiver window（等于 Term Buffer 长度的 1/8）</span></span><br><span class="line">    <span class="comment">// 通过 FlowControl 策略动态调整，无需直接配置</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// ── Socket 缓冲区（需与 OS net.core.rmem_max 匹配）────</span></span><br><span class="line">    .socketSndbufLength(<span class="number">2</span> * <span class="number">1024</span> * <span class="number">1024</span>)</span><br><span class="line">    .socketRcvbufLength(<span class="number">2</span> * <span class="number">1024</span> * <span class="number">1024</span>);</span><br></pre></td></tr></table></figure>
+
+<h2 id="十一、高丢包率场景的局限性"><a href="#十一、高丢包率场景的局限性" class="headerlink" title="十一、高丢包率场景的局限性"></a>十一、高丢包率场景的局限性</h2><p>Aeron 的 NAK 机制在丢包率 &lt; 0.1% 的数据中心网络下表现最佳。当丢包率上升时，需要关注以下退化行为：</p>
+<p><strong>NAK 重传放大</strong>：若同一 term 区间内多个数据帧丢失，接收端会为每个丢失的帧发送独立的 NAK。在丢包率 1% 的场景下，每 100 条消息触发 1 次 NAK + 重传，重传流量占总流量的比例与丢包率线性相关，额外开销仍可接受。</p>
+<p><strong>重传链式触发</strong>：若重传的数据帧本身也丢失（即重传数据包丢包），接收端将再次发送 NAK。NAK 最大重试次数无硬性上限，但若 <code>imageLivenessTimeoutNs</code> 内仍无法填补 gap，Image 将被主动关闭（<code>onUnavailableImage</code> 回调触发）。</p>
+<p><strong>建议</strong>：若网络环境丢包率持续 &gt; 0.1%，应首先排查网络层问题（Socket 缓冲区溢出、NIC 队列满等），而非调整 Aeron 参数。Aeron 本身不是为高丢包率链路设计的传输框架。</p>
+
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/Aeron/">Aeron</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/2026/03/11/%E7%BB%9F%E4%B8%80%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/%E5%88%86%E5%B8%83%E5%BC%8F%E5%BA%8F%E5%88%97%E5%8F%B7%E6%9C%BA%E5%88%B6%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90/"
+                                   title="分布式序列号机制深度解析"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">分布式序列号机制深度解析</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Reln Ding</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+
+        <!-- PC go comment -->
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+
+    <!-- tablet toc -->
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/toggle-theme.js"></script>
+
+<script src="/js/code-block.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+
+<!-- local search -->
+
+
+<!-- lazyload -->
+
+
+<div class="">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        
+<script src="/js/post/post-helper.js"></script>
+
+
+        <!-- toc -->
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+
+<!-- pjax -->
+
+
+
+</body>
+</html>
