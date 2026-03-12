@@ -5,6 +5,7 @@ tags:
   - 高性能
   - 队列
 categories:
+  - 高性能组件
   - Disruptor
 ---
 **本文摘录自：https://tech.meituan.com/2016/11/18/disruptor.html**

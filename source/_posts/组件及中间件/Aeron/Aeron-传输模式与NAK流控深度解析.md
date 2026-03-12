@@ -6,6 +6,7 @@ tags:
   - 分布式
   - Aeron
 categories:
+  - 高性能组件
   - Aeron
 ---
 

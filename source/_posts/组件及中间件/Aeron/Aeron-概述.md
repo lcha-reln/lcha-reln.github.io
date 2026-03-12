@@ -6,6 +6,7 @@ tags:
   - 高可用
   - Aeron
 categories:
+  - 高性能组件
   - Aeron
 ---
 # 1. 性能特征
