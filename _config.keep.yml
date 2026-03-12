@@ -20,37 +20,75 @@ menu:
   archives: /archives || fas fa-archive
   tags: /tags || fas fa-tags
   categories: /categories || fas fa-th
+  about: /about || fas fa-user
 
-# 代码高亮
+# ===================== A. 首屏 Hero =====================
+first_screen:
+  enable: true
+  background_img: /images/hero-bg.svg
+  background_img_dark: /images/hero-bg-dark.svg
+  description: 记录技术与思考的点滴
+
+# ===================== E. 社交链接 =====================
+social_contact:
+  enable: true
+  links:
+    github: https://github.com/lcha-reln
+    email: mailto:reln@example.com
+
+# ===================== F. 滚动进度条 =====================
+scroll:
+  progress_bar: true
+  percent: false
+  hide_header: true
+
+# ===================== B. 本地搜索 =====================
+local_search:
+  enable: true
+  preload: false
+
+# ===================== C. 代码块样式升级 =====================
 code_block:
-  copy: true
-  lang: true
-  highlight_theme: default
+  tools:
+    enable: true
+    style: mac
+  highlight_theme: obsidian
 
 # 首页
 home:
-  # 显示分类
   category: true
-  # 显示标签
   tag: true
-  # 时间显示格式：ago（相对时间）或 YYYY-MM-DD 等
   post_datetime: updated
   post_datetime_format: YYYY-MM-DD
 
-# 文章
+# ===================== D. 文章阅读体验 =====================
 post:
   author_badge:
     enable: false
+  word_count:
+    wordcount: true
+    min2read: true
   toc:
     enable: true
-    number: true
+    number: false
+    expand_all: false
+    init_open: true
+    layout: right
   copyright:
     enable: false
+
+# ===================== G. RSS =====================
+rss:
+  enable: true
+
+# ===================== M. PJAX =====================
+pjax:
+  enable: true
 
 # 页脚
 footer:
   since: 2026
-  icon: fas fa-heart
+  icon: fas fa-fire
   powered:
     enable: true
 
