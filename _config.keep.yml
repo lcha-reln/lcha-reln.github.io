@@ -27,6 +27,16 @@ code_block:
   lang: true
   highlight_theme: default
 
+# 首页
+home:
+  # 显示分类
+  category: true
+  # 显示标签
+  tag: true
+  # 时间显示格式：ago（相对时间）或 YYYY-MM-DD 等
+  post_datetime: updated
+  post_datetime_format: YYYY-MM-DD
+
 # 文章
 post:
   author_badge:
@@ -47,3 +57,9 @@ footer:
 # 评论（关闭）
 comment:
   enable: false
+
+# 注入自定义 CSS
+inject:
+  enable: true
+  css:
+    - /css/custom.css
