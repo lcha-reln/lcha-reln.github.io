@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="blog,技术,生活">
+    <meta name="description" content="Reln 的个人博客，记录学习与生活">
+    <meta name="author" content="Reln Ding">
+    
+    <title>
+        
+            etcd - 核心概念与数据模型 |
+        
+        Reln 的小窝
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/favicon.ico">
+    
+    
+<link rel="stylesheet" href="/font/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/brands.min.css">
+
+    
+        
+            
+        
+            
+                
+<link rel="stylesheet" href="/css/custom.css">
+
+            
+        
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"lcha-reln.github.io","root":"/","language":"zh-CN","path":"content.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#24c6dc","title":"Reln 的小窝","author":"Reln Ding","avatar":"/images/avatar.svg","logo":"/images/logo.svg","favicon":"/favicon.ico"},"menu":{"home":"/ || fas fa-home","archives":"/archives || fas fa-archive","tags":"/tags || fas fa-tags","categories":"/categories || fas fa-th"},"first_screen":{"enable":false,"background_img":"/images/bg.svg","background_img_dark":"/images/bg.svg","description":"Keep writing and Keep loving.","hitokoto":false},"social_contact":{"enable":false,"links":{"github":null,"weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":null}},"scroll":{"progress_bar":false,"percent":false,"hide_header":true},"home":{"announcement":null,"category":true,"tag":true,"post_datetime":"updated","post_datetime_format":"YYYY-MM-DD"},"post":{"author_badge":{"enable":false,"level_badge":true,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":false,"min2read":false},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null},"toc":{"enable":true,"number":true},"copyright":{"enable":false}},"code_block":{"tools":{"enable":false,"style":"default"},"highlight_theme":"default","copy":true,"lang":true},"toc":{"enable":false,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":false,"preload":false},"comment":{"enable":false,"use":"valine","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":null,"repo_id":null,"category":"Announcements","category_id":null,"reactions_enabled":false},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":false},"lazyload":{"enable":false},"cdn":{"enable":false,"provider":"cdnjs"},"pjax":{"enable":false},"footer":{"since":2026,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]},"icon":"fas fa-heart","powered":{"enable":true}},"inject":{"enable":true,"css":[null,"/css/custom.css"],"js":[null]},"version":"4.2.5","nav_more_list":[{"name":"GitHub","url":"https://github.com/lcha-reln","icon":"fab fa-github"}],"root":"","source_data":{}}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/logo.svg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Reln 的小窝
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-home"></i>
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-archive"></i>
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/tags">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-tags"></i>
+                                
+                                标签
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/categories">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-th"></i>
+                                
+                                分类
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-home"></i>
+                                </span>
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-archive"></i>
+                                </span>
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/tags">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-tags"></i>
+                                </span>
+                            
+                            标签
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/categories">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-th"></i>
+                                </span>
+                            
+                            分类
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        etcd - 核心概念与数据模型
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/avatar.svg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Reln Ding</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-03-12 10:01:00</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Thu Mar 12 2026 07:35:44 GMT+0000">2026-03-12 15:35:44</span>
+                </span>
+            
+        
+
+        
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a></li>
+                        
+                    
+                            <li class="category-item">&nbsp;<i class="icon fas fa-angle-right"></i>&nbsp;<a href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/etcd/">etcd</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/etcd/">etcd</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <blockquote>
+<p>etcd 的数据模型、一致性保证、API 语义和 Raft 一致性协议详解。</p>
+</blockquote>
+<h2 id="1-数据模型"><a href="#1-数据模型" class="headerlink" title="1. 数据模型"></a>1. 数据模型</h2><h3 id="1-1-逻辑视图（Logical-View）"><a href="#1-1-逻辑视图（Logical-View）" class="headerlink" title="1.1 逻辑视图（Logical View）"></a>1.1 逻辑视图（Logical View）</h3><p>etcd 的存储逻辑视图是一个<strong>扁平的二进制键空间（flat binary key space）</strong>。键空间在字节字符串键上维护了一个字典序排序的索引，因此范围查询（range query）的代价非常低廉。</p>
+<p><strong>键空间维护多个修订版本（Revision）：</strong></p>
+<ul>
+<li>存储创建时，初始修订版本为 <strong>1</strong></li>
+<li>每个原子变更操作（如一个事务可包含多个操作）都会在键空间上创建一个新的修订版本</li>
+<li>所有过去修订版本的数据保持不变——旧版本的键仍然可以通过指定旧的修订版本号来访问</li>
+<li>修订版本也有索引，通过 watcher 对修订版本区间进行范围查询是高效的</li>
+<li>修订版本号在集群的整个生命周期中<strong>单调递增</strong></li>
+<li>若存储被压缩（compact），压缩修订版本之前的修订版本将被移除</li>
+</ul>
+<p><strong>键的生命周期（Generation）：</strong></p>
+<ul>
+<li>每个键的生命周期跨越多个 generation，从创建到删除</li>
+<li>创建一个键会从 1 开始递增该键的 <strong>version</strong>（若该键在当前修订版本不存在）</li>
+<li>删除一个键会生成一个 tombstone（墓碑），通过将 version 重置为 0 结束该键当前的 generation</li>
+<li>每次修改键都会递增其 version——因此 version 在键的单个 generation 内<strong>单调递增</strong></li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">revision=1: put /foo → bar        (foo.version=1)</span><br><span class="line">revision=2: put /foo → baz        (foo.version=2)</span><br><span class="line">revision=3: delete /foo           (foo.version=0, tombstone)</span><br><span class="line">revision=4: put /foo → qux        (foo.version=1, new generation)</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-物理视图（Physical-View）"><a href="#1-2-物理视图（Physical-View）" class="headerlink" title="1.2 物理视图（Physical View）"></a>1.2 物理视图（Physical View）</h3><p>etcd 将物理数据以键值对的形式存储在一个持久化的 <strong>B+ 树（b+tree）</strong> 中。</p>
+<p><strong>B+ 树键的结构：</strong></p>
+<p>每个键值对的键是一个 3 元组 <code>(major, sub, type)</code>：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>major</code></td>
+<td>持有该键的存储修订版本（store revision）</td>
+</tr>
+<tr>
+<td><code>sub</code></td>
+<td>在同一修订版本内区分不同的键</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>可选后缀，用于特殊值（如 <code>t</code> 表示值中包含 tombstone）</td>
+</tr>
+</tbody></table>
+<p>键值对的 value 包含了相对于前一修订版本的增量变更（delta），B+ 树按键的字典序排列，使得查找特定修订版本范围内的变更非常高效。</p>
+<p><strong>辅助内存 B 树索引：</strong></p>
+<p>etcd 还维护了一个辅助的内存<strong>B 树（btree）索引</strong>以加速键的范围查询。该 B 树的键是暴露给用户的键名，值是指向持久化 B+ 树中对应修改的指针。压缩会移除过期指针。</p>
+<p><strong>查询流程：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">用户请求 key → 内存 B 树索引（找到 revision）→ 持久化 B+ 树（用 revision 获取 value）</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="2-API-保证（API-Guarantees）"><a href="#2-API-保证（API-Guarantees）" class="headerlink" title="2. API 保证（API Guarantees）"></a>2. API 保证（API Guarantees）</h2><p>etcd 是一个<strong>一致且持久的</strong>键值存储。它确保了分布式系统中最强的一致性和持久性保证。</p>
+<h3 id="2-1-KV-API-保证"><a href="#2-1-KV-API-保证" class="headerlink" title="2.1 KV API 保证"></a>2.1 KV API 保证</h3><h4 id="持久性（Durability）"><a href="#持久性（Durability）" class="headerlink" title="持久性（Durability）"></a>持久性（Durability）</h4><p>任何已完成的操作都是<strong>持久的</strong>。所有可访问的数据也都是持久数据。读操作永远不会返回未被持久化的数据。</p>
+<h4 id="严格串行化（Strict-Serializability）"><a href="#严格串行化（Strict-Serializability）" class="headerlink" title="严格串行化（Strict Serializability）"></a>严格串行化（Strict Serializability）</h4><p>KV Service 的操作是原子的，按照与这些操作的实际时间顺序一致的全序（total order）发生。全序通过修订版本号（revision）体现。</p>
+<p>严格串行化蕴含以下更弱的保证：</p>
+<p><strong>原子性（Atomicity）：</strong></p>
+<ul>
+<li>所有 API 请求都是原子的：操作要么完全完成，要么完全不发生</li>
+<li>对于 Watch 请求，一个操作产生的所有事件将出现在同一个 watch 响应中，Watch 永远不会观察到单个操作的部分事件</li>
+</ul>
+<p><strong>线性化（Linearizability）：</strong></p>
+<blockquote>
+<p>线性化提供了这样一种幻觉：并发进程应用的每个操作在其调用和响应之间的某个时刻立即生效。</p>
+</blockquote>
+<p>例如，客户端在时间点 <em>t1</em> 完成写操作。在 <em>t2</em>（<em>t2</em> &gt; <em>t1</em>）发起读操作的客户端，应该收到至少和 <em>t1</em> 完成的写同样新的值。etcd 默认对所有操作保证线性化。</p>
+<p>线性化是有代价的——线性化请求必须经过 Raft 共识过程。为了获得更低延迟和更高吞吐量，客户端可以将读请求的一致性模式配置为 <code>serializable</code>，此时读取可能返回相对于 quorum 来说稍旧的数据，但可以避免线性化访问依赖活跃共识的性能开销。</p>
+<h3 id="2-2-Watch-API-保证"><a href="#2-2-Watch-API-保证" class="headerlink" title="2.2 Watch API 保证"></a>2.2 Watch API 保证</h3><p>Watch 对事件做出如下保证：</p>
+<table>
+<thead>
+<tr>
+<th>保证</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>有序（Ordered）</strong></td>
+<td>事件按修订版本顺序排列。已发布的事件之后，更早的事件不会出现在 watch 中</td>
+</tr>
+<tr>
+<td><strong>唯一（Unique）</strong></td>
+<td>同一个事件永远不会在 watch 中出现两次</td>
+</tr>
+<tr>
+<td><strong>可靠（Reliable）</strong></td>
+<td>一系列事件不会丢弃任何子序列。若按时间顺序 a &lt; b &lt; c，watch 收到了 a 和 c，则只要 b 在可用历史窗口内，b 也一定被收到</td>
+</tr>
+<tr>
+<td><strong>原子（Atomic）</strong></td>
+<td>事件列表保证包含完整的修订版本。同一修订版本中对多个键的更新不会被拆分到多个事件列表中</td>
+</tr>
+<tr>
+<td><strong>可恢复（Resumable）</strong></td>
+<td>中断的 watch 可以通过建立新 watch（从中断前最后收到的修订版本之后开始）来恢复</td>
+</tr>
+<tr>
+<td><strong>可书签（Bookmarkable）</strong></td>
+<td>进度通知事件保证截至某修订版本的所有事件已经交付</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>etcd <strong>不</strong>对 watch 操作保证线性化。用户需要验证 watch 事件的修订版本来确保与其他操作的正确排序。</p>
+</blockquote>
+<h3 id="2-3-Lease-API-保证"><a href="#2-3-Lease-API-保证" class="headerlink" title="2.3 Lease API 保证"></a>2.3 Lease API 保证</h3><p>Lease（租约）API 对 Grant、Revoke 和 KeepAlive 操作提供以下保证：</p>
+<ul>
+<li><strong>耐久性（Durability）</strong>：已成功 grant 的租约在整个生命周期内都是有效的</li>
+<li><strong>单调性（Monotonicity）</strong>：若租约已过期，则不再颁发该租约 ID 的新操作</li>
+<li><strong>可用性（Availability）</strong>：etcd 确保租约相关的键在租约过期时被删除</li>
+</ul>
+<h3 id="2-4-关键定义"><a href="#2-4-关键定义" class="headerlink" title="2.4 关键定义"></a>2.4 关键定义</h3><p><strong>操作完成（Operation Completed）：</strong></p>
+<p>当 etcd 服务端增加了对应于该操作的修订版本，并将请求结果返回给客户端，该操作即为完成。</p>
+<p><strong>修订版本（Revision）：</strong></p>
+<p>修订版本是分配给 etcd 键值存储的每次变更的 64 位整数。在同一修订版本中的 KV 操作被认为是并发的，一个修订版本只有一个唯一的 zxid（etcd 对等物）。在集群操作的整个生命周期中，修订版本单调递增。</p>
+<hr>
+<h2 id="3-Raft-一致性协议"><a href="#3-Raft-一致性协议" class="headerlink" title="3. Raft 一致性协议"></a>3. Raft 一致性协议</h2><p>etcd 使用 <strong>Raft</strong> 共识算法来保证集群的一致性和高可用性。</p>
+<h3 id="3-1-Raft-基础"><a href="#3-1-Raft-基础" class="headerlink" title="3.1 Raft 基础"></a>3.1 Raft 基础</h3><p>Raft 将集群中的服务器分为三个角色：</p>
+<table>
+<thead>
+<tr>
+<th>角色</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Leader</strong></td>
+<td>负责接收所有写请求，将日志复制到 Follower，提交已复制的日志</td>
+</tr>
+<tr>
+<td><strong>Follower</strong></td>
+<td>响应 Leader 和 Candidate 的请求；将客户端请求转发给 Leader</td>
+</tr>
+<tr>
+<td><strong>Candidate</strong></td>
+<td>选举 Leader 过程中的临时状态</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-Leader-选举"><a href="#3-2-Leader-选举" class="headerlink" title="3.2 Leader 选举"></a>3.2 Leader 选举</h3><p>当 Follower 在<strong>选举超时</strong>内未收到 Leader 的心跳，即转变为 Candidate 并发起选举：</p>
+<ol>
+<li>自增 term，向其他节点发送 <code>RequestVote</code> RPC</li>
+<li>收到<strong>多数节点</strong>的投票后成为新 Leader</li>
+<li>新 Leader 立即发送心跳以防止其他节点重新发起选举</li>
+</ol>
+<p><strong>投票规则：</strong></p>
+<ul>
+<li>每个 term 内每个节点只投一票</li>
+<li>只投给日志至少和自己一样新的 Candidate（日志比较：term 更大优先，term 相同则 index 更大优先）</li>
+</ul>
+<p><strong>etcd 集群节点数要求：</strong></p>
+<ul>
+<li>必须使用<strong>奇数</strong>节点（3、5、7…）</li>
+<li>支持容忍的最大故障节点数 &#x3D; <code>(N-1)/2</code>，如 3 节点容忍 1 个故障，5 节点容忍 2 个故障</li>
+</ul>
+<h3 id="3-3-日志复制（写操作流程）"><a href="#3-3-日志复制（写操作流程）" class="headerlink" title="3.3 日志复制（写操作流程）"></a>3.3 日志复制（写操作流程）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">1. 客户端发送写请求到任意节点</span><br><span class="line">2. Follower/Observer 将请求转发给 Leader</span><br><span class="line">3. Leader 将操作追加到本地日志（log entry），并向所有 Follower 发送 AppendEntries RPC</span><br><span class="line">4. Follower 收到后写入本地日志，返回 ACK</span><br><span class="line">5. Leader 收到多数节点（Quorum）的 ACK 后，提交（commit）该日志条目</span><br><span class="line">6. Leader 将结果返回给客户端</span><br><span class="line">7. Leader 通知 Follower 提交</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-读操作"><a href="#3-4-读操作" class="headerlink" title="3.4 读操作"></a>3.4 读操作</h3><ul>
+<li><strong>线性化读（Linearizable Read，默认）</strong>：Leader 需要确认自己仍然是 Leader（通过心跳或 ReadIndex），确保返回最新的数据，有网络 RTT 的开销</li>
+<li><strong>串行化读（Serializable Read）</strong>：直接从本地状态机读取，可能返回稍旧的数据，但延迟更低</li>
+</ul>
+<h3 id="3-5-快照与日志压缩"><a href="#3-5-快照与日志压缩" class="headerlink" title="3.5 快照与日志压缩"></a>3.5 快照与日志压缩</h3><p>Raft 日志会持续增长，etcd 通过快照（snapshot）机制进行日志压缩：</p>
+<ul>
+<li>将当前状态机状态持久化为快照文件</li>
+<li>截断快照点之前的日志</li>
+<li>新加入或落后太多的节点直接发送完整快照，而不是大量日志</li>
+</ul>
+<p><strong>相关配置：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 触发快照的 Raft 条目数（默认 100,000）</span></span><br><span class="line">etcd --snapshot-count=100000</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="4-MVCC-与修订版本"><a href="#4-MVCC-与修订版本" class="headerlink" title="4. MVCC 与修订版本"></a>4. MVCC 与修订版本</h2><p>etcd 使用<strong>多版本并发控制（MVCC）</strong> 存储数据，是其最重要的设计特点之一：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">时间轴（修订版本）:</span><br><span class="line">rev=1  →  put /app/config = v1</span><br><span class="line">rev=2  →  put /app/config = v2</span><br><span class="line">rev=3  →  delete /app/other</span><br><span class="line">rev=4  →  put /app/config = v3</span><br><span class="line"></span><br><span class="line">当前状态：/app/config = v3</span><br><span class="line"></span><br><span class="line">历史查询：</span><br><span class="line">  --rev=2  →  /app/config = v2   (时间旅行)</span><br><span class="line">  --rev=1  →  /app/config = v1   (时间旅行)</span><br></pre></td></tr></table></figure>
+
+<p><strong>MVCC 的价值：</strong></p>
+<ol>
+<li><strong>时间旅行查询</strong>：访问历史版本的键值</li>
+<li><strong>Watch 历史</strong>：订阅历史变更事件</li>
+<li><strong>无锁读</strong>：读写操作互不阻塞（不同版本的快照读）</li>
+<li><strong>低开销快照</strong>：直接引用某个修订版本，无需复制数据</li>
+</ol>
+<p><strong>版本压缩（Compaction）：</strong></p>
+<p>随着时间推移，历史修订版本会占用越来越多空间，需要定期压缩：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 手动压缩到修订版本 3</span></span><br><span class="line">etcdctl compact 3</span><br><span class="line"></span><br><span class="line"><span class="comment"># 自动压缩（保留最近 1 小时的历史）</span></span><br><span class="line">etcd --auto-compaction-retention=1</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="5-关键术语表"><a href="#5-关键术语表" class="headerlink" title="5. 关键术语表"></a>5. 关键术语表</h2><table>
+<thead>
+<tr>
+<th>术语</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Revision</strong></td>
+<td>全局单调递增的整数，每次原子变更操作递增，标识键空间的版本</td>
+</tr>
+<tr>
+<td><strong>Version</strong></td>
+<td>单个键在其当前 generation 内的修改次数，随每次写操作递增</td>
+</tr>
+<tr>
+<td><strong>Generation</strong></td>
+<td>一个键从创建到删除的生命周期，删除后重建开始新的 generation</td>
+</tr>
+<tr>
+<td><strong>Tombstone</strong></td>
+<td>键被删除时创建的标记，version 重置为 0</td>
+</tr>
+<tr>
+<td><strong>Compaction</strong></td>
+<td>删除历史修订版本以释放空间的操作</td>
+</tr>
+<tr>
+<td><strong>Lease</strong></td>
+<td>带 TTL 的令牌，关联键在 Lease 过期时自动删除，用于实现心跳</td>
+</tr>
+<tr>
+<td><strong>Watch</strong></td>
+<td>订阅键或键范围的变更事件，支持历史和实时</td>
+</tr>
+<tr>
+<td><strong>Transaction（TXN）</strong></td>
+<td>原子执行的一组 compare-then-action 操作</td>
+</tr>
+<tr>
+<td><strong>Term</strong></td>
+<td>Raft Leader 任期，每次选举后递增</td>
+</tr>
+<tr>
+<td><strong>Index</strong></td>
+<td>Raft 日志条目的索引，单调递增</td>
+</tr>
+<tr>
+<td><strong>Quorum</strong></td>
+<td>集群的多数节点（&gt; N&#x2F;2），写操作需要 Quorum 确认</td>
+</tr>
+</tbody></table>
+
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/etcd/">etcd</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                            <div class="prev-post">
+                                <a class="prev"
+                                   rel="prev"
+                                   href="/2026/03/12/%E7%BB%84%E4%BB%B6%E5%8F%8A%E4%B8%AD%E9%97%B4%E4%BB%B6/etcd/03-etcd-%E9%9B%86%E7%BE%A4%E5%AE%89%E8%A3%85%E4%B8%8E%E8%BF%90%E7%BB%B4/"
+                                   title="etcd - 集群安装与运维"
+                                >
+                                    <span class="left arrow-icon flex-center">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </span>
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">etcd - 集群安装与运维</span>
+                                        <span class="post-nav-item">上一篇</span>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/2026/03/12/%E7%BB%84%E4%BB%B6%E5%8F%8A%E4%B8%AD%E9%97%B4%E4%BB%B6/etcd/01-etcd-%E6%A6%82%E8%BF%B0%E4%B8%8E%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/"
+                                   title="etcd - 概述与快速入门"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">etcd - 概述与快速入门</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Reln Ding</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+
+        <!-- PC go comment -->
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+
+    <!-- tablet toc -->
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/toggle-theme.js"></script>
+
+<script src="/js/code-block.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+
+<!-- local search -->
+
+
+<!-- lazyload -->
+
+
+<div class="">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        
+<script src="/js/post/post-helper.js"></script>
+
+
+        <!-- toc -->
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+
+<!-- pjax -->
+
+
+
+    
+        
+    
+
+</body>
+</html>

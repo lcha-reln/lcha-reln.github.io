@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="blog,技术,生活">
+    <meta name="description" content="Reln 的个人博客，记录学习与生活">
+    <meta name="author" content="Reln Ding">
+    
+    <title>
+        
+            etcd - 安全、监控与维护 |
+        
+        Reln 的小窝
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/favicon.ico">
+    
+    
+<link rel="stylesheet" href="/font/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/brands.min.css">
+
+    
+        
+            
+        
+            
+                
+<link rel="stylesheet" href="/css/custom.css">
+
+            
+        
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"lcha-reln.github.io","root":"/","language":"zh-CN","path":"content.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#24c6dc","title":"Reln 的小窝","author":"Reln Ding","avatar":"/images/avatar.svg","logo":"/images/logo.svg","favicon":"/favicon.ico"},"menu":{"home":"/ || fas fa-home","archives":"/archives || fas fa-archive","tags":"/tags || fas fa-tags","categories":"/categories || fas fa-th"},"first_screen":{"enable":false,"background_img":"/images/bg.svg","background_img_dark":"/images/bg.svg","description":"Keep writing and Keep loving.","hitokoto":false},"social_contact":{"enable":false,"links":{"github":null,"weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":null}},"scroll":{"progress_bar":false,"percent":false,"hide_header":true},"home":{"announcement":null,"category":true,"tag":true,"post_datetime":"updated","post_datetime_format":"YYYY-MM-DD"},"post":{"author_badge":{"enable":false,"level_badge":true,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":false,"min2read":false},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null},"toc":{"enable":true,"number":true},"copyright":{"enable":false}},"code_block":{"tools":{"enable":false,"style":"default"},"highlight_theme":"default","copy":true,"lang":true},"toc":{"enable":false,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":false,"preload":false},"comment":{"enable":false,"use":"valine","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":null,"repo_id":null,"category":"Announcements","category_id":null,"reactions_enabled":false},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":false},"lazyload":{"enable":false},"cdn":{"enable":false,"provider":"cdnjs"},"pjax":{"enable":false},"footer":{"since":2026,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]},"icon":"fas fa-heart","powered":{"enable":true}},"inject":{"enable":true,"css":[null,"/css/custom.css"],"js":[null]},"version":"4.2.5","nav_more_list":[{"name":"GitHub","url":"https://github.com/lcha-reln","icon":"fab fa-github"}],"root":"","source_data":{}}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/logo.svg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Reln 的小窝
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-home"></i>
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-archive"></i>
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/tags">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-tags"></i>
+                                
+                                标签
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/categories">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-th"></i>
+                                
+                                分类
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-home"></i>
+                                </span>
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-archive"></i>
+                                </span>
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/tags">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-tags"></i>
+                                </span>
+                            
+                            标签
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/categories">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-th"></i>
+                                </span>
+                            
+                            分类
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        etcd - 安全、监控与维护
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/avatar.svg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Reln Ding</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-03-12 10:04:00</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Thu Mar 12 2026 07:35:44 GMT+0000">2026-03-12 15:35:44</span>
+                </span>
+            
+        
+
+        
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a></li>
+                        
+                    
+                            <li class="category-item">&nbsp;<i class="icon fas fa-angle-right"></i>&nbsp;<a href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/etcd/">etcd</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E5%AE%89%E5%85%A8/">安全</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E8%BF%90%E7%BB%B4/">运维</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/etcd/">etcd</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <blockquote>
+<p>etcd 传输安全（TLS）、RBAC 权限控制、Prometheus 监控指标、集群维护（压缩、碎片整理、备份）和性能调优。</p>
+</blockquote>
+<h2 id="1-传输安全（TLS）"><a href="#1-传输安全（TLS）" class="headerlink" title="1. 传输安全（TLS）"></a>1. 传输安全（TLS）</h2><p>etcd 支持通过 TLS 协议对以下两类通信进行加密：</p>
+<table>
+<thead>
+<tr>
+<th>通信类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>客户端到服务端</strong></td>
+<td><code>etcdctl</code>、应用客户端与 etcd 节点之间</td>
+</tr>
+<tr>
+<td><strong>节点间通信（Peer）</strong></td>
+<td>etcd 集群节点之间的复制通信</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>⚠️ <strong>注意：</strong> etcd 默认<strong>不启用</strong>安全特性，以降低初始使用门槛。未启用安全特性的 etcd 集群会将数据暴露给任何客户端。<strong>生产环境务必启用 TLS。</strong></p>
+</blockquote>
+<h3 id="1-1-TLS-配置参数"><a href="#1-1-TLS-配置参数" class="headerlink" title="1.1 TLS 配置参数"></a>1.1 TLS 配置参数</h3><p><strong>客户端到服务端：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">--cert-file=&lt;path&gt;          <span class="comment"># 服务端 TLS 证书（客户端连接时验证）</span></span><br><span class="line">--key-file=&lt;path&gt;           <span class="comment"># 服务端私钥（必须未加密）</span></span><br><span class="line">--client-cert-auth          <span class="comment"># 要求客户端提供证书（双向 TLS）</span></span><br><span class="line">--trusted-ca-file=&lt;path&gt;    <span class="comment"># 信任的 CA 证书（用于验证客户端证书）</span></span><br><span class="line">--auto-tls                  <span class="comment"># 自动生成自签名证书（仅用于测试）</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>节点间通信（Peer）：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">--peer-cert-file=&lt;path&gt;         <span class="comment"># Peer 通信证书</span></span><br><span class="line">--peer-key-file=&lt;path&gt;          <span class="comment"># Peer 通信私钥</span></span><br><span class="line">--peer-client-cert-auth         <span class="comment"># 要求 Peer 提供证书</span></span><br><span class="line">--peer-trusted-ca-file=&lt;path&gt;   <span class="comment"># 信任的 Peer CA 证书</span></span><br><span class="line">--peer-auto-tls                 <span class="comment"># 自动生成 Peer 自签名证书</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>通用 TLS 参数：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">--cipher-suites         <span class="comment"># 允许的 TLS 密码套件（逗号分隔）</span></span><br><span class="line">--tls-min-version       <span class="comment"># 最低 TLS 版本（如 TLS1.2、TLS1.3）</span></span><br><span class="line">--tls-max-version       <span class="comment"># 最高 TLS 版本</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-示例一：单向-TLS（HTTPS）"><a href="#1-2-示例一：单向-TLS（HTTPS）" class="headerlink" title="1.2 示例一：单向 TLS（HTTPS）"></a>1.2 示例一：单向 TLS（HTTPS）</h3><p>仅加密传输，不验证客户端身份：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">etcd --name infra0 --data-dir infra0 \</span><br><span class="line">  --cert-file=/path/to/server.crt \</span><br><span class="line">  --key-file=/path/to/server.key \</span><br><span class="line">  --advertise-client-urls https://127.0.0.1:2379 \</span><br><span class="line">  --listen-client-urls https://127.0.0.1:2379</span><br></pre></td></tr></table></figure>
+
+<p>客户端连接：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">etcdctl --cacert=/path/to/ca.crt \</span><br><span class="line">  --endpoints=https://127.0.0.1:2379 \</span><br><span class="line">  get foo</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-3-示例二：双向-TLS（mTLS）"><a href="#1-3-示例二：双向-TLS（mTLS）" class="headerlink" title="1.3 示例二：双向 TLS（mTLS）"></a>1.3 示例二：双向 TLS（mTLS）</h3><p>服务端验证客户端证书，实现双向认证：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">etcd --name infra0 \</span><br><span class="line">  --cert-file=/path/to/server.crt \</span><br><span class="line">  --key-file=/path/to/server.key \</span><br><span class="line">  --client-cert-auth \</span><br><span class="line">  --trusted-ca-file=/path/to/ca.crt \</span><br><span class="line">  --advertise-client-urls https://127.0.0.1:2379 \</span><br><span class="line">  --listen-client-urls https://127.0.0.1:2379</span><br></pre></td></tr></table></figure>
+
+<p>客户端连接（需提供客户端证书）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">etcdctl --cacert=/path/to/ca.crt \</span><br><span class="line">  --cert=/path/to/client.crt \</span><br><span class="line">  --key=/path/to/client.key \</span><br><span class="line">  --endpoints=https://127.0.0.1:2379 \</span><br><span class="line">  get foo</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-4-示例三：集群-TLS（含-Peer-加密）"><a href="#1-4-示例三：集群-TLS（含-Peer-加密）" class="headerlink" title="1.4 示例三：集群 TLS（含 Peer 加密）"></a>1.4 示例三：集群 TLS（含 Peer 加密）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">etcd --name infra0 \</span><br><span class="line">  --initial-advertise-peer-urls https://10.0.1.10:2380 \</span><br><span class="line">  --listen-peer-urls https://10.0.1.10:2380 \</span><br><span class="line">  --listen-client-urls https://10.0.1.10:2379,https://127.0.0.1:2379 \</span><br><span class="line">  --advertise-client-urls https://10.0.1.10:2379 \</span><br><span class="line">  <span class="comment"># 客户端 TLS</span></span><br><span class="line">  --cert-file=/path/to/server.crt \</span><br><span class="line">  --key-file=/path/to/server.key \</span><br><span class="line">  --client-cert-auth \</span><br><span class="line">  --trusted-ca-file=/path/to/ca.crt \</span><br><span class="line">  <span class="comment"># Peer TLS</span></span><br><span class="line">  --peer-cert-file=/path/to/peer.crt \</span><br><span class="line">  --peer-key-file=/path/to/peer.key \</span><br><span class="line">  --peer-client-cert-auth \</span><br><span class="line">  --peer-trusted-ca-file=/path/to/ca.crt \</span><br><span class="line">  <span class="comment"># 集群参数</span></span><br><span class="line">  --initial-cluster infra0=https://10.0.1.10:2380,...</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-5-自动-TLS（测试环境）"><a href="#1-5-自动-TLS（测试环境）" class="headerlink" title="1.5 自动 TLS（测试环境）"></a>1.5 自动 TLS（测试环境）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">etcd --auto-tls --peer-auto-tls</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>⚠️ 仅用于开发&#x2F;测试，<strong>不要在生产环境中使用</strong>。</p>
+</blockquote>
+<hr>
+<h2 id="2-基于角色的访问控制（RBAC）"><a href="#2-基于角色的访问控制（RBAC）" class="headerlink" title="2. 基于角色的访问控制（RBAC）"></a>2. 基于角色的访问控制（RBAC）</h2><p>etcd v3 支持完整的 RBAC 权限模型：<strong>用户（User）→ 角色（Role）→ 权限（Permission）</strong>。</p>
+<h3 id="2-1-认证模型"><a href="#2-1-认证模型" class="headerlink" title="2.1 认证模型"></a>2.1 认证模型</h3><p>etcd 提供以下认证方式：</p>
+<ul>
+<li><strong>密码认证</strong>：用户名 + 密码</li>
+<li><strong>证书认证</strong>：TLS 客户端证书的 Common Name 作为用户名</li>
+</ul>
+<h3 id="2-2-启用认证"><a href="#2-2-启用认证" class="headerlink" title="2.2 启用认证"></a>2.2 启用认证</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 创建 root 用户（必须在启用认证前完成）</span></span><br><span class="line">etcdctl user add root</span><br><span class="line"><span class="comment"># Enter password:</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 为 root 授予 root 角色（内置，拥有所有权限）</span></span><br><span class="line">etcdctl user grant-role root root</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 启用认证</span></span><br><span class="line">etcdctl auth <span class="built_in">enable</span></span><br><span class="line"><span class="comment"># Authentication Enabled</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 后续操作需要认证</span></span><br><span class="line">etcdctl --user root:&lt;password&gt; get foo</span><br><span class="line"><span class="comment"># 或通过环境变量</span></span><br><span class="line"><span class="built_in">export</span> ETCD_USER=root</span><br><span class="line"><span class="built_in">export</span> ETCD_PASSWORD=&lt;password&gt;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-用户管理"><a href="#2-3-用户管理" class="headerlink" title="2.3 用户管理"></a>2.3 用户管理</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建用户</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; user add alice</span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; user add bob</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看用户列表</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; user list</span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除用户</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; user delete alice</span><br><span class="line"></span><br><span class="line"><span class="comment"># 修改密码</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; user passwd alice</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看用户角色</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; user get alice</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-角色管理"><a href="#2-4-角色管理" class="headerlink" title="2.4 角色管理"></a>2.4 角色管理</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建角色</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; role add reader</span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; role add writer</span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; role add admin</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看角色列表</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; role list</span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除角色</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; role delete reader</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-5-权限设置"><a href="#2-5-权限设置" class="headerlink" title="2.5 权限设置"></a>2.5 权限设置</h3><p>etcd 的权限针对<strong>键或键范围</strong>设置，分为 <code>read</code>、<code>write</code>、<code>readwrite</code> 三种：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 授予角色对键 /foo 的读权限</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; role grant-permission reader <span class="built_in">read</span> /foo</span><br><span class="line"></span><br><span class="line"><span class="comment"># 授予角色对前缀 /app/ 下所有键的读写权限</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; role grant-permission admin readwrite /app/ --prefix</span><br><span class="line"></span><br><span class="line"><span class="comment"># 授予角色对键范围 [/app/a, /app/z) 的写权限</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; role grant-permission writer write /app/a /app/z</span><br><span class="line"></span><br><span class="line"><span class="comment"># 授予角色对所有键的读写权限（即 root 级别）</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; role grant-permission admin readwrite <span class="string">&quot;&quot;</span> --prefix</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看角色权限</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; role get reader</span><br><span class="line"></span><br><span class="line"><span class="comment"># 撤销角色权限</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; role revoke-permission reader /foo</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-6-绑定用户和角色"><a href="#2-6-绑定用户和角色" class="headerlink" title="2.6 绑定用户和角色"></a>2.6 绑定用户和角色</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 将角色授予用户</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; user grant-role alice reader</span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; user grant-role bob writer</span><br><span class="line"></span><br><span class="line"><span class="comment"># 撤销用户角色</span></span><br><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; user revoke-role alice reader</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-7-禁用认证"><a href="#2-7-禁用认证" class="headerlink" title="2.7 禁用认证"></a>2.7 禁用认证</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">etcdctl --user root:&lt;<span class="built_in">pwd</span>&gt; auth <span class="built_in">disable</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="3-监控"><a href="#3-监控" class="headerlink" title="3. 监控"></a>3. 监控</h2><h3 id="3-1-Prometheus-指标"><a href="#3-1-Prometheus-指标" class="headerlink" title="3.1 Prometheus 指标"></a>3.1 Prometheus 指标</h3><p>etcd 暴露了丰富的 Prometheus 指标，默认在 <code>http://localhost:2379/metrics</code> 可访问：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl http://localhost:2379/metrics</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键监控指标分类：</strong></p>
+<p><strong>集群健康：</strong></p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>etcd_server_has_leader</code></td>
+<td>节点是否有 Leader（1&#x3D;有，0&#x3D;无）</td>
+</tr>
+<tr>
+<td><code>etcd_server_leader_changes_seen_total</code></td>
+<td>Leader 变更总次数</td>
+</tr>
+<tr>
+<td><code>etcd_server_proposals_failed_total</code></td>
+<td>失败的 Raft Proposal 数</td>
+</tr>
+<tr>
+<td><code>etcd_server_proposals_committed_total</code></td>
+<td>已提交的 Raft Proposal 数</td>
+</tr>
+<tr>
+<td><code>etcd_server_proposals_pending</code></td>
+<td>待处理的 Raft Proposal 数</td>
+</tr>
+</tbody></table>
+<p><strong>磁盘性能（最关键）：</strong></p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>etcd_disk_wal_fsync_duration_seconds</code></td>
+<td>WAL fsync 延迟（p99 应 &lt; 10ms）</td>
+</tr>
+<tr>
+<td><code>etcd_disk_backend_commit_duration_seconds</code></td>
+<td>后端 commit 延迟（p99 应 &lt; 25ms）</td>
+</tr>
+<tr>
+<td><code>etcd_disk_defrag_duration_seconds</code></td>
+<td>碎片整理耗时</td>
+</tr>
+</tbody></table>
+<p><strong>网络：</strong></p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>etcd_network_peer_round_trip_time_seconds</code></td>
+<td>Peer 之间的 RTT</td>
+</tr>
+<tr>
+<td><code>etcd_network_client_grpc_received_bytes_total</code></td>
+<td>接收的客户端请求字节数</td>
+</tr>
+<tr>
+<td><code>etcd_network_client_grpc_sent_bytes_total</code></td>
+<td>发送给客户端的字节数</td>
+</tr>
+</tbody></table>
+<p><strong>存储：</strong></p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>etcd_mvcc_db_total_size_in_bytes</code></td>
+<td>当前 B+ 树数据库大小（含历史版本）</td>
+</tr>
+<tr>
+<td><code>etcd_mvcc_db_total_size_in_use_in_bytes</code></td>
+<td>实际使用的数据库大小</td>
+</tr>
+<tr>
+<td><code>etcd_mvcc_delete_total</code></td>
+<td>删除操作总次数</td>
+</tr>
+<tr>
+<td><code>etcd_mvcc_put_total</code></td>
+<td>Put 操作总次数</td>
+</tr>
+<tr>
+<td><code>etcd_mvcc_range_total</code></td>
+<td>Range 查询总次数</td>
+</tr>
+</tbody></table>
+<p><strong>Watcher：</strong></p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>etcd_debugging_mvcc_watcher_total</code></td>
+<td>Watch 流总数</td>
+</tr>
+<tr>
+<td><code>etcd_debugging_mvcc_slow_watcher_total</code></td>
+<td>慢速 Watch 数</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-Prometheus-配置"><a href="#3-2-Prometheus-配置" class="headerlink" title="3.2 Prometheus 配置"></a>3.2 Prometheus 配置</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># prometheus.yml</span></span><br><span class="line"><span class="attr">scrape_configs:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">job_name:</span> <span class="string">etcd</span></span><br><span class="line">    <span class="attr">static_configs:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">targets:</span></span><br><span class="line">          <span class="bullet">-</span> <span class="string">&#x27;10.0.1.10:2379&#x27;</span></span><br><span class="line">          <span class="bullet">-</span> <span class="string">&#x27;10.0.1.11:2379&#x27;</span></span><br><span class="line">          <span class="bullet">-</span> <span class="string">&#x27;10.0.1.12:2379&#x27;</span></span><br><span class="line">    <span class="attr">scheme:</span> <span class="string">https</span></span><br><span class="line">    <span class="attr">tls_config:</span></span><br><span class="line">      <span class="attr">ca_file:</span> <span class="string">/path/to/ca.crt</span></span><br><span class="line">      <span class="attr">cert_file:</span> <span class="string">/path/to/client.crt</span></span><br><span class="line">      <span class="attr">key_file:</span> <span class="string">/path/to/client.key</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-Grafana-Dashboard"><a href="#3-3-Grafana-Dashboard" class="headerlink" title="3.3 Grafana Dashboard"></a>3.3 Grafana Dashboard</h3><p>官方提供了 Grafana Dashboard，Dashboard ID: <strong>3070</strong>（etcd by Prometheus）</p>
+<p>关键告警规则建议：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 高 Raft 提案失败率</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">alert:</span> <span class="string">EtcdHighNumberOfFailedProposals</span></span><br><span class="line">  <span class="attr">expr:</span> <span class="string">rate(etcd_server_proposals_failed_total[5m])</span> <span class="string">&gt;</span> <span class="number">0.05</span></span><br><span class="line">  <span class="attr">for:</span> <span class="string">5m</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 磁盘 fsync 延迟高</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">alert:</span> <span class="string">EtcdHighFsyncDuration</span></span><br><span class="line">  <span class="attr">expr:</span> <span class="string">histogram_quantile(0.99,</span> <span class="string">rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m]))</span> <span class="string">&gt;</span> <span class="number">0.5</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 没有 Leader</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">alert:</span> <span class="string">EtcdNoLeader</span></span><br><span class="line">  <span class="attr">expr:</span> <span class="string">etcd_server_has_leader</span> <span class="string">==</span> <span class="number">0</span></span><br><span class="line">  <span class="attr">for:</span> <span class="string">1m</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 存储空间使用率高</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">alert:</span> <span class="string">EtcdHighStorageUsage</span></span><br><span class="line">  <span class="attr">expr:</span> <span class="string">etcd_mvcc_db_total_size_in_bytes</span> <span class="string">/</span> <span class="string">etcd_mvcc_db_total_size_in_use_in_bytes</span> <span class="string">&gt;</span> <span class="number">0.8</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="4-维护操作"><a href="#4-维护操作" class="headerlink" title="4. 维护操作"></a>4. 维护操作</h2><h3 id="4-1-历史压缩（Compaction）"><a href="#4-1-历史压缩（Compaction）" class="headerlink" title="4.1 历史压缩（Compaction）"></a>4.1 历史压缩（Compaction）</h3><p>etcd 保存完整的键空间历史，需要定期压缩防止存储耗尽：</p>
+<p><strong>手动压缩：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 压缩到当前最新修订版本（只保留最新状态）</span></span><br><span class="line">REV=$(etcdctl endpoint status --write-out json | \</span><br><span class="line">  python3 -c <span class="string">&quot;import sys,json; print(json.load(sys.stdin)[0][&#x27;Status&#x27;][&#x27;header&#x27;][&#x27;revision&#x27;])&quot;</span>)</span><br><span class="line">etcdctl compact <span class="variable">$REV</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>自动压缩（推荐）：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 保留最近 1 小时的历史</span></span><br><span class="line">etcd --auto-compaction-retention=1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 保留最近 5 分钟（适用于 v3.4+ 的 periodic 模式）</span></span><br><span class="line">etcd --auto-compaction-mode=periodic --auto-compaction-retention=5m</span><br><span class="line"></span><br><span class="line"><span class="comment"># 基于修订版本数量（保留最近 1000 个修订版本）</span></span><br><span class="line">etcd --auto-compaction-mode=revision --auto-compaction-retention=1000</span><br></pre></td></tr></table></figure>
+
+<p><strong>自动压缩模式说明：</strong></p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>参数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>periodic</code>（默认）</td>
+<td>小时数或时间字符串</td>
+<td>按时间窗口保留历史，如 <code>1h</code>、<code>5m</code></td>
+</tr>
+<tr>
+<td><code>revision</code></td>
+<td>修订版本数量</td>
+<td>保留最近 N 个修订版本</td>
+</tr>
+</tbody></table>
+<h3 id="4-2-碎片整理（Defragmentation）"><a href="#4-2-碎片整理（Defragmentation）" class="headerlink" title="4.2 碎片整理（Defragmentation）"></a>4.2 碎片整理（Defragmentation）</h3><p>压缩只是在逻辑上标记数据为可用，物理空间需要碎片整理才能释放：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 对单个节点进行碎片整理</span></span><br><span class="line">etcdctl defrag --endpoints=10.0.1.10:2379</span><br><span class="line"></span><br><span class="line"><span class="comment"># 对所有节点进行碎片整理</span></span><br><span class="line">etcdctl defrag --endpoints=10.0.1.10:2379,10.0.1.11:2379,10.0.1.12:2379</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>⚠️ 碎片整理会<strong>阻塞</strong>该节点上的读写操作，建议：</p>
+<ul>
+<li>逐节点进行（避免影响集群可用性）</li>
+<li>先对 Follower 节点整理，最后再对 Leader 节点整理</li>
+<li>在低峰期执行</li>
+</ul>
+</blockquote>
+<p><strong>整理效果验证：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 整理前后对比</span></span><br><span class="line">etcdctl endpoint status --write-out=table</span><br><span class="line"><span class="comment"># 对比 DB SIZE 列</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-存储配额管理"><a href="#4-3-存储配额管理" class="headerlink" title="4.3 存储配额管理"></a>4.3 存储配额管理</h3><p>当存储超出配额，etcd 会触发 <code>NOSPACE</code> 告警，集群进入只读模式：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看告警</span></span><br><span class="line">etcdctl alarm list</span><br><span class="line"></span><br><span class="line"><span class="comment"># 清除告警（在压缩和碎片整理后执行）</span></span><br><span class="line">etcdctl alarm disarm</span><br></pre></td></tr></table></figure>
+
+<p><strong>建议配额设置：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生产环境建议设置 8 GB（最大值）</span></span><br><span class="line">etcd --quota-backend-bytes=$((<span class="number">8</span>*<span class="number">1024</span>*<span class="number">1024</span>*<span class="number">1024</span>))</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-快照备份"><a href="#4-4-快照备份" class="headerlink" title="4.4 快照备份"></a>4.4 快照备份</h3><p><strong>创建快照：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 备份到本地文件</span></span><br><span class="line">etcdctl snapshot save /backup/etcd-snapshot-$(<span class="built_in">date</span> +%Y%m%d).db</span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证快照</span></span><br><span class="line">etcdctl snapshot status /backup/etcd-snapshot-20260312.db --write-out=table</span><br><span class="line"><span class="comment"># +----------+----------+------------+------------+</span></span><br><span class="line"><span class="comment"># |   HASH   | REVISION | TOTAL KEYS | TOTAL SIZE |</span></span><br><span class="line"><span class="comment"># +----------+----------+------------+------------+</span></span><br><span class="line"><span class="comment"># | 59fc7d5a |        6 |         25 |      25 kB |</span></span><br><span class="line"><span class="comment"># +----------+----------+------------+------------+</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>从快照恢复：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 在每个节点上（使用不同的 --name 和 --initial-advertise-peer-urls）</span></span><br><span class="line">etcdctl snapshot restore snapshot.db \</span><br><span class="line">  --name infra0 \</span><br><span class="line">  --initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \</span><br><span class="line">  --initial-cluster-token etcd-cluster-restored \</span><br><span class="line">  --initial-advertise-peer-urls http://10.0.1.10:2380 \</span><br><span class="line">  --data-dir /var/lib/etcd-restored</span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用恢复的数据目录启动 etcd</span></span><br><span class="line">etcd --data-dir=/var/lib/etcd-restored [其他参数...]</span><br></pre></td></tr></table></figure>
+
+<p><strong>自动备份脚本示例（cron）：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line">BACKUP_DIR=<span class="string">&quot;/backup/etcd&quot;</span></span><br><span class="line">ENDPOINTS=<span class="string">&quot;https://10.0.1.10:2379&quot;</span></span><br><span class="line">CERT_DIR=<span class="string">&quot;/etc/etcd/certs&quot;</span></span><br><span class="line">RETENTION_DAYS=7</span><br><span class="line"></span><br><span class="line"><span class="built_in">mkdir</span> -p <span class="variable">$BACKUP_DIR</span></span><br><span class="line">DATE=$(<span class="built_in">date</span> +%Y%m%d-%H%M%S)</span><br><span class="line"></span><br><span class="line">etcdctl snapshot save <span class="variable">$BACKUP_DIR</span>/etcd-<span class="variable">$DATE</span>.db \</span><br><span class="line">  --endpoints=<span class="variable">$ENDPOINTS</span> \</span><br><span class="line">  --cacert=<span class="variable">$CERT_DIR</span>/ca.crt \</span><br><span class="line">  --cert=<span class="variable">$CERT_DIR</span>/client.crt \</span><br><span class="line">  --key=<span class="variable">$CERT_DIR</span>/client.key</span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除超过保留期的备份</span></span><br><span class="line">find <span class="variable">$BACKUP_DIR</span> -name <span class="string">&quot;etcd-*.db&quot;</span> -mtime +<span class="variable">$RETENTION_DAYS</span> -delete</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Backup completed: etcd-<span class="variable">$DATE</span>.db&quot;</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="5-性能调优"><a href="#5-性能调优" class="headerlink" title="5. 性能调优"></a>5. 性能调优</h2><h3 id="5-1-磁盘-I-O-优化"><a href="#5-1-磁盘-I-O-优化" class="headerlink" title="5.1 磁盘 I&#x2F;O 优化"></a>5.1 磁盘 I&#x2F;O 优化</h3><p>etcd 的性能瓶颈通常在磁盘 I&#x2F;O，特别是 WAL fsync：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查磁盘 fsync 延迟（p99 应 &lt; 10ms）</span></span><br><span class="line">etcdctl check perf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用 fio 测试磁盘顺序写性能</span></span><br><span class="line">fio --rw=write --ioengine=<span class="built_in">sync</span> --fdatasync=1 --directory=/var/lib/etcd --size=22m --bs=2300 --name=mytest</span><br><span class="line"><span class="comment"># 10ms 以内为合格，1ms 以内为优秀</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Linux 磁盘调优：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 对于 SSD，推荐使用 noop/none 调度器</span></span><br><span class="line"><span class="built_in">echo</span> noop &gt; /sys/block/sda/queue/scheduler</span><br><span class="line"></span><br><span class="line"><span class="comment"># 对于 HDD，推荐 deadline 调度器</span></span><br><span class="line"><span class="built_in">echo</span> deadline &gt; /sys/block/sda/queue/scheduler</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-网络延迟调优"><a href="#5-2-网络延迟调优" class="headerlink" title="5.2 网络延迟调优"></a>5.2 网络延迟调优</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 调整心跳间隔和选举超时（适应高延迟网络）</span></span><br><span class="line">etcd --heartbeat-interval=500 \    <span class="comment"># 500ms</span></span><br><span class="line">     --election-timeout=5000        <span class="comment"># 5000ms（建议 = 10x heartbeat）</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>网络延迟建议：</strong></p>
+<table>
+<thead>
+<tr>
+<th>节点间 RTT</th>
+<th>建议配置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>&lt; 1ms（同数据中心）</td>
+<td>heartbeat&#x3D;100ms, election&#x3D;1000ms（默认）</td>
+</tr>
+<tr>
+<td>1-10ms（不同可用区）</td>
+<td>heartbeat&#x3D;250ms, election&#x3D;2500ms</td>
+</tr>
+<tr>
+<td>10-100ms（跨地域）</td>
+<td>heartbeat&#x3D;500ms, election&#x3D;5000ms</td>
+</tr>
+</tbody></table>
+<h3 id="5-3-Snapshot-调优"><a href="#5-3-Snapshot-调优" class="headerlink" title="5.3 Snapshot 调优"></a>5.3 Snapshot 调优</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 减少内存中保留的 Raft 条目数（降低内存使用，但慢节点追赶时间更短）</span></span><br><span class="line">etcd --snapshot-count=10000</span><br><span class="line"></span><br><span class="line"><span class="comment"># 增加（更高内存，慢节点有更长时间追赶）</span></span><br><span class="line">etcd --snapshot-count=500000</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-gRPC-并发调优"><a href="#5-4-gRPC-并发调优" class="headerlink" title="5.4 gRPC 并发调优"></a>5.4 gRPC 并发调优</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 调整 gRPC 并发请求限制</span></span><br><span class="line">etcd --max-concurrent-streams=1000</span><br><span class="line">etcd --grpc-keepalive-timeout=30s</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="6-常见运维问题"><a href="#6-常见运维问题" class="headerlink" title="6. 常见运维问题"></a>6. 常见运维问题</h2><h3 id="6-1-节点磁盘满"><a href="#6-1-节点磁盘满" class="headerlink" title="6.1 节点磁盘满"></a>6.1 节点磁盘满</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 快速压缩以释放空间</span></span><br><span class="line">etcdctl compact $(etcdctl endpoint status --write-out json | \</span><br><span class="line">  python3 -c <span class="string">&quot;import sys,json; print(json.load(sys.stdin)[0][&#x27;Status&#x27;][&#x27;header&#x27;][&#x27;revision&#x27;])&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 碎片整理</span></span><br><span class="line">etcdctl defrag</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 解除 NOSPACE 告警</span></span><br><span class="line">etcdctl alarm disarm</span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 临时增加配额（需重启 etcd）</span></span><br><span class="line">etcd --quota-backend-bytes=$((<span class="number">8</span>*<span class="number">1024</span>*<span class="number">1024</span>*<span class="number">1024</span>))</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-节点时钟偏差"><a href="#6-2-节点时钟偏差" class="headerlink" title="6.2 节点时钟偏差"></a>6.2 节点时钟偏差</h3><p>etcd 对时钟偏差敏感（影响选举超时），建议：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 安装并配置 NTP/Chrony</span></span><br><span class="line">timedatectl set-ntp <span class="literal">true</span></span><br><span class="line">chronyc tracking</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查节点间时钟偏差（应 &lt; 1 秒）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-Learner-成员（v3-4-）"><a href="#6-3-Learner-成员（v3-4-）" class="headerlink" title="6.3 Learner 成员（v3.4+）"></a>6.3 Learner 成员（v3.4+）</h3><p>Learner（学习者）是一种不参与投票的特殊成员，用于安全地添加新节点：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 添加 Learner 成员（不影响集群 Quorum）</span></span><br><span class="line">etcdctl member add infra3 --peer-urls=http://10.0.1.13:2380 --learner</span><br><span class="line"></span><br><span class="line"><span class="comment"># 当 Learner 追上进度后，将其提升为正式成员</span></span><br><span class="line">etcdctl member promote &lt;learner-member-id&gt;</span><br></pre></td></tr></table></figure>
+
+<p><strong>Learner 的使用场景：</strong></p>
+<ul>
+<li>添加新节点时先以 Learner 身份加入，追上数据后再提升，避免影响集群可用性</li>
+<li>跨地域部署时，远程数据中心节点可先以 Learner 运行</li>
+</ul>
+<hr>
+<h2 id="7-安全加固检查列表"><a href="#7-安全加固检查列表" class="headerlink" title="7. 安全加固检查列表"></a>7. 安全加固检查列表</h2><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>状态</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>启用 TLS 客户端加密</td>
+<td>必须</td>
+<td>所有客户端通信使用 HTTPS</td>
+</tr>
+<tr>
+<td>启用 TLS Peer 加密</td>
+<td>必须</td>
+<td>节点间通信加密</td>
+</tr>
+<tr>
+<td>启用双向 TLS（mTLS）</td>
+<td>推荐</td>
+<td>验证客户端身份</td>
+</tr>
+<tr>
+<td>启用 RBAC 认证</td>
+<td>推荐</td>
+<td>限制访问权限</td>
+</tr>
+<tr>
+<td>设置存储配额</td>
+<td>必须</td>
+<td>防止存储耗尽</td>
+</tr>
+<tr>
+<td>启用自动压缩</td>
+<td>必须</td>
+<td>防止历史数据无限增长</td>
+</tr>
+<tr>
+<td>定期快照备份</td>
+<td>必须</td>
+<td>数据恢复保障</td>
+</tr>
+<tr>
+<td>独立 SSD 存储</td>
+<td>强烈推荐</td>
+<td>etcd WAL 和数据目录使用专用 SSD</td>
+</tr>
+<tr>
+<td>NTP 时间同步</td>
+<td>必须</td>
+<td>防止时钟偏差影响选举</td>
+</tr>
+<tr>
+<td>监控 Prometheus 指标</td>
+<td>推荐</td>
+<td>实时感知集群健康状态</td>
+</tr>
+<tr>
+<td>限制网络访问</td>
+<td>推荐</td>
+<td>防火墙仅允许授权主机访问 2379&#x2F;2380 端口</td>
+</tr>
+</tbody></table>
+
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E5%AE%89%E5%85%A8/">安全</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E8%BF%90%E7%BB%B4/">运维</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/etcd/">etcd</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/2026/03/12/%E7%BB%84%E4%BB%B6%E5%8F%8A%E4%B8%AD%E9%97%B4%E4%BB%B6/etcd/04-etcd-%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97/"
+                                   title="etcd - 开发指南（API 与交互）"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">etcd - 开发指南（API 与交互）</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Reln Ding</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+
+        <!-- PC go comment -->
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+
+    <!-- tablet toc -->
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/toggle-theme.js"></script>
+
+<script src="/js/code-block.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+
+<!-- local search -->
+
+
+<!-- lazyload -->
+
+
+<div class="">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        
+<script src="/js/post/post-helper.js"></script>
+
+
+        <!-- toc -->
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+
+<!-- pjax -->
+
+
+
+    
+        
+    
+
+</body>
+</html>
