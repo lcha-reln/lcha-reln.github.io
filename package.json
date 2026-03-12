@@ -25,6 +25,7 @@
     "hexo-server": "^3.0.0",
     "hexo-theme-keep": "^4.2.5",
     "hexo-theme-landscape": "^1.0.0",
-    "hexo-generator-sitemap": "^3.0.1"
+    "hexo-generator-sitemap": "^3.0.1",
+    "hexo-generator-feed": "^3.0.0"
   }
 }
