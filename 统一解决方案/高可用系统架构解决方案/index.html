@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="blog,技术,生活">
+    <meta name="description" content="Reln 的个人博客，记录学习与生活">
+    <meta name="author" content="Reln Ding">
+    
+    <title>
+        
+            高可用系统架构解决方案 |
+        
+        Reln 的小窝
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/favicon.ico">
+    
+    
+<link rel="stylesheet" href="/font/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/brands.min.css">
+
+    
+        
+            
+        
+            
+                
+<link rel="stylesheet" href="/css/custom.css">
+
+            
+        
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"lcha-reln.github.io","root":"/","language":"zh-CN","path":"content.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#24c6dc","title":"Reln 的小窝","author":"Reln Ding","avatar":"/images/avatar.svg","logo":"/images/logo.svg","favicon":"/favicon.ico"},"menu":{"home":"/ || fas fa-home","archives":"/archives || fas fa-archive","tags":"/tags || fas fa-tags","categories":"/categories || fas fa-th","about":"/about || fas fa-user"},"first_screen":{"enable":true,"background_img":"/images/hero-bg.svg","background_img_dark":"/images/hero-bg-dark.svg","description":"记录技术与思考的点滴","hitokoto":false},"social_contact":{"enable":true,"links":{"github":"https://github.com/lcha-reln","weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":"mailto:reln@example.com"}},"scroll":{"progress_bar":true,"percent":false,"hide_header":true},"home":{"announcement":null,"category":true,"tag":true,"post_datetime":"updated","post_datetime_format":"YYYY-MM-DD"},"post":{"author_badge":{"enable":false,"level_badge":true,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":true,"min2read":true},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null},"toc":{"enable":true,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"copyright":{"enable":false}},"code_block":{"tools":{"enable":true,"style":"mac"},"highlight_theme":"obsidian"},"toc":{"enable":false,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":true,"preload":false},"comment":{"enable":false,"use":"valine","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":null,"repo_id":null,"category":"Announcements","category_id":null,"reactions_enabled":false},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":true},"lazyload":{"enable":false},"cdn":{"enable":false,"provider":"cdnjs"},"pjax":{"enable":true},"footer":{"since":2026,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]},"icon":"fas fa-fire","powered":{"enable":true}},"inject":{"enable":true,"css":[null,"/css/custom.css"],"js":[null]},"version":"4.2.5","nav_more_list":[{"name":"GitHub","url":"https://github.com/lcha-reln","icon":"fab fa-github"}],"root":"","source_data":{}}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+        <span class="scroll-progress-bar"></span>
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <i class="pjax-progress-icon fas fa-circle-notch fa-spin"></i>
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/logo.svg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Reln 的小窝
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-home"></i>
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-archive"></i>
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/tags">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-tags"></i>
+                                
+                                标签
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/categories">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-th"></i>
+                                
+                                分类
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/about">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-user"></i>
+                                
+                                关于
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="menu-text-color fas search fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-home"></i>
+                                </span>
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-archive"></i>
+                                </span>
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/tags">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-tags"></i>
+                                </span>
+                            
+                            标签
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/categories">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-th"></i>
+                                </span>
+                            
+                            分类
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/about">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-user"></i>
+                                </span>
+                            
+                            关于
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        高可用系统架构解决方案
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/avatar.svg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Reln Ding</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-03-08 14:43:51</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Thu Mar 12 2026 12:39:14 GMT+0000">2026-03-12 20:39:14</span>
+                </span>
+            
+        
+
+        
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/%E9%AB%98%E5%8F%AF%E7%94%A8%E7%B3%BB%E7%BB%9F/">高可用系统</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E6%9E%B6%E6%9E%84/">架构</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <p>本方案适合对 <strong>一致性、可用性、低延迟</strong> 有较高要求的有状态服务系统</p>
+<h1 id="1-整体架构概述"><a href="#1-整体架构概述" class="headerlink" title="1.整体架构概述"></a>1.整体架构概述</h1><h2 id="1-1-核心设计目标"><a href="#1-1-核心设计目标" class="headerlink" title="1.1.核心设计目标"></a>1.1.核心设计目标</h2><ul>
+<li>高可用：单节点故障不影响服务，RTO（恢复时间目标）秒级</li>
+<li>强一致：主从节点内存状态完全一致，可相互接管</li>
+<li>低延迟：核心链路无锁化，避免分布式事务</li>
+<li>可运维：支持计划内主动切换，不依赖人工干预完成故障恢复</li>
+</ul>
+<h2 id="1-2-适用场景"><a href="#1-2-适用场景" class="headerlink" title="1.2.适用场景"></a>1.2.适用场景</h2><ul>
+<li><strong>有状态内存引擎</strong>：核心状态全量加载在内存中（如撮合引擎、账户引擎、风控引擎）</li>
+<li><strong>事件驱动系统</strong>：通过系统队列驱动状态变更</li>
+<li><strong>金融级一致性要求</strong>：不能接受主从不一致的任何时间窗口</li>
+</ul>
+<h2 id="1-3-整体分层"><a href="#1-3-整体分层" class="headerlink" title="1.3.整体分层"></a>1.3.整体分层</h2><p><img   src="/images/HA/%E6%95%B4%E4%BD%93%E5%88%86%E5%B1%82.png"  alt="整体分层"></p>
+<h1 id="2-主从架构设计"><a href="#2-主从架构设计" class="headerlink" title="2.主从架构设计"></a>2.主从架构设计</h1><h2 id="2-1-架构模型选择"><a href="#2-1-架构模型选择" class="headerlink" title="2.1.架构模型选择"></a>2.1.架构模型选择</h2><p>本方案采用 <strong>Active-Active 双节点主从模型</strong>，而非 Active-Passive</p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>Active-Passive</th>
+<th>Active-Active</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>从节点状态</td>
+<td>冷备，不处理数据</td>
+<td>热备，实时跟随主节点</td>
+</tr>
+<tr>
+<td>切换时间</td>
+<td>分钟级（需要数据追赶）</td>
+<td>秒级（状态已同步）</td>
+</tr>
+<tr>
+<td>资源利用率</td>
+<td>浪费 50% 计算资源</td>
+<td>从节点承担快照，补偿等工作</td>
+</tr>
+<tr>
+<td>一致性验证</td>
+<td>仅切换后才发现偏差</td>
+<td>实时指纹校验，问题立即暴露</td>
+</tr>
+</tbody></table>
+<h2 id="2-2-节点职责分工"><a href="#2-2-节点职责分工" class="headerlink" title="2.2.节点职责分工"></a>2.2.节点职责分工</h2><p><strong>主节点（Leader）职责</strong></p>
+<ul>
+<li>消费 Kafka 消息并执行状态变更</li>
+<li>每批处理完后向 Redis 发布版本号和状态指纹</li>
+<li>对外提供读写服务</li>
+</ul>
+<p><strong>从节点（Follower）职责</strong></p>
+<ul>
+<li>消费相同 kafka 消息但受主节点版本控制（永不超过主节点）</li>
+<li>执行与主节点星通的状态变更逻辑（独立计算，非同步复制）</li>
+<li>负责定期写入状态快照（降低主节点 I&#x2F;O 压力）</li>
+<li>负责向 kafka 消息发送失败的补偿重发</li>
+<li>向 Redis 周期性写入存活心跳</li>
+</ul>
+<h2 id="2-3-分组（Group）隔离"><a href="#2-3-分组（Group）隔离" class="headerlink" title="2.3.分组（Group）隔离"></a>2.3.分组（Group）隔离</h2><p>对于高吞吐场景，按照 <strong>业务维度</strong> 进行水平分组扩展</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Group 0：主节点A + 从节点B（处理用户 ID % 2 == 0）的数据</span><br><span class="line">Group 1：主节点C + 从节点D（处理用户 ID % 2 == 1）的数据</span><br></pre></td></tr></table></figure>
+<p>每个 Group 独立选主，独立维护内存状态，互不影响</p>
+<h1 id="3-Leader-选举机制"><a href="#3-Leader-选举机制" class="headerlink" title="3.Leader 选举机制"></a>3.Leader 选举机制</h1><h2 id="3-1-选举方案：Apache-Curator-LeaderLatch"><a href="#3-1-选举方案：Apache-Curator-LeaderLatch" class="headerlink" title="3.1.选举方案：Apache Curator LeaderLatch"></a>3.1.选举方案：Apache Curator LeaderLatch</h2><p>基于 zookeeper 的 <code>LeaderLatch</code>实现分布式选主，这是 CAP 中选择 CP 的典型实现</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Zookeeper Znode 结构：</span><br><span class="line">/app/&#123;group&#125;/leader</span><br><span class="line">    |-- latch-00001（节点A，当前持有锁，为 Leader）</span><br><span class="line">    |-- latch-00002（节点B，监听节点A，为 Follower）</span><br></pre></td></tr></table></figure>
+
+<p><strong>选举流程</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">节点启动</span><br><span class="line">    ↓</span><br><span class="line">向 ZK /app/&#123;group&#125;/leader/ 创建临时顺序节点</span><br><span class="line">    ↓</span><br><span class="line">检查自己是否序号最小的节点</span><br><span class="line">    |—— 是 → 成为 leader，回调 isLeader()</span><br><span class="line">    |__ 否 → 监听前一个节点，回调 notLeader()</span><br><span class="line">                    ↓</span><br><span class="line">            前序节点删除（宕机或者主动释放）</span><br><span class="line">                    ↓</span><br><span class="line">            当前节点成为 Leader</span><br></pre></td></tr></table></figure>
+<p>举个例子，为什么是序号最小，如果选最大会发生什么？</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">场景：3个节点同时参与选举</span><br><span class="line"></span><br><span class="line">节点A 启动 → 创建 /app/leader/node-0000000001  </span><br><span class="line">节点B 启动 → 创建 /app/leader/node-0000000002    </span><br><span class="line">节点C 启动 → 创建 /app/leader/node-0000000003</span><br><span class="line"></span><br><span class="line">ZK 目录结构：  </span><br><span class="line">/app/leader/  </span><br><span class="line">    ├── node-0000000001  ← 节点A  </span><br><span class="line">    ├── node-0000000002  ← 节点B  </span><br><span class="line">    └── node-0000000003  ← 节点C（序号最大） </span><br><span class="line"></span><br><span class="line">节点A 创建了 node-001  </span><br><span class="line">节点B 创建了 node-002  </span><br><span class="line">  </span><br><span class="line">此时 节点B 是最大 → B 成为 Leader ✓  </span><br><span class="line">  </span><br><span class="line">但是！节点C 突然加入创建了 node-003  </span><br><span class="line">→ C 变成最大 → C 也认为自己是 Leader ✗  </span><br><span class="line">  </span><br><span class="line">出现两个 Leader！！（脑裂）  </span><br></pre></td></tr></table></figure>
+<p><strong>为什么选最小最安全：序号是 ZK 单调递增分配的，node-001 一旦创建，永远是最小，除非 node-001 被删除，否则不会变化。</strong></p>
+<p>其次，这种”监听前一个节点”而不是”所有节点都监听最小节点”的设计，还能避免”羊群效应”（Herd Effect），如果所有节点都监听 node-001，node-001 删除时会触发大量通知，造成 ZK 压力激增。</p>
+<h2 id="3-2-ClusterService-设计"><a href="#3-2-ClusterService-设计" class="headerlink" title="3.2.ClusterService 设计"></a>3.2.ClusterService 设计</h2><p>所有模块通过统一的 <code>ClusterService</code> 获取当前节点角色，避免直接依赖 ZK</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 集群节点角色服务，全局单例</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ClusterService</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// volatile 保证多线程可见性，ZK 回调线程写，业务线程读</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="type">boolean</span> <span class="variable">leader</span> <span class="operator">=</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isLeader</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> leader;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setLeader</span><span class="params">(<span class="type">boolean</span> leader)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.leader = leader;</span><br><span class="line">        <span class="comment">// 发布角色变更事件，通知下游模块（快照策略、补偿任务等）</span></span><br><span class="line">        applicationEventPublisher.publishEvent(<span class="keyword">new</span> <span class="title class_">LeaderChangeEvent</span>(leader));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="3-3-重连策略"><a href="#3-3-重连策略" class="headerlink" title="3.3.重连策略"></a>3.3.重连策略</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 指数退避重连，避免 ZK 恢复后大量节点同时重连造成雪崩</span></span><br><span class="line"><span class="type">RetryPolicy</span> <span class="variable">retryPolicy</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ExponentialBackoffRetry</span>(</span><br><span class="line">    <span class="number">1000</span>,   <span class="comment">// baseSleepTimeMs</span></span><br><span class="line">    <span class="number">100</span>     <span class="comment">// maxRetries，实际上是&quot;无限重试&quot;的安全上限</span></span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<h2 id="3-4-计划内主动切换"><a href="#3-4-计划内主动切换" class="headerlink" title="3.4.计划内主动切换"></a>3.4.计划内主动切换</h2><p>提供 HTTP 接口允许运维人员主动触发主从切换：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">DELETE /admin/leader/release</span><br></pre></td></tr></table></figure>
+
+<p><strong>适用场景</strong></p>
+<ul>
+<li>主节点机器需要维护（重启升级）</li>
+<li>主动将流量切到从节点所在机器</li>
+<li>灰度发布时的滚动升级</li>
+</ul>
+<h1 id="4-主从一致性保证"><a href="#4-主从一致性保证" class="headerlink" title="4.主从一致性保证"></a>4.主从一致性保证</h1><h2 id="4-1-核心思路：Kafka-数据对齐-版本锚点-指纹校验"><a href="#4-1-核心思路：Kafka-数据对齐-版本锚点-指纹校验" class="headerlink" title="4.1.核心思路：Kafka 数据对齐 + 版本锚点 + 指纹校验"></a>4.1.核心思路：Kafka 数据对齐 + 版本锚点 + 指纹校验</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">主节点处理消息 offset=1000</span><br><span class="line">    ↓</span><br><span class="line">计算本批次所有输出消息的 MD5 fingerprint</span><br><span class="line">    ↓</span><br><span class="line">写入 Redis: KEY=master_version_&#123;group&#125;, VALUE=&#123;offset:1000, fingerprint:&quot;abc123&quot;&#125;</span><br><span class="line">    ↓</span><br><span class="line">从节点后台任务每 10ms 拉取 Redis 版本到内存</span><br><span class="line">    ↓</span><br><span class="line">从节点处理消息时：</span><br><span class="line">    if (myOffset &gt; masterVersion) → 等待 500ms 重试（不超前主节点）</span><br><span class="line">    if (myOffset == masterVersion) → 计算自己的 fingerprint 并与 Redis 中比较</span><br><span class="line">        ├── 相等 → 状态一致，继续处理</span><br><span class="line">        └── 不等 → 状态已发散，立即停机并告警</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-2-版本号设计"><a href="#4-2-版本号设计" class="headerlink" title="4.2.版本号设计"></a>4.2.版本号设计</h2><p>版本号直接使用 <strong>Kafka Offset</strong>，天然具备单调递增性，无需额外维护序列。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 主节点版本变更监听器，在每批消息处理完后触发</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> Reln Ding</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MasterVersionChangeListener</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onChange</span><span class="params">(<span class="type">long</span> kafkaOffset, List&lt;OutputMessage&gt; outputMessages)</span> &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">fingerprint</span> <span class="operator">=</span> fingerprintFactory.buildFingerprint(outputMessages);</span><br><span class="line">        masterVersionRedisClient.set(group, kafkaOffset, fingerprint);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-3-指纹（Fingerprint）计算"><a href="#4-3-指纹（Fingerprint）计算" class="headerlink" title="4.3.指纹（Fingerprint）计算"></a>4.3.指纹（Fingerprint）计算</h2><p>指纹的计算对象 <strong>本批次所有输出消息</strong> （发往 Kafka 的消息），而非内存状态本身</p>
+<ul>
+<li>优点：不需要对全量内存状态做哈希（开销极大），只需要增量输出做哈希</li>
+<li>原理：相同输入 + 相同处理逻辑 -&gt; 相同输出，因此输出一致性等价于状态一致性</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> String <span class="title function_">buildFingerprint</span><span class="params">(List&lt;OutputMessage&gt; messages)</span> &#123;  </span><br><span class="line">    <span class="comment">// 对所有输出消息按固定顺序排序后做 MD5  </span></span><br><span class="line">    <span class="keyword">return</span> DigestUtils.md5Hex(  </span><br><span class="line">        messages.stream()  </span><br><span class="line">            .sorted(Comparator.comparing(OutputMessage::getKey))  </span><br><span class="line">            .map(OutputMessage::toBytes)  </span><br><span class="line">            .collect(joining())  </span><br><span class="line">    );  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-4-从节点“追赶”流程"><a href="#4-4-从节点“追赶”流程" class="headerlink" title="4.4.从节点“追赶”流程"></a>4.4.从节点“追赶”流程</h2><p><img   src="/images/HA/%E4%BB%8E%E8%8A%82%E7%82%B9%E8%BF%BD%E8%B5%B6%E6%B5%81%E7%A8%8B.png"  alt="从节点追赶流程"></p>
+<h1 id="5-故障检测与自动切换"><a href="#5-故障检测与自动切换" class="headerlink" title="5.故障检测与自动切换"></a>5.故障检测与自动切换</h1><h2 id="5-1-从节点存活检测"><a href="#5-1-从节点存活检测" class="headerlink" title="5.1.从节点存活检测"></a>5.1.从节点存活检测</h2><p><img   src="/images/HA/%E4%BB%8E%E8%8A%82%E7%82%B9%E5%AD%98%E6%B4%BB%E6%A3%80%E6%B5%8B.png"  alt="从节点存活检测"><br>**TTL 设计建议：**TTL 应该设置为心跳间隔的 <strong>20-24</strong> 倍，留足网络抖动个 GC 暂停的容忍空间</p>
+<h2 id="5-2-主节点故障处理"><a href="#5-2-主节点故障处理" class="headerlink" title="5.2.主节点故障处理"></a>5.2.主节点故障处理</h2><p><img   src="/images/HA/%E4%B8%BB%E8%8A%82%E7%82%B9%E6%95%85%E9%9A%9C%E5%A4%84%E7%90%86.png"  alt="主节点故障处理"></p>
+<p><strong>RTO 分析</strong></p>
+<ul>
+<li>ZK session 超时：30s（可调低到 10s，但需平衡网络抖动的风险）</li>
+<li>从节点感知并接管：&lt;1s</li>
+<li><strong>总 RTO：约 10-30s</strong></li>
+</ul>
+<h2 id="5-3-脑裂（Split-Brain）防护"><a href="#5-3-脑裂（Split-Brain）防护" class="headerlink" title="5.3.脑裂（Split-Brain）防护"></a>5.3.脑裂（Split-Brain）防护</h2><p>Zookeeper 本身通过 Quorum 机制防止脑裂：只有能联系半数以上 ZK 节点的应用节点才能持有 Leader</p>
+<p>但需要额外注意一下情况：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>防护措施</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ZK 链接短暂中断</td>
+<td><code>ExponentialBackoffRetry</code>重连，不立即释放 Leader</td>
+</tr>
+<tr>
+<td>ZK 链接长时间中断</td>
+<td>Session 超时后自动释放临时节点，出发重新选举</td>
+</tr>
+<tr>
+<td>主节点进程未宕机但 ZK 失联</td>
+<td>主节点应监听 <code>notLeader()</code>回调，停止处理消息，防止双主写入</td>
+</tr>
+<tr>
+<td>网络分区</td>
+<td>ZK 多数派原则保证只有一侧可以成为 Leader()</td>
+</tr>
+</tbody></table>
+<h2 id="5-4-主节点异常自停机"><a href="#5-4-主节点异常自停机" class="headerlink" title="5.4.主节点异常自停机"></a>5.4.主节点异常自停机</h2><p>当主节点内部发生无法恢复的异常（如状态计算错误、状态依赖不可用），应主动停机而非带病运行</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**  </span></span><br><span class="line"><span class="comment"> * Disruptor 主线程异常处理器  </span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> Reln Ding  </span></span><br><span class="line"><span class="comment"> */</span>  </span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MainThreadExceptionHandler</span> <span class="keyword">implements</span> <span class="title class_">ExceptionHandler</span>&lt;RingBufferEvent&gt; &#123;  </span><br><span class="line">  </span><br><span class="line">    <span class="meta">@Override</span>  </span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">handleEventException</span><span class="params">(Throwable ex, <span class="type">long</span> sequence, RingBufferEvent event)</span> &#123;  </span><br><span class="line">        <span class="comment">// 1. 记录详细错误日志  </span></span><br><span class="line">        log.error(<span class="string">&quot;Fatal error in main processing thread&quot;</span>, ex);  </span><br><span class="line">  </span><br><span class="line">        <span class="comment">// 2. 发送紧急告警  </span></span><br><span class="line">        alertService.sendCriticalAlert(WarnEnum.FATAL_EXCEPTION, ex.getMessage());  </span><br><span class="line">  </span><br><span class="line">        <span class="comment">// 3. 主动退出 JVM，触发 K8s/容器重启  </span></span><br><span class="line">        <span class="comment">// 注意：必须是 System.exit 而非 Thread.stop，确保 JVM shutdown hook 执行  </span></span><br><span class="line">        serverManager.tryShutdown();  </span><br><span class="line">    &#125;  </span><br><span class="line">&#125;  </span><br></pre></td></tr></table></figure>
+
+<h1 id="6-状态快照与故障恢复"><a href="#6-状态快照与故障恢复" class="headerlink" title="6.状态快照与故障恢复"></a>6.状态快照与故障恢复</h1><h2 id="6-1-快照的必要性"><a href="#6-1-快照的必要性" class="headerlink" title="6.1.快照的必要性"></a>6.1.快照的必要性</h2><p>系统每次重启都从最新的快照恢复，然后从快照对应的 Kafka offset 开始重放消息。如果没有快照：</p>
+<ul>
+<li>每次重启都需要从最早的 Kafka 消息进行回放（可能数年）</li>
+<li>重放时间可能长达数小时，严重影响 RTO</li>
+</ul>
+<h2 id="6-2-快照创建流程"><a href="#6-2-快照创建流程" class="headerlink" title="6.2.快照创建流程"></a>6.2.快照创建流程</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">触发快照（定时 or 手动触发）</span><br><span class="line">        ↓</span><br><span class="line">暂停 Disruptor 消费（或者使用 Copy-on-Write 快照）</span><br><span class="line">        ↓</span><br><span class="line">遍历所有内存数据类型（用户账户、订单列表、配置等）</span><br><span class="line">        ↓</span><br><span class="line">序列化为字节流（推肩 ProtoBuf、SBE、Kryo，避免 Java 序列原生化）</span><br><span class="line">        ↓</span><br><span class="line">计算 CRC32 校验和</span><br><span class="line">        ↓</span><br><span class="line">写入本地文件系统（异步写，通过 Disruptor）</span><br><span class="line">        ↓</span><br><span class="line">写入 DB 记录快照元数据（版本、路径、状态、CRC32）</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-1-暂停-Disruptor-消费-vs-Copy-on-Write"><a href="#6-2-1-暂停-Disruptor-消费-vs-Copy-on-Write" class="headerlink" title="6.2.1.暂停 Disruptor 消费 vs Copy-on-Write"></a>6.2.1.暂停 Disruptor 消费 vs Copy-on-Write</h3><p>暂停 Disruptor 消费</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">正常状态：  </span><br><span class="line">Kafka → Disruptor → 处理消息 → 修改内存数据  </span><br><span class="line">  </span><br><span class="line">快照时：  </span><br><span class="line">Kafka → Disruptor → ⏸️ 暂停消费  </span><br><span class="line">                         ↓  </span><br><span class="line">                    此时内存数据静止不变  </span><br><span class="line">                         ↓  </span><br><span class="line">                    安全地做快照  </span><br><span class="line">                         ↓  </span><br><span class="line">                    快照完成 → ▶️ 恢复消费  </span><br><span class="line">  </span><br><span class="line">问题：快照期间系统停止处理，有延迟！ </span><br></pre></td></tr></table></figure>
+
+<p>Copy-on-Write</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">快照触发时：  </span><br><span class="line">内存数据 → 复制一份副本（Copy）  </span><br><span class="line">              ↓           ↓  </span><br><span class="line">         副本做快照    原数据继续处理新消息  </span><br><span class="line">         （慢慢写）    （不受影响）  </span><br><span class="line">  </span><br><span class="line">优点：系统不停机，边快照边处理  </span><br><span class="line">缺点：需要额外内存存储副本 </span><br></pre></td></tr></table></figure>
+
+<p><strong>总结</strong></p>
+<ul>
+<li>暂停消费 &#x3D; 保证快照时数据不变，简单但有停顿</li>
+<li>Copy-on-Write &#x3D; 复制副本做快照，不停机但耗内存</li>
+</ul>
+<h3 id="6-2-2-为什么计算-CRC32-校验和"><a href="#6-2-2-为什么计算-CRC32-校验和" class="headerlink" title="6.2.2.为什么计算 CRC32 校验和"></a>6.2.2.为什么计算 CRC32 校验和</h3><p>场景：快照文件写入磁盘过程中</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">正常写入：  </span><br><span class="line">[内存数据] → 序列化 → [完整文件 ✅]  </span><br><span class="line">  </span><br><span class="line">异常情况：  </span><br><span class="line">[内存数据] → 序列化 → 写到一半 → 机器宕机！  </span><br><span class="line">                      [残缺文件 ❌]  </span><br><span class="line">  </span><br><span class="line">恢复时加载残缺文件 → 数据错乱 → 💥 系统异常</span><br></pre></td></tr></table></figure>
+
+<p>有了 CRC32：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">写入时：  </span><br><span class="line">数据 → 计算CRC32=12345 → 一起写入文件  </span><br><span class="line">  </span><br><span class="line">恢复时：  </span><br><span class="line">读取文件 → 重新计算CRC32=?  </span><br><span class="line">              ↓  </span><br><span class="line">    ?=12345 ✅ 文件完整，可以加载  </span><br><span class="line">    ?≠12345 ❌ 文件损坏，拒绝加载  </span><br><span class="line">                    ↓  </span><br><span class="line">              回滚到上一个快照  </span><br></pre></td></tr></table></figure>
+<p><strong>总结</strong></p>
+<p>CRC32 &#x3D; 防止快照文件损坏导致恢复时数据错乱，类似文件的”防伪码”</p>
+<h2 id="6-3-快照责任分配策略"><a href="#6-3-快照责任分配策略" class="headerlink" title="6.3.快照责任分配策略"></a>6.3.快照责任分配策略</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>快照执行节点</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>正常运行（双节点健康）</td>
+<td>从节点不可用，主节点兜底</td>
+<td></td>
+</tr>
+<tr>
+<td>从节点宕机</td>
+<td>主节点</td>
+<td>从节点不可用，主节点兜底</td>
+</tr>
+<tr>
+<td>特殊恢复模式（配置项）</td>
+<td>强制主节点</td>
+<td>需要主节点状态的权威快照</td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">needSnapshot</span><span class="params">()</span> &#123;  </span><br><span class="line">    <span class="keyword">if</span> (config.isForceLeader()) &#123;  </span><br><span class="line">        <span class="keyword">return</span> clusterService.isLeader();  </span><br><span class="line">    &#125;  </span><br><span class="line">    <span class="keyword">if</span> (clusterService.isLeader()) &#123;  </span><br><span class="line">        <span class="comment">// 主节点：仅在从节点宕机时才做快照  </span></span><br><span class="line">        <span class="keyword">return</span> !followerService.isFollowerAlive();  </span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;  </span><br><span class="line">        <span class="comment">// 从节点：始终负责快照  </span></span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;  </span><br><span class="line">    &#125;  </span><br><span class="line">&#125;  </span><br></pre></td></tr></table></figure>
+
+<h2 id="6-4-快照保留策略"><a href="#6-4-快照保留策略" class="headerlink" title="6.4.快照保留策略"></a>6.4.快照保留策略</h2><ul>
+<li>短期快照：保留最近 N 份（如 N&#x3D;6，每5分钟一份，覆盖最近30分钟）</li>
+<li>长期快照：从短期快照中每隔 T 时间晋升一份（如每一小时一份，保留6份）</li>
+</ul>
+<p>删除旧快照：</p>
+<ol>
+<li>查询 DB 中同 group_id 的快照，按版本倒序排列</li>
+<li>保留前 N 条，删除其余的 DB 记录和本地文件</li>
+</ol>
+<h2 id="6-5-故障恢复"><a href="#6-5-故障恢复" class="headerlink" title="6.5.故障恢复"></a>6.5.故障恢复</h2><ol>
+<li>RecoveryService.recover</li>
+<li>从 DB 查询该 group 最新 COMPLETED 状态的快照元数据</li>
+<li>读取本地快照文件 验证 CRC32</li>
+<li>检查 data_types 字段 确认所有必需数据类型都存在</li>
+<li>逐类型调用 SnapshotActor.recover 账户余额、订单列表、风控参数、符号配置…</li>
+<li>重置 Kafka Consumer Offset 到 snapshot.version</li>
+<li>启动 Disruptor 从该 offset 开始重放 Kafka 消息</li>
+<li>重放完毕 向 ZooKeeper 注册 参与 Leader 选举</li>
+</ol>
+<p><strong>关键设计：先恢复状态，再参与选举</strong>，避免状态未就绪的节点成为 Leader</p>
+<h2 id="6-6-Kafka-和-Offset-的配合使用"><a href="#6-6-Kafka-和-Offset-的配合使用" class="headerlink" title="6.6.Kafka 和 Offset 的配合使用"></a>6.6.Kafka 和 Offset 的配合使用</h2><p>Kafka 不是数据库，它按”保留策略”存储消息：  </p>
+<p>按时间保留：retention.ms &#x3D; 7天 (默认)<br>按大小保留：retention.bytes &#x3D; 1GB</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">时间线：  </span><br><span class="line">Day1  Day2  Day3  Day4  Day5  Day6  Day7  Day8  </span><br><span class="line">|-----|-----|-----|-----|-----|-----|-----|  </span><br><span class="line">offset=100                          offset=10000  </span><br></pre></td></tr></table></figure>
+
+<p>Day1的消息到期 → 自动删除！<br>此时 offset&#x3D;100 的消息已经不存在了  </p>
+<p><strong>因此，这里就是快照保存策略存在的原因:快照不能太旧！</strong></p>
+<p>快照保留时间  必须 &lt;&lt; Kafka 保留时间  </p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Kafka 保留: 7天  </span><br><span class="line">快照保留:   30分钟 (短期) / 6小时 (长期)  </span><br><span class="line">  </span><br><span class="line">恢复时：  </span><br><span class="line">最新快照 offset = 6小时前  </span><br><span class="line">Kafka 还保留着 7天内的消息</span><br></pre></td></tr></table></figure>
+
+<h1 id="7-消息队列设计"><a href="#7-消息队列设计" class="headerlink" title="7.消息队列设计"></a>7.消息队列设计</h1><h2 id="7-1-生产者配置"><a href="#7-1-生产者配置" class="headerlink" title="7.1.生产者配置"></a>7.1.生产者配置</h2><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">kafka:</span></span><br><span class="line">  <span class="attr">producer:</span></span><br><span class="line">    <span class="attr">acks:</span> <span class="string">all</span>                          <span class="comment"># 所有副本确认，最强持久性</span></span><br><span class="line">    <span class="attr">retries:</span> <span class="number">2147483647</span>                <span class="comment"># 无限重试</span></span><br><span class="line">    <span class="attr">max-in-flight-requests-per-connection:</span> <span class="number">1</span>  <span class="comment"># 严格有序，禁止乱序</span></span><br><span class="line">    <span class="attr">enable-idempotence:</span> <span class="literal">true</span>           <span class="comment"># 幂等生产，防重复</span></span><br><span class="line">    <span class="attr">compression-type:</span> <span class="string">lz4</span>              <span class="comment"># 压缩降低网络带宽</span></span><br><span class="line">    <span class="attr">linger-ms:</span> <span class="number">2</span>                       <span class="comment"># 微小延迟换更大吞吐</span></span><br><span class="line">    <span class="attr">batch-size:</span> <span class="number">524288</span>                 <span class="comment"># 512KB 批大小</span></span><br><span class="line">    <span class="attr">delivery-timeout-ms:</span> <span class="number">1200000</span>      <span class="comment"># 20 分钟超时（配合无限重试）</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="7-2-消费者配置"><a href="#7-2-消费者配置" class="headerlink" title="7.2.消费者配置"></a>7.2.消费者配置</h2><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">kafka:</span></span><br><span class="line">  <span class="attr">consumer:</span></span><br><span class="line">    <span class="attr">enable-auto-commit:</span> <span class="literal">false</span>          <span class="comment"># 手动提交 offset，精确控制</span></span><br><span class="line">    <span class="attr">auto-offset-reset:</span> <span class="string">earliest</span>        <span class="comment"># 重启后从已知位置重放，而非丢弃</span></span><br><span class="line">    <span class="attr">max-poll-records:</span> <span class="number">1000</span>             <span class="comment"># 每批最多消费条数</span></span><br><span class="line">    <span class="attr">fetch-max-wait-ms:</span> <span class="number">1</span>              <span class="comment"># 极低延迟，有消息立即拉取</span></span><br><span class="line">    <span class="attr">session-timeout-ms:</span> <span class="number">30000</span></span><br><span class="line">    <span class="attr">heartbeat-interval-ms:</span> <span class="number">3000</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="7-3-Kafka-发送失败补偿机制"><a href="#7-3-Kafka-发送失败补偿机制" class="headerlink" title="7.3.Kafka 发送失败补偿机制"></a>7.3.Kafka 发送失败补偿机制</h2><p>网络抖动可能导致 Kafka 发送失败，不能直接丢弃：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">消息发送失败</span><br><span class="line">    ↓</span><br><span class="line">写入 DB 表 kafka_send_failed_data（包含消息内容、topic、partition、创建时间）</span><br><span class="line">    ↓</span><br><span class="line">定时任务（由从节点执行，每 N 秒运行一次）</span><br><span class="line">    ↓</span><br><span class="line">查询 kafka_send_failed_data 表中未处理的记录</span><br><span class="line">    ↓</span><br><span class="line">重新发送到 Kafka</span><br><span class="line">    ↓</span><br><span class="line">发送成功 → 删除 DB 记录</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么由从节点执行补偿？</strong></p>
+<ul>
+<li>从节点负载相对较低</li>
+<li>主节点专注于核心消息处理，降低主节点压力</li>
+<li>即使从节点宕机，主节点也能通过 <code>isLeader()</code> 判断后自行接管补偿任务</li>
+</ul>
+<h1 id="8-存储层设计"><a href="#8-存储层设计" class="headerlink" title="8.存储层设计"></a>8.存储层设计</h1><h2 id="8-1-分层存储设计"><a href="#8-1-分层存储设计" class="headerlink" title="8.1.分层存储设计"></a>8.1.分层存储设计</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">内存层（实时）</span><br><span class="line">  └── 主/从节点全量内存状态（HashMap、有序集合等）</span><br><span class="line">      响应时间：微秒级</span><br><span class="line"></span><br><span class="line">快照层（准实时）</span><br><span class="line">  └── 本地文件系统的状态快照（每 5-30 分钟）</span><br><span class="line">      用途：快速故障恢复</span><br><span class="line"></span><br><span class="line">持久化层（最终一致）</span><br><span class="line">  └── Kafka → Store 服务 → MySQL/MariaDB</span><br><span class="line">      用途：数据查询、审计、报表</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-2-数据库分组隔离"><a href="#8-2-数据库分组隔离" class="headerlink" title="8.2.数据库分组隔离"></a>8.2.数据库分组隔离</h2><p>每个业务 Group 使用独立数据库，防止相互影响：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">数据库: app_&#123;group_id&#125;</span><br><span class="line">  ├── snapshot_meta          -- 快照元数据</span><br><span class="line">  ├── kafka_send_failed_data -- Kafka 发送失败补偿</span><br><span class="line">  └── &#123;business_tables&#125;      -- 业务数据表</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-3-连接池配置建议"><a href="#8-3-连接池配置建议" class="headerlink" title="8.3.连接池配置建议"></a>8.3.连接池配置建议</h2><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">datasource:</span></span><br><span class="line">  <span class="attr">hikari:</span></span><br><span class="line">    <span class="attr">connection-timeout:</span> <span class="number">2000</span>      <span class="comment"># 2s 获取连接超时</span></span><br><span class="line">    <span class="attr">maximum-pool-size:</span> <span class="number">50</span>         <span class="comment"># 最大连接数（根据 DB 服务器配置调整）</span></span><br><span class="line">    <span class="attr">minimum-idle:</span> <span class="number">10</span>              <span class="comment"># 最小空闲连接</span></span><br><span class="line">    <span class="attr">transaction-isolation:</span> <span class="string">TRANSACTION_READ_COMMITTED</span>  <span class="comment"># 读已提交，避免幻读影响性能</span></span><br><span class="line">    <span class="attr">keepalive-time:</span> <span class="number">30000</span>         <span class="comment"># 防止连接被防火墙断开</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="8-4-分表方案"><a href="#8-4-分表方案" class="headerlink" title="8.4.分表方案"></a>8.4.分表方案</h2><p>对于高写入量的补偿表，使用 ShardingSphere 进行水平分表：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">shardingsphere:</span></span><br><span class="line">  <span class="attr">rules:</span></span><br><span class="line">    <span class="attr">sharding:</span></span><br><span class="line">      <span class="attr">tables:</span></span><br><span class="line">        <span class="attr">kafka_send_failed_data:</span></span><br><span class="line">          <span class="attr">actual-data-nodes:</span> <span class="string">ds.kafka_send_failed_data_$-&gt;&#123;0..7&#125;</span></span><br><span class="line">          <span class="attr">table-strategy:</span></span><br><span class="line">            <span class="attr">standard:</span></span><br><span class="line">              <span class="attr">sharding-column:</span> <span class="string">user_id</span></span><br><span class="line">              <span class="attr">sharding-algorithm-name:</span> <span class="string">mod8</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="8-4-1-ShardingSphere-水平分表方案"><a href="#8-4-1-ShardingSphere-水平分表方案" class="headerlink" title="8.4.1.ShardingSphere 水平分表方案"></a>8.4.1.ShardingSphere 水平分表方案</h3><p>水平分表：把一张大表的数据，按某个规则拆分到多张结构相同的表中</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">orders 表 (1亿条数据)  </span><br><span class="line">        ↓ 分表  </span><br><span class="line">orders_0  orders_1  orders_2  orders_3  </span><br><span class="line">(2500万)  (2500万)  (2500万)  (2500万)  </span><br></pre></td></tr></table></figure>
+
+<p><strong>常用分片策略</strong></p>
+<ul>
+<li>Hash 取模分片</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">//</span> <span class="string">配置</span>  </span><br><span class="line"><span class="attr">sharding:</span>  </span><br><span class="line">  <span class="attr">tables:</span>  </span><br><span class="line">    <span class="attr">orders:</span>  </span><br><span class="line">      <span class="attr">actual-data-nodes:</span> <span class="string">ds.orders_$-&gt;&#123;0..3&#125;</span>  </span><br><span class="line">      <span class="attr">table-strategy:</span>  </span><br><span class="line">        <span class="attr">standard:</span>  </span><br><span class="line">          <span class="attr">sharding-column:</span> <span class="string">order_id</span>  </span><br><span class="line">          <span class="attr">sharding-algorithm-name:</span> <span class="string">orders-inline</span>  </span><br><span class="line">  </span><br><span class="line">  <span class="attr">sharding-algorithms:</span>  </span><br><span class="line">    <span class="attr">orders-inline:</span>  </span><br><span class="line">      <span class="attr">type:</span> <span class="string">INLINE</span>  </span><br><span class="line">      <span class="attr">props:</span>  </span><br><span class="line">        <span class="attr">algorithm-expression:</span> <span class="string">orders_$-&gt;&#123;order_id</span> <span class="string">%</span> <span class="number">4</span><span class="string">&#125;</span>  </span><br><span class="line">  </span><br><span class="line"><span class="string">//</span> <span class="string">效果：</span>  </span><br><span class="line"><span class="string">order_id=1000</span> <span class="string">→</span> <span class="number">1000</span> <span class="string">%</span> <span class="number">4</span> <span class="string">=</span> <span class="number">0</span> <span class="string">→</span> <span class="string">orders_0</span>  </span><br><span class="line"><span class="string">order_id=1001</span> <span class="string">→</span> <span class="number">1001</span> <span class="string">%</span> <span class="number">4</span> <span class="string">=</span> <span class="number">1</span> <span class="string">→</span> <span class="string">orders_1</span>  </span><br><span class="line"><span class="string">order_id=1002</span> <span class="string">→</span> <span class="number">1002</span> <span class="string">%</span> <span class="number">4</span> <span class="string">=</span> <span class="number">2</span> <span class="string">→</span> <span class="string">orders_2</span>  </span><br><span class="line"><span class="string">order_id=1003</span> <span class="string">→</span> <span class="number">1003</span> <span class="string">%</span> <span class="number">4</span> <span class="string">=</span> <span class="number">3</span> <span class="string">→</span> <span class="string">orders_3</span>  </span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>按时间范围分片</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">//</span> <span class="string">按月分表</span>  </span><br><span class="line"><span class="attr">sharding-algorithms:</span>  </span><br><span class="line">  <span class="attr">orders-by-month:</span>  </span><br><span class="line">    <span class="attr">type:</span> <span class="string">INTERVAL</span>  </span><br><span class="line">    <span class="attr">props:</span>  </span><br><span class="line">      <span class="attr">datetime-pattern:</span> <span class="string">yyyy-MM-dd</span>  </span><br><span class="line">      <span class="attr">datetime-lower:</span> <span class="number">2024-01-01</span>  </span><br><span class="line">      <span class="attr">datetime-upper:</span> <span class="number">2024-12-31</span>  </span><br><span class="line">      <span class="attr">sharding-suffix-pattern:</span> <span class="string">yyyyMM</span>  </span><br><span class="line">      <span class="attr">datetime-interval-amount:</span> <span class="number">1</span>  </span><br><span class="line">      <span class="attr">datetime-interval-unit:</span> <span class="string">MONTHS</span>  </span><br><span class="line">  </span><br><span class="line"><span class="string">//</span> <span class="string">效果：</span>  </span><br><span class="line"><span class="number">2024-01-15</span> <span class="string">的订单</span> <span class="string">→</span> <span class="string">orders_202401</span>  </span><br><span class="line"><span class="number">2024-02-15</span> <span class="string">的订单</span> <span class="string">→</span> <span class="string">orders_202402</span>  </span><br><span class="line"><span class="number">2024-03-15</span> <span class="string">的订单</span> <span class="string">→</span> <span class="string">orders_202403</span>  </span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>复合分片（Hash + 时间）</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">//</span> <span class="string">同时按</span> <span class="string">user_id</span> <span class="string">和</span> <span class="string">create_time</span> <span class="string">分片</span>  </span><br><span class="line"><span class="attr">table-strategy:</span>  </span><br><span class="line">  <span class="attr">complex:</span>  </span><br><span class="line">    <span class="attr">sharding-columns:</span> <span class="string">user_id,</span> <span class="string">create_time</span>  </span><br><span class="line">    <span class="attr">sharding-algorithm-name:</span> <span class="string">orders-complex</span>  </span><br><span class="line">  </span><br><span class="line"><span class="string">//</span> <span class="string">效果：</span>  </span><br><span class="line"><span class="string">user_id=100,</span> <span class="number">2024-01</span> <span class="string">→</span> <span class="string">orders_202401_0</span>  </span><br><span class="line"><span class="string">user_id=101,</span> <span class="number">2024-02</span> <span class="string">→</span> <span class="string">orders_202402_1</span>  </span><br></pre></td></tr></table></figure>
+
+<p><strong>选择分片键的原则</strong></p>
+<ul>
+<li>数据均匀分布：避免热点，Hash 取模最均匀</li>
+<li>查询必带分片键：否则全分片扫描</li>
+<li>不可变字段：user_id、order_id 比 status 更合适</li>
+<li>高基数字段：值尽量多，避免集中在某几个分片</li>
+</ul>
+<h1 id="9-架构全景图"><a href="#9-架构全景图" class="headerlink" title="9. 架构全景图"></a>9. 架构全景图</h1><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                           运维管控层                                          │</span><br><span class="line">│   Apollo (动态配置)   │   Prometheus + Grafana (监控)   │  告警系统 (PagerDuty) │</span><br><span class="line">└──────────────────────────────────────┬──────────────────────────────────────┘</span><br><span class="line">                                       │ 配置推送 / 指标采集</span><br><span class="line">┌──────────────────────────────────────▼──────────────────────────────────────┐</span><br><span class="line">│                           注册与协调层                                        │</span><br><span class="line">│                                                                             │</span><br><span class="line">│  ┌──────────────────┐    ┌──────────────────────┐    ┌───────────────────┐  │</span><br><span class="line">│  │  Eureka (服务发现) │    │ ZooKeeper (Leader选举) │    │  Redis (版本/心跳) │  │</span><br><span class="line">│  └──────────────────┘    │  + ElasticJob 调度    │    └───────────────────┘  │</span><br><span class="line">│                          └──────────────────────┘                           │</span><br><span class="line">└──────────────────────────────────────────────────────────────────────────────┘</span><br><span class="line">                                       │</span><br><span class="line">            ┌──────────────────────────┴──────────────────────┐</span><br><span class="line">            │                                                  │</span><br><span class="line">┌───────────▼───────────────────┐            ┌────────────────▼───────────────┐</span><br><span class="line">│        主节点 (Leader)          │            │       从节点 (Follower)          │</span><br><span class="line">│                               │            │                                │</span><br><span class="line">│  [Kafka Consumer]             │            │  [Kafka Consumer]              │</span><br><span class="line">│       ↓                       │            │       ↓                        │</span><br><span class="line">│  [Disruptor 单线程管道]         │            │  [等待主节点版本确认]             │</span><br><span class="line">│    BusySpinWaitStrategy       │            │  [Disruptor 单线程管道]          │</span><br><span class="line">│       ↓                       │            │       ↓                        │</span><br><span class="line">│  [全量内存状态]                 │◄──版本+指纹──►│  [全量内存状态]                 │</span><br><span class="line">│  Map/Set/OrderBook...         │   Redis     │  Map/Set/OrderBook...         │</span><br><span class="line">│       ↓                       │            │       ↓                        │</span><br><span class="line">│  [Kafka Producer]             │            │  [快照写入]                     │</span><br><span class="line">│    acks=all, 幂等               │            │  [Kafka补偿重发]                │</span><br><span class="line">└───────────────────────────────┘            └────────────────────────────────┘</span><br><span class="line">            │                                                  │</span><br><span class="line">            └──────────────────────┬──────────────────────────┘</span><br><span class="line">                                   │ 消费同一 Kafka Partition</span><br><span class="line">┌──────────────────────────────────▼──────────────────────────────────────────┐</span><br><span class="line">│                    Apache Kafka（消息总线）                                    │</span><br><span class="line">│          acks=all │ 手动offset │ 幂等生产 │ lz4压缩 │ 7节点高可用集群           │</span><br><span class="line">└──────────────────────────────────┬──────────────────────────────────────────┘</span><br><span class="line">                                   │</span><br><span class="line">┌──────────────────────────────────▼──────────────────────────────────────────┐</span><br><span class="line">│                       Store 持久化服务                                        │</span><br><span class="line">│              Kafka Consumer → 业务处理 → MySQL/MariaDB                       │</span><br><span class="line">│         (ShardingSphere 分库分表，HikariCP 连接池，只写不读)                    │</span><br><span class="line">└──────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E6%9E%B6%E6%9E%84/">架构</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                            <div class="prev-post">
+                                <a class="prev"
+                                   rel="prev"
+                                   href="/%E9%87%91%E8%9E%8D%E4%B8%9A%E5%8A%A1%E7%9F%A5%E8%AF%86/%E6%92%AE%E5%90%88%E4%BA%A4%E6%98%93/"
+                                   title="撮合交易"
+                                >
+                                    <span class="left arrow-icon flex-center">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </span>
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">撮合交易</span>
+                                        <span class="post-nav-item">上一篇</span>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/%E7%BB%84%E4%BB%B6%E5%8F%8A%E4%B8%AD%E9%97%B4%E4%BB%B6/Aeron/Aeron-%E6%A6%82%E8%BF%B0/"
+                                   title="Aeron 概述"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">Aeron 概述</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Reln Ding</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+
+        <!-- PC go comment -->
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="close-popup-btn">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+    <!-- tablet toc -->
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/toggle-theme.js"></script>
+
+<script src="/js/code-block.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+
+<!-- local search -->
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+<!-- lazyload -->
+
+
+<div class="pjax">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        
+<script src="/js/post/post-helper.js"></script>
+
+
+        <!-- toc -->
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+
+<!-- pjax -->
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        window.pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart()
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd()
+            window.pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'))
+            KEEP.initExecute()
+        });
+    });
+</script>
+
+
+
+
+    
+        
+    
+
+</body>
+</html>
