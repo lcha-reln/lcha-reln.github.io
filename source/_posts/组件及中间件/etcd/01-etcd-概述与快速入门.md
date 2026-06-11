@@ -1,6 +1,5 @@
 ---
 title: etcd - 概述与快速入门
-date: 2026-03-12 10:00:00
 tags:
   - etcd
   - 分布式
@@ -8,6 +7,8 @@ tags:
 categories:
   - 中间件
   - etcd
+abbrlink: 2d7c540
+date: 2026-03-12 10:00:00
 ---
 
 > 基于 etcd v3.5 官方文档整理。etcd 是 CoreOS 开发的高可用、强一致性的分布式键值存储系统，被 Kubernetes 用作集群状态存储的核心组件。

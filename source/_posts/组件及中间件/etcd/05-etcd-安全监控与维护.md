@@ -1,6 +1,5 @@
 ---
 title: etcd - 安全、监控与维护
-date: 2026-03-12 10:04:00
 tags:
   - etcd
   - 分布式
@@ -10,6 +9,8 @@ tags:
 categories:
   - 中间件
   - etcd
+abbrlink: 11ad5f70
+date: 2026-03-12 10:04:00
 ---
 
 > etcd 传输安全（TLS）、RBAC 权限控制、Prometheus 监控指标、集群维护（压缩、碎片整理、备份）和性能调优。

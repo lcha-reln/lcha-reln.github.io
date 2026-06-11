@@ -1,6 +1,5 @@
 ---
 title: Aeron 概述
-date: 2026-03-07 20:06:49
 tags:
   - 高性能
   - 高可用
@@ -8,6 +7,8 @@ tags:
 categories:
   - 高性能组件
   - Aeron
+abbrlink: fdcdfbb5
+date: 2026-03-07 20:06:49
 ---
 # 1. 性能特征
 - **超低延迟**：单机环境下可达微秒级延迟

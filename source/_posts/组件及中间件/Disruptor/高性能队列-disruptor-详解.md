@@ -1,12 +1,13 @@
 ---
 title: 高性能队列 Disruptor 详解
-date: 2026-03-07 10:43:08
 tags:
   - 高性能
   - 队列
 categories:
   - 高性能组件
   - Disruptor
+abbrlink: c4f433c1
+date: 2026-03-07 10:43:08
 ---
 **本文摘录自：https://tech.meituan.com/2016/11/18/disruptor.html**
 # 1.Java 内置队列

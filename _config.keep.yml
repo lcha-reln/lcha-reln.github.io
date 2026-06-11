@@ -4,9 +4,10 @@ base_info:
   primary_color: "#24c6dc"
   title: Reln 的小窝
   author: Reln Ding
-  avatar: /images/avatar.svg
-  logo: /images/logo.svg
-  favicon: /favicon.ico
+  # 注意：不要放在 /images/avatar.svg、/images/logo.svg —— Keep 主题自带同名文件会在构建时覆盖
+  avatar: /images/site/avatar.svg
+  logo: /images/site/logo.svg
+  favicon: /favicon.svg
 
 # 页面顶部菜单
 menu:
@@ -23,12 +24,11 @@ first_screen:
   background_img_dark: /images/hero-bg-dark.svg
   description: 记录技术与思考的点滴
 
-# E. 社交链接（email 不带 mailto: 前缀，模板会自动补全）
+# E. 社交链接
 social_contact:
   enable: true
   links:
     github: https://github.com/lcha-reln
-    email: reln@example.com
 
 # F. 滚动进度条
 scroll:
@@ -48,11 +48,11 @@ code_block:
     style: mac
   highlight_theme: obsidian
 
-# 首页
+# 首页（post_datetime 取值: created=发布时间 / updated=更新时间）
 home:
   category: true
   tag: true
-  post_datetime: updated
+  post_datetime: created
   post_datetime_format: YYYY-MM-DD
 
 # D. 文章阅读体验
@@ -62,13 +62,19 @@ post:
   word_count:
     wordcount: true
     min2read: true
-  toc:
-    enable: true
-    number: false
-    expand_all: false
-    init_open: true
-    layout: right
   copyright_info: false
+
+# 文章目录（Keep 4.x 中 toc 是顶层配置，不能嵌在 post 下）
+toc:
+  enable: true
+  number: false
+  expand_all: false
+  init_open: true
+  layout: right
+
+# 图片懒加载
+lazyload:
+  enable: true
 
 # G. RSS（依赖 hexo-generator-feed 插件）
 rss:

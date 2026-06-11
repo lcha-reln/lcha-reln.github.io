@@ -1,12 +1,13 @@
 ---
 title: Agrona 零基础入门
-date: 2026-03-10 11:15:21
 tags:
   - 高性能
   - Agrona
 categories:
   - 高性能组件
   - Agrona
+abbrlink: 2e6f521c
+date: 2026-03-10 11:15:21
 ---
 
 > 基于 Agrona 1.21.1 | 涵盖核心概念、组件详解与 Cookbook 实战

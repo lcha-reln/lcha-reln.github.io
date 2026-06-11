@@ -1,6 +1,5 @@
 ---
 title: Aeron 传输模式与 NAK 流控深度解析
-date: 2026-03-11 14:00:00
 tags:
   - 高性能
   - 分布式
@@ -8,6 +7,8 @@ tags:
 categories:
   - 高性能组件
   - Aeron
+abbrlink: fbf83150
+date: 2026-03-11 14:00:00
 ---
 
 Aeron 提供三种传输模式（UDP 单播、UDP 多播、IPC），并在 UDP 层之上实现了基于 NAK（Negative Acknowledgment）的可靠传输机制与精细化流控体系。本文系统梳理各传输模式的工作原理与适用边界，深入剖析 NAK 协议的设计动机与实现细节，并分析滑动窗口流控的位置追踪模型。

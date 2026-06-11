@@ -1,6 +1,5 @@
 ---
 title: ZooKeeper ACL 权限控制
-date: 2026-03-11 12:04:00
 tags:
   - ZooKeeper
   - 中间件
@@ -8,6 +7,8 @@ tags:
 categories:
   - 中间件
   - ZooKeeper
+abbrlink: ad70c6c2
+date: 2026-03-11 12:04:00
 ---
 
 > 为了避免存储在 ZooKeeper 上的数据被其他程序或人为误修改，ZooKeeper 提供了 ACL（Access Control Lists）进行权限控制。ACL 权限可以针对节点设置相关读写等权限，保障数据安全性。

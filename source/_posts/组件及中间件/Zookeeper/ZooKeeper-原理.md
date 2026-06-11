@@ -1,6 +1,5 @@
 ---
 title: ZooKeeper 原理
-date: 2026-03-11 12:00:00
 tags:
   - ZooKeeper
   - 分布式
@@ -8,6 +7,8 @@ tags:
 categories:
   - 中间件
   - ZooKeeper
+abbrlink: 62a67ace
+date: 2026-03-11 12:00:00
 ---
 
 > ZooKeeper 为分布式应用提供高效且可靠的协调服务，采用 ZAB 协议保证数据一致性，广泛应用于 Dubbo、Kafka 等框架。

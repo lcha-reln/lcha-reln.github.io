@@ -1,6 +1,5 @@
 ---
 title: Aeron Archive 技术文档
-date: 2026-03-11 16:31:24
 tags:
   - 高性能
   - 分布式
@@ -8,6 +7,8 @@ tags:
 categories:
   - 高性能组件
   - Aeron
+abbrlink: 987bb85b
+date: 2026-03-11 16:31:24
 ---
 ## 1. 简介
 

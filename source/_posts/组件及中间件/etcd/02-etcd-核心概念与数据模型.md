@@ -1,6 +1,5 @@
 ---
 title: etcd - 核心概念与数据模型
-date: 2026-03-12 10:01:00
 tags:
   - etcd
   - 分布式
@@ -8,6 +7,8 @@ tags:
 categories:
   - 中间件
   - etcd
+abbrlink: 5ebb723b
+date: 2026-03-12 10:01:00
 ---
 
 > etcd 的数据模型、一致性保证、API 语义和 Raft 一致性协议详解。

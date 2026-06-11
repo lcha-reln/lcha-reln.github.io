@@ -1,6 +1,5 @@
 ---
 title: ZooKeeper Java API
-date: 2026-03-11 12:01:00
 tags:
   - ZooKeeper
   - Java
@@ -8,6 +7,8 @@ tags:
 categories:
   - 中间件
   - ZooKeeper
+abbrlink: '11315422'
+date: 2026-03-11 12:01:00
 ---
 
 > 介绍 ZooKeeper 官方客户端和 Curator 客户端的使用，涵盖连接、节点增删改查、监听事件和 ACL 权限管理。

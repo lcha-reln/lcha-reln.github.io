@@ -1,6 +1,5 @@
 ---
 title: Aeron 硬核技术深度解析
-date: 2026-03-10 20:27:25
 tags:
   - 高性能
   - 高可用
@@ -8,6 +7,8 @@ tags:
 categories:
   - 高性能组件
   - Aeron
+abbrlink: 3879a72a
+date: 2026-03-10 20:27:25
 ---
 
 > **Aeron** 是由 Real Logic 开发、Adaptive Financial Consulting 维护的高性能消息传输框架，专为金融交易、游戏服务器、低延迟分布式系统等对延迟极度敏感的场景设计。其核心目标：**可预测的超低延迟 + 极高吞吐**。

@@ -1,6 +1,5 @@
 ---
 title: ZooKeeper 运维指南
-date: 2026-03-11 12:03:00
 tags:
   - ZooKeeper
   - 中间件
@@ -8,6 +7,8 @@ tags:
 categories:
   - 中间件
   - ZooKeeper
+abbrlink: 9c5ba27e
+date: 2026-03-11 12:03:00
 ---
 
 > ZooKeeper 单机与集群的部署、配置和验证指南。

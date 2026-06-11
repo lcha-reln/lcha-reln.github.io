@@ -1,6 +1,5 @@
 ---
 title: ZooKeeper 命令
-date: 2026-03-11 12:02:00
 tags:
   - ZooKeeper
   - 中间件
@@ -8,6 +7,8 @@ tags:
 categories:
   - 中间件
   - ZooKeeper
+abbrlink: 2b7b1ffc
+date: 2026-03-11 12:02:00
 ---
 
 > ZooKeeper 命令行客户端（zkCli）操作手册，涵盖节点增删改查、监听器及四字命令。

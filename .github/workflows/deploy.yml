@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# 防止并发部署互相覆盖
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -17,19 +22,28 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: false
+          # git-restore-mtime 需要完整提交历史
+          fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      # CI 全新 checkout 会让所有文件 mtime = 当前时间，
+      # 配合 Hexo updated_option: mtime 会导致全部文章"更新时间"=部署时间。
+      # 这里把 mtime 恢复为各文件最后一次 commit 的时间。
+      - name: Restore file modification times
+        uses: chetan/git-restore-mtime-action@v2
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
           version: latest
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Generate static files
         run: pnpm run build

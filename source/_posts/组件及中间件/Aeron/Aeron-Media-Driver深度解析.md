@@ -1,6 +1,5 @@
 ---
 title: Aeron Media Driver 深度解析
-date: 2026-03-11 10:00:00
 tags:
   - 高性能
   - 分布式
@@ -8,6 +7,8 @@ tags:
 categories:
   - 高性能组件
   - Aeron
+abbrlink: bc5589ca
+date: 2026-03-11 10:00:00
 ---
 
 Media Driver 是 Aeron 架构的核心运行时组件，负责所有传输层的数据收发、协议处理与资源管理。理解 Media Driver 的内部机制，是深入掌握 Aeron 性能模型和部署策略的基础。

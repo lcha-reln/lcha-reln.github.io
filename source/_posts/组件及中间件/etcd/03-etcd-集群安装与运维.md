@@ -1,6 +1,5 @@
 ---
 title: etcd - 集群安装与运维
-date: 2026-03-12 10:02:00
 tags:
   - etcd
   - 分布式
@@ -9,6 +8,8 @@ tags:
 categories:
   - 中间件
   - etcd
+abbrlink: 48bbf0b2
+date: 2026-03-12 10:02:00
 ---
 
 > etcd 集群的三种引导方式（静态、etcd 服务发现、DNS 发现）、硬件建议和运行时动态配置。

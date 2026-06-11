@@ -1,6 +1,5 @@
 ---
 title: etcd - 开发指南（API 与交互）
-date: 2026-03-12 10:03:00
 tags:
   - etcd
   - 分布式
@@ -9,6 +8,8 @@ tags:
 categories:
   - 中间件
   - etcd
+abbrlink: bdd76024
+date: 2026-03-12 10:03:00
 ---
 
 > etcd v3 API 全面指南：键值操作、Watch、Lease、事务、分布式锁，以及 etcdctl 命令行工具使用。

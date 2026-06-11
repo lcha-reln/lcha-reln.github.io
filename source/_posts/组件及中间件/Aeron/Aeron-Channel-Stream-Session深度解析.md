@@ -1,6 +1,5 @@
 ---
 title: Aeron Channel、Stream 和 Session 深度解析
-date: 2026-03-10 20:00:00
 tags:
   - 高性能
   - 分布式
@@ -8,6 +7,8 @@ tags:
 categories:
   - 高性能组件
   - Aeron
+abbrlink: 43d5f152
+date: 2026-03-10 20:00:00
 ---
 
 在 Aeron 中，**Channel、Stream 和 Session** 是三个核心概念，共同构成消息路由和身份识别的完整体系。正确理解这三个概念，是构建高性能 Aeron 应用的前提。
