@@ -31,15 +31,16 @@ jobs:
       - name: Restore file modification times
         uses: chetan/git-restore-mtime-action@v2
 
+      # pnpm 钉主版本 10：latest(11+) 要求 Node>=22.13 且换了 lockfile 格式
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: latest
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Install dependencies
