@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="blog,技术,生活">
+    <meta name="description" content="Reln 的个人博客，记录学习与生活">
+    <meta name="author" content="Reln Ding">
+    
+    <title>
+        
+            Aeron 概述 |
+        
+        Reln 的小窝
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/favicon.svg">
+    
+    
+<link rel="stylesheet" href="/font/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/brands.min.css">
+
+    
+        
+            
+        
+            
+                
+<link rel="stylesheet" href="/css/custom.css">
+
+            
+        
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"lcha-reln.github.io","root":"/","language":"zh-CN","path":"content.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#24c6dc","title":"Reln 的小窝","author":"Reln Ding","avatar":"/images/site/avatar.svg","logo":"/images/site/logo.svg","favicon":"/favicon.svg"},"menu":{"home":"/ || fas fa-home","archives":"/archives || fas fa-archive","tags":"/tags || fas fa-tags","categories":"/categories || fas fa-th","about":"/about || fas fa-user"},"first_screen":{"enable":true,"background_img":"/images/hero-bg.svg","background_img_dark":"/images/hero-bg-dark.svg","description":"记录技术与思考的点滴","hitokoto":false},"social_contact":{"enable":true,"links":{"github":"https://github.com/lcha-reln","weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":null}},"scroll":{"progress_bar":true,"percent":false,"hide_header":true},"home":{"announcement":null,"category":true,"tag":true,"post_datetime":"created","post_datetime_format":"YYYY-MM-DD"},"post":{"author_badge":{"enable":false,"level_badge":true,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":true,"min2read":true},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null}},"code_block":{"tools":{"enable":true,"style":"mac"},"highlight_theme":"obsidian"},"toc":{"enable":true,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":true,"preload":false},"comment":{"enable":false,"use":"valine","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":null,"repo_id":null,"category":"Announcements","category_id":null,"reactions_enabled":false},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":true},"lazyload":{"enable":true},"cdn":{"enable":false,"provider":"cdnjs"},"pjax":{"enable":true},"footer":{"since":2026,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]}},"inject":{"enable":true,"css":[null,"/css/custom.css"],"js":[null]},"version":"4.2.5","root":"","source_data":{}}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.1"><link rel="alternate" href="/atom.xml" title="Reln 的小窝" type="application/atom+xml">
+</head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+        <span class="scroll-progress-bar"></span>
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <i class="pjax-progress-icon fas fa-circle-notch fa-spin"></i>
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/site/logo.svg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Reln 的小窝
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-home"></i>
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-archive"></i>
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/tags">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-tags"></i>
+                                
+                                标签
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/categories">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-th"></i>
+                                
+                                分类
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/about">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-user"></i>
+                                
+                                关于
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="menu-text-color fas search fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-home"></i>
+                                </span>
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-archive"></i>
+                                </span>
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/tags">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-tags"></i>
+                                </span>
+                            
+                            标签
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/categories">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-th"></i>
+                                </span>
+                            
+                            分类
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/about">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-user"></i>
+                                </span>
+                            
+                            关于
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        Aeron 概述
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/site/avatar.svg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Reln Ding</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-03-07 20:06:49</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                </span>
+            
+        
+
+        
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BB%84%E4%BB%B6/">高性能组件</a></li>
+                        
+                    
+                            <li class="category-item">&nbsp;<i class="icon fas fa-angle-right"></i>&nbsp;<a href="/categories/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BB%84%E4%BB%B6/Aeron/">Aeron</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/Aeron/">Aeron</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+            <span class="meta-info-item post-wordcount">
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>860 字</span>
+            </span>
+        
+        
+            <span class="meta-info-item post-min2read">
+                <i class="icon fas fa-clock"></i>&nbsp;<span>3 分钟</span>
+            </span>
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <h1 id="1-性能特征"><a href="#1-性能特征" class="headerlink" title="1. 性能特征"></a>1. 性能特征</h1><ul>
+<li><strong>超低延迟</strong>：单机环境下可达微秒级延迟</li>
+<li><strong>高吞吐量</strong>：在微秒级延迟下依然能处理 100W+&#x2F;秒的消息</li>
+<li><strong>延迟可预测</strong>：提供个位数微秒的可预测延迟，确保系统行为稳定</li>
+</ul>
+<h1 id="2-核心能力"><a href="#2-核心能力" class="headerlink" title="2. 核心能力"></a>2. 核心能力</h1><ul>
+<li><strong>高可用性</strong>：为关键任务提供高可用和容错架构，减少服务中断风险</li>
+<li><strong>可扩展性</strong>：支持水平扩展，满足现代分布式系统的增长需求</li>
+<li><strong>多语言支持</strong>：原生支持 Java 和 C++，并提供对应的客户端库</li>
+</ul>
+<h1 id="3-架构设计"><a href="#3-架构设计" class="headerlink" title="3. 架构设计"></a>3. 架构设计</h1><h2 id="3-1-三层架构概述"><a href="#3-1-三层架构概述" class="headerlink" title="3.1 三层架构概述"></a>3.1 三层架构概述</h2><p>Aeron 采用三层架构设计，各层职责清晰：</p>
+<ul>
+<li><strong>Client API</strong>：应用程序与 Aeron 交互的入口，提供统一的编程接口，屏蔽底层传输细节</li>
+<li><strong>Media Driver</strong>：核心引擎，负责管理所有网络和 IPC 通信，处理消息的发送、接收、路由与缓冲；支持嵌入式（与应用同进程）和独立进程两种部署模式</li>
+<li><strong>Transport Layer</strong>：底层传输层，支持 UDP 单播、UDP 组播、IPC 等多种传输方式</li>
+</ul>
+<p><img  
+                       lazyload
+                       alt="image"
+                       data-src="/images/Aeron/Aeron%E6%9E%B6%E6%9E%84.png"
+                        alt="[Aeron架构.png]"
+                 ></p>
+<h2 id="3-2-Channel、Stream、Session"><a href="#3-2-Channel、Stream、Session" class="headerlink" title="3.2 Channel、Stream、Session"></a>3.2 Channel、Stream、Session</h2><p>这三个概念构成了 Aeron 消息寻址的层次体系：</p>
+<table>
+<thead>
+<tr>
+<th>概念</th>
+<th>标识方式</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Channel</td>
+<td>URI（如 <code>aeron:udp?endpoint=localhost:20121</code>）</td>
+<td>物理传输通道，对应一个 UDP 端口或 IPC 连接，一个 Channel 可承载多个 Stream</td>
+</tr>
+<tr>
+<td>Stream</td>
+<td>streamId（整数）</td>
+<td>Channel 内部的有序逻辑消息流，同一 Stream 内的消息保证有序传递</td>
+</tr>
+<tr>
+<td>Session</td>
+<td>sessionId（整数）</td>
+<td>区分同一 Stream 上的不同 Publisher，每个 Publisher 拥有唯一的 sessionId</td>
+</tr>
+</tbody></table>
+<p><strong>如何理解 Session：</strong></p>
+<ul>
+<li>每个 sessionId 唯一对应一个 Publisher 实例</li>
+<li>多个 Publisher 可以向同一个 Stream 发布消息，通过 sessionId 加以区分</li>
+<li>因此 <code>Channel + StreamId + SessionId</code> 是标识一条消息流的最小粒度</li>
+</ul>
+<h2 id="3-3-Publisher、Media-Driver、Subscriber"><a href="#3-3-Publisher、Media-Driver、Subscriber" class="headerlink" title="3.3 Publisher、Media Driver、Subscriber"></a>3.3 Publisher、Media Driver、Subscriber</h2><p><img  
+                       lazyload
+                       alt="image"
+                       data-src="/images/Aeron/%E4%B8%89%E5%A4%A7%E5%B0%86.png"
+                        alt="三大将"
+                 ></p>
+<h3 id="Publication"><a href="#Publication" class="headerlink" title="Publication"></a>Publication</h3><p>应用通过 <code>publication.offer(buffer, offset, length)</code> 发送消息。数据写入 <strong>Term Buffer</strong>（环形缓冲区），整个过程非阻塞。<br><code>offer()</code> 的返回值含义如下：</p>
+<table>
+<thead>
+<tr>
+<th>返回值</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>&gt; 0</code></td>
+<td>发送成功，返回新的流位置值</td>
+</tr>
+<tr>
+<td><code>BACK_PRESSURED</code></td>
+<td>背压状态，下游处理不过来，需稍后重试</td>
+</tr>
+<tr>
+<td><code>NOT_CONNECTED</code></td>
+<td>当前没有任何 Subscriber 连接</td>
+</tr>
+<tr>
+<td><code>ADMIN_ACTION</code></td>
+<td>正在执行管理操作（如日志轮转），需稍后重试</td>
+</tr>
+<tr>
+<td><code>CLOSED</code></td>
+<td>Publication 已关闭</td>
+</tr>
+</tbody></table>
+<h3 id="Media-Driver"><a href="#Media-Driver" class="headerlink" title="Media Driver"></a>Media Driver</h3><p>Media Driver 在后台运行多个职责线程：</p>
+<ul>
+<li><strong>Sender 线程</strong>：从 Term Buffer 读取数据，封装 Aeron 协议头，发往网络或 IPC</li>
+<li><strong>消息路由</strong>：根据 <code>Channel + StreamId</code> 确定目标地址</li>
+<li><strong>流量控制</strong>：持续监控网络状态，在检测到拥塞时向 Publisher 施加背压</li>
+<li><strong>消息重传</strong>：基于 NAK（否定确认）机制，对 Subscriber 报告丢失的消息进行选择性重传（详见：Aeron 通信模式及 NAK 机制与流控）</li>
+</ul>
+<h3 id="Subscription"><a href="#Subscription" class="headerlink" title="Subscription"></a>Subscription</h3><p>应用通过 <code>subscription.poll(fragmentHandler, fragmentLimit)</code> 接收消息，返回值为本次轮询处理的消息片段数量。<br>核心处理过程：</p>
+<ul>
+<li><strong>重组</strong>：将网络层分片的数据包重新拼装为完整消息</li>
+<li><strong>保序</strong>：确保消息按发布顺序交付给应用</li>
+<li><strong>回调</strong>：通过 <code>FragmentHandler</code> 回调将消息传递给业务层</li>
+</ul>
+<p><strong>状态反馈机制：</strong></p>
+<ul>
+<li><strong>Position 更新</strong>：Subscriber 持续向 Media Driver 上报消费位置，Driver 再转发给 Publisher，用于流量控制</li>
+<li><strong>背压信号</strong>：当 Subscriber 消费速度跟不上发布速度时，背压信号沿链路反向传播，Publisher 的 <code>offer()</code> 将返回 <code>BACK_PRESSURED</code>，以此实现端到端的流量自适应</li>
+</ul>
+
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/Aeron/">Aeron</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                            <div class="prev-post">
+                                <a class="prev"
+                                   rel="prev"
+                                   href="/posts/bc6db31/"
+                                   title="高可用系统架构解决方案"
+                                >
+                                    <span class="left arrow-icon flex-center">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </span>
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">高可用系统架构解决方案</span>
+                                        <span class="post-nav-item">上一篇</span>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/posts/c4f433c1/"
+                                   title="高性能队列 Disruptor 详解"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">高性能队列 Disruptor 详解</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+            <div class="pc-post-toc right-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-%E6%80%A7%E8%83%BD%E7%89%B9%E5%BE%81"><span class="nav-text">1. 性能特征</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-%E6%A0%B8%E5%BF%83%E8%83%BD%E5%8A%9B"><span class="nav-text">2. 核心能力</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="nav-text">3. 架构设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1-%E4%B8%89%E5%B1%82%E6%9E%B6%E6%9E%84%E6%A6%82%E8%BF%B0"><span class="nav-text">3.1 三层架构概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-Channel%E3%80%81Stream%E3%80%81Session"><span class="nav-text">3.2 Channel、Stream、Session</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-3-Publisher%E3%80%81Media-Driver%E3%80%81Subscriber"><span class="nav-text">3.3 Publisher、Media Driver、Subscriber</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Publication"><span class="nav-text">Publication</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Media-Driver"><span class="nav-text">Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Subscription"><span class="nav-text">Subscription</span></a></li></ol></li></ol></li></ol>
+    </div>
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Reln Ding</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+            <li class="tools-item flex-center toggle-show-toc">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        <!-- PC go comment -->
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+            <li class="tools-item toggle-show-toc-tablet flex-center">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="close-popup-btn">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+    <!-- tablet toc -->
+    
+        <div class="tablet-post-toc-mask">
+            <div class="tablet-post-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-%E6%80%A7%E8%83%BD%E7%89%B9%E5%BE%81"><span class="nav-text">1. 性能特征</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-%E6%A0%B8%E5%BF%83%E8%83%BD%E5%8A%9B"><span class="nav-text">2. 核心能力</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="nav-text">3. 架构设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1-%E4%B8%89%E5%B1%82%E6%9E%B6%E6%9E%84%E6%A6%82%E8%BF%B0"><span class="nav-text">3.1 三层架构概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-Channel%E3%80%81Stream%E3%80%81Session"><span class="nav-text">3.2 Channel、Stream、Session</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-3-Publisher%E3%80%81Media-Driver%E3%80%81Subscriber"><span class="nav-text">3.3 Publisher、Media Driver、Subscriber</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Publication"><span class="nav-text">Publication</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Media-Driver"><span class="nav-text">Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Subscription"><span class="nav-text">Subscription</span></a></li></ol></li></ol></li></ol>
+    </div>
+</div>
+
+            </div>
+        </div>
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/toggle-theme.js"></script>
+
+<script src="/js/code-block.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+
+<!-- local search -->
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+<!-- lazyload -->
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="pjax">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        
+<script src="/js/post/post-helper.js"></script>
+
+
+        <!-- toc -->
+        
+            
+<script src="/js/post/toc.js"></script>
+
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+
+<!-- pjax -->
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        window.pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart()
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd()
+            window.pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'))
+            KEEP.initExecute()
+        });
+    });
+</script>
+
+
+
+
+    
+        
+    
+
+</body>
+</html>

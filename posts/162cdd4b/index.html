@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="blog,技术,生活">
+    <meta name="description" content="Reln 的个人博客，记录学习与生活">
+    <meta name="author" content="Reln Ding">
+    
+    <title>
+        
+            分布式序列号机制深度解析 |
+        
+        Reln 的小窝
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/favicon.svg">
+    
+    
+<link rel="stylesheet" href="/font/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/brands.min.css">
+
+    
+        
+            
+        
+            
+                
+<link rel="stylesheet" href="/css/custom.css">
+
+            
+        
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"lcha-reln.github.io","root":"/","language":"zh-CN","path":"content.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#24c6dc","title":"Reln 的小窝","author":"Reln Ding","avatar":"/images/site/avatar.svg","logo":"/images/site/logo.svg","favicon":"/favicon.svg"},"menu":{"home":"/ || fas fa-home","archives":"/archives || fas fa-archive","tags":"/tags || fas fa-tags","categories":"/categories || fas fa-th","about":"/about || fas fa-user"},"first_screen":{"enable":true,"background_img":"/images/hero-bg.svg","background_img_dark":"/images/hero-bg-dark.svg","description":"记录技术与思考的点滴","hitokoto":false},"social_contact":{"enable":true,"links":{"github":"https://github.com/lcha-reln","weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":null}},"scroll":{"progress_bar":true,"percent":false,"hide_header":true},"home":{"announcement":null,"category":true,"tag":true,"post_datetime":"created","post_datetime_format":"YYYY-MM-DD"},"post":{"author_badge":{"enable":false,"level_badge":true,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":true,"min2read":true},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null}},"code_block":{"tools":{"enable":true,"style":"mac"},"highlight_theme":"obsidian"},"toc":{"enable":true,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":true,"preload":false},"comment":{"enable":false,"use":"valine","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":null,"repo_id":null,"category":"Announcements","category_id":null,"reactions_enabled":false},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":true},"lazyload":{"enable":true},"cdn":{"enable":false,"provider":"cdnjs"},"pjax":{"enable":true},"footer":{"since":2026,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]}},"inject":{"enable":true,"css":[null,"/css/custom.css"],"js":[null]},"version":"4.2.5","root":"","source_data":{}}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.1"><link rel="alternate" href="/atom.xml" title="Reln 的小窝" type="application/atom+xml">
+</head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+        <span class="scroll-progress-bar"></span>
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <i class="pjax-progress-icon fas fa-circle-notch fa-spin"></i>
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/site/logo.svg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Reln 的小窝
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-home"></i>
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-archive"></i>
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/tags">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-tags"></i>
+                                
+                                标签
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/categories">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-th"></i>
+                                
+                                分类
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/about">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-user"></i>
+                                
+                                关于
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="menu-text-color fas search fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-home"></i>
+                                </span>
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-archive"></i>
+                                </span>
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/tags">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-tags"></i>
+                                </span>
+                            
+                            标签
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/categories">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-th"></i>
+                                </span>
+                            
+                            分类
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/about">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-user"></i>
+                                </span>
+                            
+                            关于
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        分布式序列号机制深度解析
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/site/avatar.svg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Reln Ding</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-03-11 12:00:00</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                </span>
+            
+        
+
+        
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/%E9%AB%98%E5%8F%AF%E7%94%A8%E7%B3%BB%E7%BB%9F/">高可用系统</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E5%BA%8F%E5%88%97%E5%8F%B7/">序列号</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+            <span class="meta-info-item post-wordcount">
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>3.3k 字</span>
+            </span>
+        
+        
+            <span class="meta-info-item post-min2read">
+                <i class="icon fas fa-clock"></i>&nbsp;<span>13 分钟</span>
+            </span>
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <p>在高性能分布式系统中，消息的可靠有序传输是系统正确性的基础保障。序列号机制（Sequence Mechanism）是检测消息重复、缺失与乱序的核心技术手段，广泛应用于 HFT（高频交易）、高性能消息中间件、金融行情分发、可靠文件传输等领域。即便底层传输层（如 Aeron）本身具备一定的可靠性保障，应用层序列号仍是不可省略的防御层。</p>
+<span id="more"></span>
+
+<h2 id="一、问题背景"><a href="#一、问题背景" class="headerlink" title="一、问题背景"></a>一、问题背景</h2><p>分布式通信系统在运行过程中，消息传递可能发生以下三类异常：</p>
+<ul>
+<li><strong>重复消息（Duplicate）</strong>：同一条消息被发送或投递多次，通常由重传机制、网络分区恢复或发送端故障重启引发</li>
+<li><strong>消息缺失（Gap）</strong>：部分消息在传输过程中丢失，接收端未能收到连续的消息序列</li>
+<li><strong>乱序消息（Out-of-Order）</strong>：消息到达顺序与发送顺序不一致，多路复用、网络多路径路由、重传机制均可导致乱序</li>
+</ul>
+<p>上述三类异常若不加处理，将直接影响业务数据的完整性和一致性。序列号机制以极低的实现代价，提供了对三类异常的统一检测能力。</p>
+<p>在实践中，序列号机制通常与<strong>单线程 + 分片（Shard）模型</strong>配合使用：每个 Shard 维护独立的序列号空间，单线程处理该 Shard 的消息流，消除序列号检查的并发竞争问题。</p>
+<h2 id="二、核心原理"><a href="#二、核心原理" class="headerlink" title="二、核心原理"></a>二、核心原理</h2><h3 id="2-1-发送端"><a href="#2-1-发送端" class="headerlink" title="2.1 发送端"></a>2.1 发送端</h3><p>发送端维护一个单调递增的序列号计数器，每发送一条消息将计数器加一，并将序列号作为消息元数据嵌入帧头：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="variable">sequence</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">void</span> <span class="title function_">send</span><span class="params">(<span class="type">byte</span>[] payload)</span> &#123;</span><br><span class="line">    sequence = sequence + <span class="number">1</span>;</span><br><span class="line">    send(payload, sequence);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>序列号从 1 开始（或从持久化恢复的值开始），严格单调递增，不允许跳跃或回退。发送端的实现复杂度极低，关键约束在于：<strong>序列号必须在消息发出之前确定性地递增</strong>，不得在重试路径上重新生成序列号（重传使用原序列号）。</p>
+<h3 id="2-2-接收端"><a href="#2-2-接收端" class="headerlink" title="2.2 接收端"></a>2.2 接收端</h3><p>接收端维护 <code>lastSequence</code>，记录已成功处理的最新序列号，对每条到达的消息执行三路判断：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────┐</span><br><span class="line">│                receive(message, sequence)                │</span><br><span class="line">└─────────────────────────┬────────────────────────────────┘</span><br><span class="line">                          │</span><br><span class="line">                          ▼</span><br><span class="line">             ┌────────────────────────┐</span><br><span class="line">             │  sequence &lt;= lastSeq?  │</span><br><span class="line">             └───────┬────────────────┘</span><br><span class="line">                     │</span><br><span class="line">          ┌──────────┴──────────┐</span><br><span class="line">         Yes                    No</span><br><span class="line">          │                     │</span><br><span class="line">          ▼                     ▼</span><br><span class="line">  ┌───────────────┐   ┌─────────────────────────┐</span><br><span class="line">  │ 重复 / 乱序   │   │ sequence == lastSeq + 1? │</span><br><span class="line">  │ handleUnexpected│  └────────┬────────────────┘</span><br><span class="line">  └───────────────┘            │</span><br><span class="line">                      ┌────────┴─────────┐</span><br><span class="line">                     Yes                 No</span><br><span class="line">                      │                  │</span><br><span class="line">                      ▼                  ▼</span><br><span class="line">             ┌─────────────┐    ┌──────────────────┐</span><br><span class="line">             │  正常处理    │    │  消息缺失检测     │</span><br><span class="line">             │ process(msg) │    │ handleMissing    │</span><br><span class="line">             │ lastSeq = seq│    │ (lastSeq, seq)   │</span><br><span class="line">             └─────────────┘    └──────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>对应的 Java 实现骨架：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> <span class="title function_">receive</span><span class="params">(<span class="type">byte</span>[] message, <span class="type">long</span> sequence)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (sequence &lt;= lastSequence) &#123;</span><br><span class="line">        <span class="comment">// Case 1: 重复消息或乱序消息</span></span><br><span class="line">        handleUnexpectedMessageAt(sequence);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (lastSequence + <span class="number">1</span> == sequence) &#123;</span><br><span class="line">        <span class="comment">// Case 2: 序列连续，正常处理</span></span><br><span class="line">        process(message);</span><br><span class="line">        lastSequence = sequence;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// Case 3: 存在消息缺失 (Gap)</span></span><br><span class="line">        handleMissingMessagesSince(lastSequence);</span><br><span class="line">        <span class="comment">// 取决于策略：可选择直接处理当前消息并跳过缺口</span></span><br><span class="line">        process(message);</span><br><span class="line">        lastSequence = sequence;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意</strong>：Case 3 中是否直接推进 <code>lastSequence</code> 并处理当前消息，取决于业务语义。对于不可跳过缺口的场景（如需要幂等重放的金融交易），应暂停处理并触发缺失消息的恢复流程；对于允许跳过的场景（如行情快照），可直接推进并记录缺口。</p>
+<h2 id="三、三类异常的完整场景分析"><a href="#三、三类异常的完整场景分析" class="headerlink" title="三、三类异常的完整场景分析"></a>三、三类异常的完整场景分析</h2><h3 id="3-1-正常消息流"><a href="#3-1-正常消息流" class="headerlink" title="3.1 正常消息流"></a>3.1 正常消息流</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">发送端：  seq=1 → seq=2 → seq=3 → seq=4 → seq=5</span><br><span class="line">接收端：  seq=1 → seq=2 → seq=3 → seq=4 → seq=5</span><br><span class="line"></span><br><span class="line">逐步状态：</span><br><span class="line">  收到 seq=1, lastSeq=0 → 1 == 0+1  ✓ 正常，lastSeq=1</span><br><span class="line">  收到 seq=2, lastSeq=1 → 2 == 1+1  ✓ 正常，lastSeq=2</span><br><span class="line">  收到 seq=3, lastSeq=2 → 3 == 2+1  ✓ 正常，lastSeq=3</span><br><span class="line">  收到 seq=4, lastSeq=3 → 4 == 3+1  ✓ 正常，lastSeq=4</span><br><span class="line">  收到 seq=5, lastSeq=4 → 5 == 4+1  ✓ 正常，lastSeq=5</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-消息缺失检测（Gap-Detection）"><a href="#3-2-消息缺失检测（Gap-Detection）" class="headerlink" title="3.2 消息缺失检测（Gap Detection）"></a>3.2 消息缺失检测（Gap Detection）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">发送端：  seq=1 → seq=2 → seq=3 → seq=4 → seq=5</span><br><span class="line">网络层：  seq=1 → seq=2     [丢失]  → seq=4 → seq=5</span><br><span class="line">接收端：  seq=1 → seq=2             → seq=4 → seq=5</span><br><span class="line"></span><br><span class="line">逐步状态：</span><br><span class="line">  收到 seq=1, lastSeq=0 → 1 == 0+1  ✓ 正常，lastSeq=1</span><br><span class="line">  收到 seq=2, lastSeq=1 → 2 == 1+1  ✓ 正常，lastSeq=2</span><br><span class="line">  收到 seq=4, lastSeq=2 → 4 &gt; 2+1   ✗ Gap！handleMissingMessagesSince(2)</span><br><span class="line">                                       → 检测到 seq=3 缺失</span><br><span class="line">  （恢复 seq=3 后）lastSeq=4</span><br><span class="line">  收到 seq=5, lastSeq=4 → 5 == 4+1  ✓ 正常，lastSeq=5</span><br></pre></td></tr></table></figure>
+
+<p>Gap 的大小为 <code>sequence - lastSequence - 1</code>，可精确计算缺失的消息数量及其序列号范围 <code>[lastSequence+1, sequence-1]</code>。</p>
+<h3 id="3-3-乱序消息检测（Out-of-Order-Detection）"><a href="#3-3-乱序消息检测（Out-of-Order-Detection）" class="headerlink" title="3.3 乱序消息检测（Out-of-Order Detection）"></a>3.3 乱序消息检测（Out-of-Order Detection）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">发送顺序：seq=1 → seq=2 → seq=3 → seq=4</span><br><span class="line">网络路径：seq=3 因多路径延迟，晚于 seq=4 到达</span><br><span class="line"></span><br><span class="line">接收顺序：seq=1 → seq=2 → seq=4 → seq=3</span><br><span class="line"></span><br><span class="line">逐步状态：</span><br><span class="line">  收到 seq=1, lastSeq=0 → ✓ 正常，lastSeq=1</span><br><span class="line">  收到 seq=2, lastSeq=1 → ✓ 正常，lastSeq=2</span><br><span class="line">  收到 seq=4, lastSeq=2 → 4 &gt; 2+1  ✗ 先触发 Gap 检测（期望 seq=3）</span><br><span class="line">  收到 seq=3, lastSeq=4 → 3 &lt;= 4   ✗ 乱序，handleUnexpectedMessageAt(3)</span><br></pre></td></tr></table></figure>
+
+<p><strong>重要</strong>：Gap 检测与乱序检测在单纯比较 <code>sequence</code> 与 <code>lastSequence</code> 的实现中是同一个代码路径（<code>sequence &lt;= lastSequence</code> 分支），接收端无法在收到乱序帧的瞬间区分”真正的乱序”与”Gap 后的补包”，需要结合上层恢复状态机判断。</p>
+<h3 id="3-4-重复消息检测（Duplicate-Detection）"><a href="#3-4-重复消息检测（Duplicate-Detection）" class="headerlink" title="3.4 重复消息检测（Duplicate Detection）"></a>3.4 重复消息检测（Duplicate Detection）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">发送端：  seq=1 → seq=2 → seq=3 → seq=3(重传) → seq=4</span><br><span class="line">接收端：  seq=1 → seq=2 → seq=3 → seq=3        → seq=4</span><br><span class="line"></span><br><span class="line">逐步状态：</span><br><span class="line">  收到 seq=3, lastSeq=2 → 3 == 2+1  ✓ 正常，lastSeq=3</span><br><span class="line">  收到 seq=3, lastSeq=3 → 3 &lt;= 3    ✗ 重复，handleUnexpectedMessageAt(3)</span><br><span class="line">  收到 seq=4, lastSeq=3 → 4 == 3+1  ✓ 正常，lastSeq=4</span><br></pre></td></tr></table></figure>
+
+<p>重复消息的检测代价极低——仅一次整数比较。对于幂等性要求严格的场景，需在 <code>handleUnexpectedMessageAt</code> 中进一步区分”已处理的重复帧”与”来自历史重传的旧帧”，可通过维护一个有界的已处理序列号窗口（sliding window）实现精确去重。</p>
+<h2 id="四、在-Aeron-中的应用"><a href="#四、在-Aeron-中的应用" class="headerlink" title="四、在 Aeron 中的应用"></a>四、在 Aeron 中的应用</h2><h3 id="4-1-Aeron-流位置（Position）与应用层序列号的关系"><a href="#4-1-Aeron-流位置（Position）与应用层序列号的关系" class="headerlink" title="4.1 Aeron 流位置（Position）与应用层序列号的关系"></a>4.1 Aeron 流位置（Position）与应用层序列号的关系</h3><p>Aeron 内部通过 <strong>流位置（Stream Position）</strong> 标识每个字节在 Log Buffer 中的绝对偏移量，Subscriber 可通过 <code>Image.position()</code> 读取当前消费位置。在同一 channel 和 stream 内，流位置单调递增，可在无故障的正常运行场景下替代应用层序列号进行连续性检测。</p>
+<p>然而，流位置在以下场景中失效：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>流位置的限制</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>发布端进程重启</td>
+<td>新 Publication 的 session ID 变化，流位置从 0 重新开始</td>
+</tr>
+<tr>
+<td>Media Driver 重启</td>
+<td>所有 Publication 的 Log Buffer 重置</td>
+</tr>
+<tr>
+<td>接收端重连</td>
+<td>Image 销毁重建，历史位置信息丢失</td>
+</tr>
+<tr>
+<td>跨 channel&#x2F;stream 关联</td>
+<td>流位置仅在单一 stream 内有意义，无法跨流比较</td>
+</tr>
+</tbody></table>
+<p><strong>Aeron 团队的明确建议</strong>：在 Aeron channel 和 stream 内使用<strong>应用层自定义的序列号和 Gap 检测机制</strong>，而非仅依赖流位置。原因是应用层序列号可跨进程重启持久化，提供更完整的故障恢复语义。</p>
+<h3 id="4-2-Aeron-中的序列号分层架构"><a href="#4-2-Aeron-中的序列号分层架构" class="headerlink" title="4.2 Aeron 中的序列号分层架构"></a>4.2 Aeron 中的序列号分层架构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    Aeron Transport Layer                    │</span><br><span class="line">│                                                             │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │              Aeron Stream (Channel + StreamID)      │   │</span><br><span class="line">│  │                                                     │   │</span><br><span class="line">│  │  Stream Position:  100    200    300    400    500  │   │</span><br><span class="line">│  │                   ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌───┐│   │</span><br><span class="line">│  │                   │ M1 │ │ M2 │ │ M3 │ │ M4 │ │M5 ││   │</span><br><span class="line">│  │                   └────┘ └────┘ └────┘ └────┘ └───┘│   │</span><br><span class="line">│  └──────────┬──────────┬──────┬──────┬──────┬──────────┘   │</span><br><span class="line">└─────────────┼──────────┼──────┼──────┼──────┼──────────────┘</span><br><span class="line">              │          │      │      │      │</span><br><span class="line">  App Seq:    1          2      3      4      5</span><br><span class="line">              │          │      │      │      │</span><br><span class="line">              ▼          ▼      ▼      ▼      ▼</span><br><span class="line">    ┌──────────────────────────────────────────────────┐</span><br><span class="line">    │            应用层序列号验证                        │</span><br><span class="line">    │  - 重复检测：sequence &lt;= lastSequence             │</span><br><span class="line">    │  - Gap 检测：sequence &gt; lastSequence + 1         │</span><br><span class="line">    │  - 乱序检测：sequence &lt;= lastSequence（延迟帧）   │</span><br><span class="line">    │  - 持久化：跨进程重启保持连续性                   │</span><br><span class="line">    └──────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>应用层序列号嵌入消息 payload 的头部，与 Aeron 的帧头（Frame Header）相互独立，两层机制各司其职：Aeron 负责传输层的可靠投递，应用层序列号负责业务语义的完整性验证。</p>
+<h3 id="4-3-流位置-vs-应用层序列号"><a href="#4-3-流位置-vs-应用层序列号" class="headerlink" title="4.3 流位置 vs 应用层序列号"></a>4.3 流位置 vs 应用层序列号</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>应用层序列号</th>
+<th>Aeron 流位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>跨进程重启持久性</td>
+<td>可持久化，重启后连续</td>
+<td>随进程重启归零</td>
+</tr>
+<tr>
+<td>跨 session 连续性</td>
+<td>支持</td>
+<td>不支持（session 切换后位置断开）</td>
+</tr>
+<tr>
+<td>故障恢复语义</td>
+<td>完整，可重放任意 Gap 范围</td>
+<td>受限于 Log Buffer 的 term 滚动窗口</td>
+</tr>
+<tr>
+<td>业务语义定制</td>
+<td>可自定义粒度（消息级、批次级）</td>
+<td>固定为字节偏移</td>
+</tr>
+<tr>
+<td>实现代价</td>
+<td>每条消息额外 8 字节头 + 一次比较</td>
+<td>零额外成本</td>
+</tr>
+<tr>
+<td>适用场景</td>
+<td>所有场景，尤其是需要故障恢复的场景</td>
+<td>单进程、无故障场景的快速验证</td>
+</tr>
+</tbody></table>
+<h2 id="五、完整生产实现"><a href="#五、完整生产实现" class="headerlink" title="五、完整生产实现"></a>五、完整生产实现</h2><h3 id="5-1-发送端"><a href="#5-1-发送端" class="headerlink" title="5.1 发送端"></a>5.1 发送端</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">SequencedPublisher</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="type">long</span> <span class="variable">sequence</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Publication publication;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> UnsafeBuffer headerBuffer;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 帧头布局：[8字节序列号][N字节业务 payload]</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">SEQUENCE_OFFSET</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">HEADER_LENGTH</span> <span class="operator">=</span> Long.BYTES;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">SequencedPublisher</span><span class="params">(Publication publication)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.publication = publication;</span><br><span class="line">        <span class="built_in">this</span>.headerBuffer = <span class="keyword">new</span> <span class="title class_">UnsafeBuffer</span>(<span class="keyword">new</span> <span class="title class_">byte</span>[HEADER_LENGTH]);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 发送消息，序列号自动递增并嵌入帧头。</span></span><br><span class="line"><span class="comment">     * 重传时调用 resend(originalSequence, payload)，序列号不重新生成。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">long</span> <span class="title function_">offer</span><span class="params">(DirectBuffer payload, <span class="type">int</span> offset, <span class="type">int</span> length)</span> &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="type">long</span> <span class="variable">seq</span> <span class="operator">=</span> ++sequence;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 构造带序列号头的复合 buffer</span></span><br><span class="line">        <span class="keyword">final</span> UnsafeBuffer[] fragments = buildFrame(seq, payload, offset, length);</span><br><span class="line">        <span class="type">long</span> result;</span><br><span class="line">        <span class="keyword">do</span> &#123;</span><br><span class="line">            result = publication.offer(fragments[<span class="number">0</span>], <span class="number">0</span>, HEADER_LENGTH + length);</span><br><span class="line">        &#125; <span class="keyword">while</span> (result == Publication.BACK_PRESSURED || result == Publication.ADMIN_ACTION);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> seq;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/** 重传：使用原始序列号，不递增 */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">resend</span><span class="params">(<span class="type">long</span> originalSequence, DirectBuffer payload, <span class="type">int</span> offset, <span class="type">int</span> length)</span> &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="type">UnsafeBuffer</span> <span class="variable">frame</span> <span class="operator">=</span> buildFrame(originalSequence, payload, offset, length)[<span class="number">0</span>];</span><br><span class="line">        publication.offer(frame, <span class="number">0</span>, HEADER_LENGTH + length);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> UnsafeBuffer[] buildFrame(<span class="type">long</span> seq, DirectBuffer payload, <span class="type">int</span> offset, <span class="type">int</span> length) &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="type">UnsafeBuffer</span> <span class="variable">frame</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">UnsafeBuffer</span>(<span class="keyword">new</span> <span class="title class_">byte</span>[HEADER_LENGTH + length]);</span><br><span class="line">        frame.putLong(SEQUENCE_OFFSET, seq);</span><br><span class="line">        frame.putBytes(HEADER_LENGTH, payload, offset, length);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">UnsafeBuffer</span>[]&#123;frame&#125;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-接收端"><a href="#5-2-接收端" class="headerlink" title="5.2 接收端"></a>5.2 接收端</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">SequencedSubscriber</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="type">long</span> <span class="variable">lastSequence</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 实现由业务层提供</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> MessageHandler messageHandler;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> GapHandler gapHandler;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> DuplicateHandler duplicateHandler;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">SEQUENCE_OFFSET</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">HEADER_LENGTH</span> <span class="operator">=</span> Long.BYTES;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">final</span> <span class="type">FragmentHandler</span> <span class="variable">fragmentHandler</span> <span class="operator">=</span> (buffer, offset, length, header) -&gt; &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="type">long</span> <span class="variable">sequence</span> <span class="operator">=</span> buffer.getLong(offset + SEQUENCE_OFFSET);</span><br><span class="line">        <span class="keyword">final</span> <span class="type">int</span> <span class="variable">payloadOffset</span> <span class="operator">=</span> offset + HEADER_LENGTH;</span><br><span class="line">        <span class="keyword">final</span> <span class="type">int</span> <span class="variable">payloadLength</span> <span class="operator">=</span> length - HEADER_LENGTH;</span><br><span class="line"></span><br><span class="line">        onMessage(buffer, payloadOffset, payloadLength, sequence);</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">onMessage</span><span class="params">(DirectBuffer buffer, <span class="type">int</span> offset, <span class="type">int</span> length, <span class="type">long</span> sequence)</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (sequence &lt;= lastSequence) &#123;</span><br><span class="line">            <span class="comment">// 重复或乱序</span></span><br><span class="line">            duplicateHandler.onDuplicate(sequence, lastSequence);</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (sequence == lastSequence + <span class="number">1</span>) &#123;</span><br><span class="line">            <span class="comment">// 正常连续</span></span><br><span class="line">            messageHandler.onMessage(buffer, offset, length, sequence);</span><br><span class="line">            lastSequence = sequence;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// Gap：[lastSequence+1, sequence-1] 的消息缺失</span></span><br><span class="line">            <span class="keyword">final</span> <span class="type">long</span> <span class="variable">gapStart</span> <span class="operator">=</span> lastSequence + <span class="number">1</span>;</span><br><span class="line">            <span class="keyword">final</span> <span class="type">long</span> <span class="variable">gapEnd</span> <span class="operator">=</span> sequence - <span class="number">1</span>;</span><br><span class="line">            gapHandler.onGap(gapStart, gapEnd);</span><br><span class="line">            <span class="comment">// 根据业务策略决定是否跳过 Gap 直接处理当前消息</span></span><br><span class="line">            messageHandler.onMessage(buffer, offset, length, sequence);</span><br><span class="line">            lastSequence = sequence;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-序列号持久化"><a href="#5-3-序列号持久化" class="headerlink" title="5.3 序列号持久化"></a>5.3 序列号持久化</h3><p>在进程重启场景下，需从持久化存储中恢复序列号，确保跨会话的连续性：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">SequenceStore</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">CHECKPOINT_INTERVAL_MS</span> <span class="operator">=</span> <span class="number">1000</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Path storeFile;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">AtomicLong</span> <span class="variable">sequence</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AtomicLong</span>(<span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/** 发送端：每发送一条消息后调用，获取下一个序列号 */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">long</span> <span class="title function_">nextSequence</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> sequence.incrementAndGet();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 周期性 checkpoint：将当前序列号写入持久化存储。</span></span><br><span class="line"><span class="comment">     * 采用 write-then-rename 策略，保证原子性。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">checkpoint</span><span class="params">()</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="type">Path</span> <span class="variable">tmp</span> <span class="operator">=</span> storeFile.resolveSibling(storeFile.getFileName() + <span class="string">&quot;.tmp&quot;</span>);</span><br><span class="line">        Files.writeString(tmp, Long.toString(sequence.get()));</span><br><span class="line">        Files.move(tmp, storeFile, StandardCopyOption.ATOMIC_MOVE,</span><br><span class="line">                   StandardCopyOption.REPLACE_EXISTING);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 进程启动时恢复序列号。</span></span><br><span class="line"><span class="comment">     * 发送端：从 checkpoint 值继续递增，确保不重用已发送的序列号。</span></span><br><span class="line"><span class="comment">     * 接收端：从 checkpoint 值恢复 lastSequence，恢复后第一个有效消息</span></span><br><span class="line"><span class="comment">     *         序列号应为 lastSequence+1。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">long</span> <span class="title function_">recover</span><span class="params">()</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">        <span class="keyword">if</span> (!Files.exists(storeFile)) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="number">0L</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">final</span> <span class="type">long</span> <span class="variable">recovered</span> <span class="operator">=</span> Long.parseLong(Files.readString(storeFile).trim());</span><br><span class="line">        sequence.set(recovered);</span><br><span class="line">        <span class="keyword">return</span> recovered;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意</strong>：checkpoint 频率与故障恢复窗口（重放消息数量）成反比。高频 checkpoint 降低重放代价，但增加 I&#x2F;O 开销。生产实践中通常采用<strong>异步 checkpoint + 消息重放</strong>策略：checkpoint 频率为秒级，重启后通过上游重放 checkpoint 点之后的消息完成状态恢复。</p>
+<h2 id="六、监控指标"><a href="#六、监控指标" class="headerlink" title="六、监控指标"></a>六、监控指标</h2><p>完备的序列号监控体系应覆盖以下维度：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">SequenceMetrics</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">LongAdder</span> <span class="variable">totalReceived</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">LongAdder</span>();</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">LongAdder</span> <span class="variable">duplicateCount</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">LongAdder</span>();</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">LongAdder</span> <span class="variable">outOfOrderCount</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">LongAdder</span>();</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">LongAdder</span> <span class="variable">gapEventCount</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">LongAdder</span>();    <span class="comment">// Gap 事件次数</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">LongAdder</span> <span class="variable">totalMissingMessages</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">LongAdder</span>(); <span class="comment">// 缺失消息总数</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/** 消息丢失率：衡量传输层可靠性 */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">double</span> <span class="title function_">lossRate</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="type">long</span> <span class="variable">received</span> <span class="operator">=</span> totalReceived.sum();</span><br><span class="line">        <span class="keyword">final</span> <span class="type">long</span> <span class="variable">missing</span> <span class="operator">=</span> totalMissingMessages.sum();</span><br><span class="line">        <span class="keyword">if</span> (received + missing == <span class="number">0</span>) <span class="keyword">return</span> <span class="number">0.0</span>;</span><br><span class="line">        <span class="keyword">return</span> (<span class="type">double</span>) missing / (received + missing);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/** 重复率：衡量重传机制是否过于激进 */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">double</span> <span class="title function_">duplicateRate</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="type">long</span> <span class="variable">received</span> <span class="operator">=</span> totalReceived.sum();</span><br><span class="line">        <span class="keyword">return</span> received == <span class="number">0</span> ? <span class="number">0.0</span> : (<span class="type">double</span>) duplicateCount.sum() / received;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/** Gap 事件频率：衡量消息缺失的发生频度（次/秒） */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">long</span> <span class="title function_">gapEventCount</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> gapEventCount.sum();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关键告警阈值参考：</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>正常范围</th>
+<th>告警阈值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>消息丢失率</td>
+<td>0%</td>
+<td>&gt; 0.001%（即十万分之一）</td>
+</tr>
+<tr>
+<td>重复率</td>
+<td>&lt; 0.01%</td>
+<td>&gt; 0.1%</td>
+</tr>
+<tr>
+<td>Gap 事件频率</td>
+<td>0 次&#x2F;秒</td>
+<td>连续 10 秒 &gt; 0</td>
+</tr>
+<tr>
+<td>单次 Gap 大小</td>
+<td>0</td>
+<td>&gt; 100 条（视业务而定）</td>
+</tr>
+</tbody></table>
+<h2 id="七、实现要点总结"><a href="#七、实现要点总结" class="headerlink" title="七、实现要点总结"></a>七、实现要点总结</h2><p><strong>发送端约束</strong>：</p>
+<ol>
+<li>序列号从固定起始值（通常为 1，或从持久化恢复）开始，严格单调递增</li>
+<li>重传消息必须使用原始序列号，不得重新分配</li>
+<li>序列号生成与消息发送必须在同一线程（或通过适当的同步机制保证有序性），防止序列号与消息的错位绑定</li>
+<li>进程重启后，新序列号必须大于已持久化的最大已发送序列号，防止序列号回绕被接收端误判为重复</li>
+</ol>
+<p><strong>接收端约束</strong>：</p>
+<ol>
+<li><code>lastSequence</code> 的更新必须在消息被成功处理之后进行，防止处理失败后序列号已推进导致消息永久丢失</li>
+<li>Gap 的处理策略需根据业务语义明确定义：是等待恢复、触发重传请求，还是直接跳过并告警</li>
+<li>在允许乱序到达的场景（如多路并行传输），需引入接收窗口（Receive Window）暂存乱序帧，而非直接触发 Gap 处理</li>
+<li><code>lastSequence</code> 应定期持久化，支持接收端重启后的 Gap 检测连续性</li>
+</ol>
+
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E5%BA%8F%E5%88%97%E5%8F%B7/">序列号</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                            <div class="prev-post">
+                                <a class="prev"
+                                   rel="prev"
+                                   href="/posts/11315422/"
+                                   title="ZooKeeper Java API"
+                                >
+                                    <span class="left arrow-icon flex-center">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </span>
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">ZooKeeper Java API</span>
+                                        <span class="post-nav-item">上一篇</span>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/posts/62a67ace/"
+                                   title="ZooKeeper 原理"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">ZooKeeper 原理</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+            <div class="pc-post-toc right-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"><span class="nav-text">一、问题背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86"><span class="nav-text">二、核心原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E5%8F%91%E9%80%81%E7%AB%AF"><span class="nav-text">2.1 发送端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E6%8E%A5%E6%94%B6%E7%AB%AF"><span class="nav-text">2.2 接收端</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E4%B8%89%E7%B1%BB%E5%BC%82%E5%B8%B8%E7%9A%84%E5%AE%8C%E6%95%B4%E5%9C%BA%E6%99%AF%E5%88%86%E6%9E%90"><span class="nav-text">三、三类异常的完整场景分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E6%AD%A3%E5%B8%B8%E6%B6%88%E6%81%AF%E6%B5%81"><span class="nav-text">3.1 正常消息流</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E6%B6%88%E6%81%AF%E7%BC%BA%E5%A4%B1%E6%A3%80%E6%B5%8B%EF%BC%88Gap-Detection%EF%BC%89"><span class="nav-text">3.2 消息缺失检测（Gap Detection）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E4%B9%B1%E5%BA%8F%E6%B6%88%E6%81%AF%E6%A3%80%E6%B5%8B%EF%BC%88Out-of-Order-Detection%EF%BC%89"><span class="nav-text">3.3 乱序消息检测（Out-of-Order Detection）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-%E9%87%8D%E5%A4%8D%E6%B6%88%E6%81%AF%E6%A3%80%E6%B5%8B%EF%BC%88Duplicate-Detection%EF%BC%89"><span class="nav-text">3.4 重复消息检测（Duplicate Detection）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E5%9C%A8-Aeron-%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-text">四、在 Aeron 中的应用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-Aeron-%E6%B5%81%E4%BD%8D%E7%BD%AE%EF%BC%88Position%EF%BC%89%E4%B8%8E%E5%BA%94%E7%94%A8%E5%B1%82%E5%BA%8F%E5%88%97%E5%8F%B7%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="nav-text">4.1 Aeron 流位置（Position）与应用层序列号的关系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-Aeron-%E4%B8%AD%E7%9A%84%E5%BA%8F%E5%88%97%E5%8F%B7%E5%88%86%E5%B1%82%E6%9E%B6%E6%9E%84"><span class="nav-text">4.2 Aeron 中的序列号分层架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E6%B5%81%E4%BD%8D%E7%BD%AE-vs-%E5%BA%94%E7%94%A8%E5%B1%82%E5%BA%8F%E5%88%97%E5%8F%B7"><span class="nav-text">4.3 流位置 vs 应用层序列号</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E5%AE%8C%E6%95%B4%E7%94%9F%E4%BA%A7%E5%AE%9E%E7%8E%B0"><span class="nav-text">五、完整生产实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%8F%91%E9%80%81%E7%AB%AF"><span class="nav-text">5.1 发送端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E6%8E%A5%E6%94%B6%E7%AB%AF"><span class="nav-text">5.2 接收端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E5%BA%8F%E5%88%97%E5%8F%B7%E6%8C%81%E4%B9%85%E5%8C%96"><span class="nav-text">5.3 序列号持久化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87"><span class="nav-text">六、监控指标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%AE%9E%E7%8E%B0%E8%A6%81%E7%82%B9%E6%80%BB%E7%BB%93"><span class="nav-text">七、实现要点总结</span></a></li></ol>
+    </div>
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Reln Ding</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+            <li class="tools-item flex-center toggle-show-toc">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        <!-- PC go comment -->
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+            <li class="tools-item toggle-show-toc-tablet flex-center">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="close-popup-btn">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+    <!-- tablet toc -->
+    
+        <div class="tablet-post-toc-mask">
+            <div class="tablet-post-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"><span class="nav-text">一、问题背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86"><span class="nav-text">二、核心原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E5%8F%91%E9%80%81%E7%AB%AF"><span class="nav-text">2.1 发送端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E6%8E%A5%E6%94%B6%E7%AB%AF"><span class="nav-text">2.2 接收端</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E4%B8%89%E7%B1%BB%E5%BC%82%E5%B8%B8%E7%9A%84%E5%AE%8C%E6%95%B4%E5%9C%BA%E6%99%AF%E5%88%86%E6%9E%90"><span class="nav-text">三、三类异常的完整场景分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E6%AD%A3%E5%B8%B8%E6%B6%88%E6%81%AF%E6%B5%81"><span class="nav-text">3.1 正常消息流</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E6%B6%88%E6%81%AF%E7%BC%BA%E5%A4%B1%E6%A3%80%E6%B5%8B%EF%BC%88Gap-Detection%EF%BC%89"><span class="nav-text">3.2 消息缺失检测（Gap Detection）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E4%B9%B1%E5%BA%8F%E6%B6%88%E6%81%AF%E6%A3%80%E6%B5%8B%EF%BC%88Out-of-Order-Detection%EF%BC%89"><span class="nav-text">3.3 乱序消息检测（Out-of-Order Detection）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-%E9%87%8D%E5%A4%8D%E6%B6%88%E6%81%AF%E6%A3%80%E6%B5%8B%EF%BC%88Duplicate-Detection%EF%BC%89"><span class="nav-text">3.4 重复消息检测（Duplicate Detection）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E5%9C%A8-Aeron-%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-text">四、在 Aeron 中的应用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-Aeron-%E6%B5%81%E4%BD%8D%E7%BD%AE%EF%BC%88Position%EF%BC%89%E4%B8%8E%E5%BA%94%E7%94%A8%E5%B1%82%E5%BA%8F%E5%88%97%E5%8F%B7%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="nav-text">4.1 Aeron 流位置（Position）与应用层序列号的关系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-Aeron-%E4%B8%AD%E7%9A%84%E5%BA%8F%E5%88%97%E5%8F%B7%E5%88%86%E5%B1%82%E6%9E%B6%E6%9E%84"><span class="nav-text">4.2 Aeron 中的序列号分层架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E6%B5%81%E4%BD%8D%E7%BD%AE-vs-%E5%BA%94%E7%94%A8%E5%B1%82%E5%BA%8F%E5%88%97%E5%8F%B7"><span class="nav-text">4.3 流位置 vs 应用层序列号</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E5%AE%8C%E6%95%B4%E7%94%9F%E4%BA%A7%E5%AE%9E%E7%8E%B0"><span class="nav-text">五、完整生产实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%8F%91%E9%80%81%E7%AB%AF"><span class="nav-text">5.1 发送端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E6%8E%A5%E6%94%B6%E7%AB%AF"><span class="nav-text">5.2 接收端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E5%BA%8F%E5%88%97%E5%8F%B7%E6%8C%81%E4%B9%85%E5%8C%96"><span class="nav-text">5.3 序列号持久化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87"><span class="nav-text">六、监控指标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%AE%9E%E7%8E%B0%E8%A6%81%E7%82%B9%E6%80%BB%E7%BB%93"><span class="nav-text">七、实现要点总结</span></a></li></ol>
+    </div>
+</div>
+
+            </div>
+        </div>
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/toggle-theme.js"></script>
+
+<script src="/js/code-block.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+
+<!-- local search -->
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+<!-- lazyload -->
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="pjax">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        
+<script src="/js/post/post-helper.js"></script>
+
+
+        <!-- toc -->
+        
+            
+<script src="/js/post/toc.js"></script>
+
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+
+<!-- pjax -->
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        window.pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart()
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd()
+            window.pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'))
+            KEEP.initExecute()
+        });
+    });
+</script>
+
+
+
+
+    
+        
+    
+
+</body>
+</html>

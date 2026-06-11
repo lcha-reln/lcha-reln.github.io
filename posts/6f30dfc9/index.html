@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="blog,技术,生活">
+    <meta name="description" content="Reln 的个人博客，记录学习与生活">
+    <meta name="author" content="Reln Ding">
+    
+    <title>
+        
+            做市商机制与策略详解 |
+        
+        Reln 的小窝
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/favicon.svg">
+    
+    
+<link rel="stylesheet" href="/font/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/brands.min.css">
+
+    
+        
+            
+        
+            
+                
+<link rel="stylesheet" href="/css/custom.css">
+
+            
+        
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"lcha-reln.github.io","root":"/","language":"zh-CN","path":"content.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#24c6dc","title":"Reln 的小窝","author":"Reln Ding","avatar":"/images/site/avatar.svg","logo":"/images/site/logo.svg","favicon":"/favicon.svg"},"menu":{"home":"/ || fas fa-home","archives":"/archives || fas fa-archive","tags":"/tags || fas fa-tags","categories":"/categories || fas fa-th","about":"/about || fas fa-user"},"first_screen":{"enable":true,"background_img":"/images/hero-bg.svg","background_img_dark":"/images/hero-bg-dark.svg","description":"记录技术与思考的点滴","hitokoto":false},"social_contact":{"enable":true,"links":{"github":"https://github.com/lcha-reln","weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":null}},"scroll":{"progress_bar":true,"percent":false,"hide_header":true},"home":{"announcement":null,"category":true,"tag":true,"post_datetime":"created","post_datetime_format":"YYYY-MM-DD"},"post":{"author_badge":{"enable":false,"level_badge":true,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":true,"min2read":true},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null}},"code_block":{"tools":{"enable":true,"style":"mac"},"highlight_theme":"obsidian"},"toc":{"enable":true,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":true,"preload":false},"comment":{"enable":false,"use":"valine","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":null,"repo_id":null,"category":"Announcements","category_id":null,"reactions_enabled":false},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":true},"lazyload":{"enable":true},"cdn":{"enable":false,"provider":"cdnjs"},"pjax":{"enable":true},"footer":{"since":2026,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]}},"inject":{"enable":true,"css":[null,"/css/custom.css"],"js":[null]},"version":"4.2.5","root":"","source_data":{}}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.1"><link rel="alternate" href="/atom.xml" title="Reln 的小窝" type="application/atom+xml">
+</head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+        <span class="scroll-progress-bar"></span>
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <i class="pjax-progress-icon fas fa-circle-notch fa-spin"></i>
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/site/logo.svg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Reln 的小窝
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-home"></i>
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-archive"></i>
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/tags">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-tags"></i>
+                                
+                                标签
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/categories">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-th"></i>
+                                
+                                分类
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/about">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-user"></i>
+                                
+                                关于
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="menu-text-color fas search fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-home"></i>
+                                </span>
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-archive"></i>
+                                </span>
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/tags">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-tags"></i>
+                                </span>
+                            
+                            标签
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/categories">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-th"></i>
+                                </span>
+                            
+                            分类
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/about">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-user"></i>
+                                </span>
+                            
+                            关于
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        做市商机制与策略详解
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/site/avatar.svg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Reln Ding</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-03-10 10:00:00</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                </span>
+            
+        
+
+        
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/%E9%87%91%E8%9E%8D%E4%B8%9A%E5%8A%A1/">金融业务</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%87%91%E8%9E%8D%E4%B8%9A%E5%8A%A1/">金融业务</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E5%81%9A%E5%B8%82%E5%95%86/">做市商</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E6%B5%81%E5%8A%A8%E6%80%A7/">流动性</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+            <span class="meta-info-item post-wordcount">
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>4.6k 字</span>
+            </span>
+        
+        
+            <span class="meta-info-item post-min2read">
+                <i class="icon fas fa-clock"></i>&nbsp;<span>16 分钟</span>
+            </span>
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <blockquote>
+<p>做市商是金融市场流动性的核心提供者。本文系统梳理做市商的运作原理、报价机制、各类做市策略，以及对敲交易的识别与防范，配以具体数字案例，帮助读者建立完整的做市商知识框架。</p>
+</blockquote>
+<hr>
+<h2 id="一、做市商是什么"><a href="#一、做市商是什么" class="headerlink" title="一、做市商是什么"></a>一、做市商是什么</h2><p><strong>做市商（Market Maker）</strong> 是指持续向市场提供某一证券或金融产品<strong>买卖双向报价</strong>，并在该价位上接受交易的金融机构。任何时刻，做市商都必须给出两个价格：</p>
+<ul>
+<li><strong>买入价（Bid）</strong>：做市商愿意以此价格买入的最高价</li>
+<li><strong>卖出价（Ask）</strong>：做市商愿意以此价格卖出的最低价</li>
+</ul>
+<p>两者之间的差额称为<strong>买卖价差（Bid-Ask Spread）</strong>，这是做市商最直接的利润来源。</p>
+<p>做市商制度本质上是<strong>报价驱动机制</strong>，与普通交易所的<strong>指令驱动（竞价撮合）机制</strong>形成对比：</p>
+<table>
+<thead>
+<tr>
+<th>机制</th>
+<th>价格形成方式</th>
+<th>流动性来源</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>竞价撮合</td>
+<td>买卖双方订单自然撮合</td>
+<td>依赖参与者数量</td>
+<td>A 股、Binance 现货</td>
+</tr>
+<tr>
+<td>做市商报价</td>
+<td>做市商持续双边报价</td>
+<td>做市商主动提供</td>
+<td>纳斯达克、外汇市场、期权市场</td>
+</tr>
+</tbody></table>
+<p>做市商制度起源于 20 世纪 60 年代美国柜台交易市场，1971 年纳斯达克建立后正式成型。目前广泛应用于股票、外汇、期货、期权及加密货币等各类市场。</p>
+<hr>
+<h2 id="二、做市商的分类"><a href="#二、做市商的分类" class="headerlink" title="二、做市商的分类"></a>二、做市商的分类</h2><p>按竞争结构，做市商制度主要分为三类：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>代表市场</th>
+<th>做市商数量</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>垄断型</td>
+<td>纽约证券交易所（NYSE）专家制</td>
+<td>每只证券 1 家</td>
+<td>责任明确，但竞争不足，价差偏大</td>
+</tr>
+<tr>
+<td>竞争型</td>
+<td>纳斯达克（NASDAQ）</td>
+<td>每只证券平均 10~12 家，热门股可达 40 家+</td>
+<td>竞争压缩价差，流动性好</td>
+</tr>
+<tr>
+<td>混合型</td>
+<td>伦敦证券交易所、中国新三板</td>
+<td>竞价与做市结合</td>
+<td>兼顾流动性与价格发现效率</td>
+</tr>
+</tbody></table>
+<p>纳斯达克的竞争型做市商模式是目前最主流的形态——多家做市商争夺同一证券的业务，报价竞争使买卖价差趋于最小，最终受益的是普通投资者。</p>
+<hr>
+<h2 id="三、做市商的核心职能：流动性提供"><a href="#三、做市商的核心职能：流动性提供" class="headerlink" title="三、做市商的核心职能：流动性提供"></a>三、做市商的核心职能：流动性提供</h2><p>做市商对市场的核心贡献在于三个维度：</p>
+<h3 id="3-1-即时性"><a href="#3-1-即时性" class="headerlink" title="3.1 即时性"></a>3.1 即时性</h3><p>在纯竞价市场，买家必须等待卖家出现才能成交；而有做市商的市场，投资者可以随时与做市商交易，无需等待对手方。这对于交易不活跃的证券尤为关键——没有做市商，冷门债券可能需要等数天才能成交，有了做市商则可以秒级完成。</p>
+<h3 id="3-2-价格稳定"><a href="#3-2-价格稳定" class="headerlink" title="3.2 价格稳定"></a>3.2 价格稳定</h3><p>做市商通过”逆市操作”平抑价格波动：</p>
+<ul>
+<li>当大量卖单涌入、价格暴跌时，做市商买入吸收卖压</li>
+<li>当买盘过热、价格飙升时，做市商卖出抑制过涨</li>
+</ul>
+<p>这种<strong>减震器</strong>作用使价格变动更连续平滑，而非剧烈跳跃。</p>
+<h3 id="3-3-价格发现"><a href="#3-3-价格发现" class="headerlink" title="3.3 价格发现"></a>3.3 价格发现</h3><p>做市商在报价时综合考量公司基本面、宏观经济、市场供求等信息，其报价本身包含大量信息含量。市场交易又反过来影响做市商的报价判断，形成<strong>互动反馈机制</strong>，使价格持续趋近证券真实价值。</p>
+<hr>
+<h2 id="四、报价机制与价差管理"><a href="#四、报价机制与价差管理" class="headerlink" title="四、报价机制与价差管理"></a>四、报价机制与价差管理</h2><h3 id="4-1-价差的形成"><a href="#4-1-价差的形成" class="headerlink" title="4.1 价差的形成"></a>4.1 价差的形成</h3><p>价差不是随意设定的，而是做市商基于以下因素综合定价的结果：</p>
+<table>
+<thead>
+<tr>
+<th>因素</th>
+<th>对价差的影响</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>市场波动性</td>
+<td>波动越大，价差越宽</td>
+<td>价格风险上升，需要更多补偿</td>
+</tr>
+<tr>
+<td>证券流动性</td>
+<td>越冷门，价差越宽</td>
+<td>竞争少，变现慢</td>
+</tr>
+<tr>
+<td>交易规模</td>
+<td>单笔越大，价差越宽</td>
+<td>大单对库存冲击更显著</td>
+</tr>
+<tr>
+<td>信息不对称</td>
+<td>信息越不透明，价差越宽</td>
+<td>防范对手方拥有内幕信息</td>
+</tr>
+</tbody></table>
+<p><strong>不同市场环境下的典型价差：</strong></p>
+<table>
+<thead>
+<tr>
+<th>市场环境</th>
+<th>典型价差</th>
+<th>做市商应对</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>正常交易时段</td>
+<td>0.1%~0.5%</td>
+<td>维持常规价差，靠量取胜</td>
+</tr>
+<tr>
+<td>市场大幅波动</td>
+<td>0.5%~2%</td>
+<td>扩大价差，谨慎控制库存</td>
+</tr>
+<tr>
+<td>重大消息公布前</td>
+<td>0.3%~1%</td>
+<td>临时扩大价差，减少风险暴露</td>
+</tr>
+<tr>
+<td>交易清淡时段</td>
+<td>0.2%~0.8%</td>
+<td>适度扩大价差</td>
+</tr>
+</tbody></table>
+<h3 id="4-2-报价的动态性"><a href="#4-2-报价的动态性" class="headerlink" title="4.2 报价的动态性"></a>4.2 报价的动态性</h3><p>做市商的报价随市场状态实时调整，而非一成不变。典型行为包括：</p>
+<ul>
+<li><strong>闪电落袋（Quote Fading）</strong>：当检测到大单即将到来时，做市商迅速撤回或调整报价，以防对手方拥有更多信息而使自己处于不利地位。</li>
+<li><strong>方向跟踪</strong>：若买入指令持续增加，做市商会提高卖出价，反映潜在上涨压力；反之则降低买入价。</li>
+</ul>
+<hr>
+<h2 id="五、库存管理与风险控制"><a href="#五、库存管理与风险控制" class="headerlink" title="五、库存管理与风险控制"></a>五、库存管理与风险控制</h2><p>做市商提供流动性的过程中，会自然积累<strong>证券库存（多头）</strong> 或<strong>现金头寸（空头）</strong>。库存管理是做市商风险控制的核心。</p>
+<h3 id="5-1-库存管理目标"><a href="#5-1-库存管理目标" class="headerlink" title="5.1 库存管理目标"></a>5.1 库存管理目标</h3><ul>
+<li>维持适度库存水平，既能满足客户买卖需求，又不过度暴露于价格风险</li>
+<li>避免单一证券头寸过大</li>
+</ul>
+<p><strong>库存调整示例：</strong></p>
+<blockquote>
+<p>某做市商某股票理想库存为 50,000 股，当前库存仅剩 30,000 股（库存过低）。</p>
+<p>应对策略：将买入报价提高 0.1 元（更贵地买入，吸引卖家），将卖出报价降低 0.05 元（更便宜地卖出，减少成交），目标是快速补充库存至合理水平。</p>
+</blockquote>
+<h3 id="5-2-主要风险类型"><a href="#5-2-主要风险类型" class="headerlink" title="5.2 主要风险类型"></a>5.2 主要风险类型</h3><table>
+<thead>
+<tr>
+<th>风险类型</th>
+<th>说明</th>
+<th>应对手段</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>存货风险</td>
+<td>证券价格不利变动，库存账面亏损</td>
+<td>对冲操作、头寸限额</td>
+</tr>
+<tr>
+<td>信息不对称风险</td>
+<td>交易对手可能知道做市商不知道的信息</td>
+<td>扩大价差、监控异常大单</td>
+</tr>
+<tr>
+<td>流动性风险</td>
+<td>市场极端情况下无法平掉头寸</td>
+<td>压缩库存、提前对冲</td>
+</tr>
+</tbody></table>
+<h3 id="5-3-对冲操作"><a href="#5-3-对冲操作" class="headerlink" title="5.3 对冲操作"></a>5.3 对冲操作</h3><p>做市商常用的对冲方式：</p>
+<ul>
+<li><strong>股指期货对冲</strong>：持有大量股票库存时，卖出对应数量的股指期货，抵消市场整体下跌带来的损失</li>
+<li><strong>期权对冲</strong>：通过买入看跌期权，为库存股票设置保险</li>
+<li><strong>统计套利</strong>：利用相关证券间的历史价格关系，在同一时间做多低估资产、做空高估资产，降低方向性风险</li>
+</ul>
+<hr>
+<h2 id="六、做市商的盈利模式"><a href="#六、做市商的盈利模式" class="headerlink" title="六、做市商的盈利模式"></a>六、做市商的盈利模式</h2><p>做市商的利润公式看似简单：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">利润 ≈ 买卖价差 × 交易量 - 库存成本 - 对冲成本 - 运营成本</span><br></pre></td></tr></table></figure>
+
+<p>但实际上，做市商面临的是极薄的单笔利润与极大的交易量的组合。以纳斯达克为例，做市商的净收益率通常只有几个基点（万分之一），依靠海量交易累积盈利。</p>
+<p><strong>成本构成：</strong></p>
+<table>
+<thead>
+<tr>
+<th>成本类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>资金成本</td>
+<td>维持库存占用的资金，尤其是杠杆融资的利息</td>
+</tr>
+<tr>
+<td>操作成本</td>
+<td>交易系统、人力、技术基础设施</td>
+</tr>
+<tr>
+<td>对冲成本</td>
+<td>期货、期权等对冲工具的费用</td>
+</tr>
+<tr>
+<td>风险成本</td>
+<td>价格不利变动导致的潜在损失</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="七、做市策略详解"><a href="#七、做市策略详解" class="headerlink" title="七、做市策略详解"></a>七、做市策略详解</h2><h3 id="7-1-基础价差获取策略"><a href="#7-1-基础价差获取策略" class="headerlink" title="7.1 基础价差获取策略"></a>7.1 基础价差获取策略</h3><p><strong>反应性交易（被动做市）：</strong></p>
+<p>做市商挂出买卖双边报价，等待投资者主动来交易：</p>
+<blockquote>
+<p>做市商报价：买入价 50.00 元，卖出价 50.05 元，价差 0.05 元（0.1%）</p>
+<ul>
+<li>投资者 A 以 50.00 卖出 10,000 股 → 做市商买入，支出 500,000 元</li>
+<li>投资者 B 以 50.05 买入 10,000 股 → 做市商卖出，收入 500,500 元</li>
+<li>做市商价差收益：500 元</li>
+</ul>
+</blockquote>
+<p><strong>主动性做市（方向性调整）：</strong></p>
+<p>当做市商判断市场将上涨时，会主动提高买入价和卖出价，同时增加库存，从价格上涨和价差中双重获益。这要求做市商具备较强的市场判断能力和风险承受能力。</p>
+<h3 id="7-2-风险中性策略（Delta-中性）"><a href="#7-2-风险中性策略（Delta-中性）" class="headerlink" title="7.2 风险中性策略（Delta 中性）"></a>7.2 风险中性策略（Delta 中性）</h3><p><strong>目标：彻底消除方向性风险，只赚价差。</strong></p>
+<p>Delta 衡量证券价格变动对持仓价值的影响。做市商通过调整对冲比例，使整体持仓对价格涨跌不敏感：</p>
+<p><strong>期权做市商案例：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">持有 ETF 正股：100,000 股，Delta = +100,000</span><br><span class="line">卖出看涨期权：Delta = -50,000</span><br><span class="line">买入看跌期权：Delta = -50,000</span><br><span class="line">─────────────────────────────</span><br><span class="line">组合 Delta = 0（市场中性）</span><br></pre></td></tr></table></figure>
+
+<p>此时无论 ETF 涨跌，持仓整体价值基本不变，做市商只赚取期权报价中的买卖价差。</p>
+<h3 id="7-3-统计套利策略"><a href="#7-3-统计套利策略" class="headerlink" title="7.3 统计套利策略"></a>7.3 统计套利策略</h3><p><strong>原理：</strong> 利用历史上高度相关的两只证券之间的<strong>短期价差偏离</strong>获利。</p>
+<p><strong>配对交易示例（A 股）：</strong></p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 以中国平安(601318)与新华保险(601336)为例</span></span><br><span class="line">spread = price_601318 - <span class="number">1.2</span> * price_601336</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> spread &gt; <span class="number">2.0</span>:    <span class="comment"># 价差过大，平安相对高估</span></span><br><span class="line">    <span class="comment"># 卖出平安，买入新华，等待价差收窄</span></span><br><span class="line"><span class="keyword">elif</span> spread &lt; -<span class="number">1.5</span>: <span class="comment"># 价差过小，平安相对低估</span></span><br><span class="line">    <span class="comment"># 买入平安，卖出新华，等待价差回归</span></span><br></pre></td></tr></table></figure>
+
+<p>这种策略的收益来源是<strong>价差回归</strong>，理论上与市场整体涨跌无关，属于”市场中性”盈利。</p>
+<h3 id="7-4-高频做市策略"><a href="#7-4-高频做市策略" class="headerlink" title="7.4 高频做市策略"></a>7.4 高频做市策略</h3><p>高频做市商利用强大的计算能力和低延迟基础设施，在微秒级别完成报价更新和交易执行。</p>
+<p><strong>核心优势来源：</strong></p>
+<ul>
+<li><strong>共址服务器（Co-location）</strong>：将服务器直接放置在交易所数据中心，网络延迟从毫秒降至微秒</li>
+<li><strong>超快速报价</strong>：能在微秒级别响应市场变化，比其他参与者更快</li>
+<li><strong>订单簿分析</strong>：实时分析订单簿深度变化，预判短期价格走势</li>
+</ul>
+<p><strong>订单簿分析示例：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">买盘：             卖盘：</span><br><span class="line">49.99  1000股     50.01   500股  ← 卖压轻</span><br><span class="line">49.98  2000股     50.02  1500股</span><br><span class="line">49.97  3000股     50.03  2000股</span><br></pre></td></tr></table></figure>
+
+<p>做市商判断：卖盘明显小于买盘，价格可能上移，于是将报价整体上调：</p>
+<ul>
+<li>原报价：买入 49.99，卖出 50.01</li>
+<li>新报价：买入 50.00，卖出 50.02</li>
+</ul>
+<p>高频做市与传统做市的对比：</p>
+<table>
+<thead>
+<tr>
+<th>特征</th>
+<th>传统做市商</th>
+<th>高频做市商</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>持仓时间</td>
+<td>数小时至数天</td>
+<td>几秒至几分钟</td>
+</tr>
+<tr>
+<td>利润来源</td>
+<td>价差 + 价格变动</td>
+<td>主要依赖微小价差</td>
+</tr>
+<tr>
+<td>技术依赖</td>
+<td>中等</td>
+<td>极高</td>
+</tr>
+<tr>
+<td>市场影响</td>
+<td>稳定价格</td>
+<td>可能加剧短期波动</td>
+</tr>
+</tbody></table>
+<p><strong>高频做市的双面性：</strong> 正常情况下，高频做市商显著缩小买卖价差，提升市场效率；但在市场压力时期，高频做市商可能在几毫秒内集体撤出，导致流动性瞬间蒸发。</p>
+<h3 id="7-5-跨市场做市策略"><a href="#7-5-跨市场做市策略" class="headerlink" title="7.5 跨市场做市策略"></a>7.5 跨市场做市策略</h3><p><strong>AH 股套利示例：</strong></p>
+<blockquote>
+<p>中国太保 A 股价格：20.5 元<br>中国太保 H 股价格：22 港币（约 19.8 人民币）</p>
+<p>理论套利：买入 H 股，卖出 A 股，价差约 3.5%</p>
+</blockquote>
+<p><strong>实际操作限制：</strong></p>
+<ul>
+<li>外汇管制：A 股与 H 股结算货币不同，资金流转受限</li>
+<li>结算时间差：两地结算周期不同，存在时间错配风险</li>
+<li>市场流动性差异：H 股流动性可能不足，难以大量成交</li>
+</ul>
+<p><strong>现货与期货套利：</strong></p>
+<p>当股票现货价格与股指期货之间的理论价差出现偏离时，做市商可同时进行现货篮子交易和期货交易，锁定无风险收益。这种操作同时帮助两个市场的价格趋于一致。</p>
+<hr>
+<h2 id="八、做市商的风险管控体系"><a href="#八、做市商的风险管控体系" class="headerlink" title="八、做市商的风险管控体系"></a>八、做市商的风险管控体系</h2><h3 id="8-1-关键风险指标"><a href="#8-1-关键风险指标" class="headerlink" title="8.1 关键风险指标"></a>8.1 关键风险指标</h3><p>做市商需要实时监控以下核心指标：</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>含义</th>
+<th>触发阈值示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Delta 敞口</td>
+<td>持仓对价格变动的净暴露</td>
+<td>超过 ±100 万元市值立即对冲</td>
+</tr>
+<tr>
+<td>最大单一持仓</td>
+<td>单只证券库存上限</td>
+<td>不超过当日平均成交量的 5%</td>
+</tr>
+<tr>
+<td>买卖价差</td>
+<td>当前报价中的利润空间</td>
+<td>低于成本线时暂停报价</td>
+</tr>
+<tr>
+<td>VaR（在险价值）</td>
+<td>一天内最大潜在损失</td>
+<td>超过限额触发预警</td>
+</tr>
+</tbody></table>
+<h3 id="8-2-极端情景应对"><a href="#8-2-极端情景应对" class="headerlink" title="8.2 极端情景应对"></a>8.2 极端情景应对</h3><p><strong>市场熔断期间的策略调整：</strong></p>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>价差</th>
+<th>报价规模</th>
+<th>目标</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>正常市场</td>
+<td>0.1%</td>
+<td>10 万股</td>
+<td>正常做市盈利</td>
+</tr>
+<tr>
+<td>熔断期间</td>
+<td>1%</td>
+<td>1 万股</td>
+<td>控制风险，保障最低流动性义务</td>
+</tr>
+<tr>
+<td>熔断恢复</td>
+<td>0.3%</td>
+<td>5 万股</td>
+<td>逐步恢复正常</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="九、对敲交易：定义、动机与识别"><a href="#九、对敲交易：定义、动机与识别" class="headerlink" title="九、对敲交易：定义、动机与识别"></a>九、对敲交易：定义、动机与识别</h2><h3 id="9-1-什么是对敲"><a href="#9-1-什么是对敲" class="headerlink" title="9.1 什么是对敲"></a>9.1 什么是对敲</h3><p><strong>对敲（Matched Trading &#x2F; Wash Trade）</strong> 是指同一主体控制下的账户之间，以事先约定的价格和方式进行的<strong>虚假交易</strong>——表面上有买有卖，实质上资产所有权并未真正转移。</p>
+<p>常见形式：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>说明</th>
+<th>目的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>洗售交易（Wash Trade）</td>
+<td>同一控制人的账户之间互相交易</td>
+<td>制造虚假交易量</td>
+</tr>
+<tr>
+<td>交叉交易（Cross Trade）</td>
+<td>同一经纪商代理的买卖双方直接匹配，绕过公开竞价</td>
+<td>可能损害客户利益</td>
+</tr>
+<tr>
+<td>约定交易（Pre-arranged）</td>
+<td>两个账户事先约定交易细节，在公开市场执行</td>
+<td>制造公平交易的假象</td>
+</tr>
+</tbody></table>
+<h3 id="9-2-对敲的动机"><a href="#9-2-对敲的动机" class="headerlink" title="9.2 对敲的动机"></a>9.2 对敲的动机</h3><p><strong>① 制造虚假流动性</strong></p>
+<p>某做市商同时控制多个账户，在这些账户之间频繁互相买卖，使一只原本交易清淡的股票呈现出”活跃”的假象，诱导不知情的真实投资者跟进买入——这时做市商就可以借机高位出货。</p>
+<p><strong>② 操纵价格</strong></p>
+<p>某机构想在低价大量买入某只股票。直接买入会抬高价格，于是先通过对敲交易打压价格（用控制的账户在低价互相成交，将成交价格人为拉低），为自己创造有利的买入窗口。</p>
+<p><strong>③ 规避监管</strong></p>
+<p>部分金融机构通过对敲交易满足监管对交易量或流动性的要求，或通过虚假交易隐藏真实风险暴露。</p>
+<p><strong>在债券市场的变体：</strong></p>
+<p>债券市场常出现”代投代缴”业务的变异形式：一方委托另一方申购债券，约定上市后以固定价格回购。如果回购价格明显偏离市场公允价值，这种安排实质上就是变相对敲，兼具利益输送性质。</p>
+<h3 id="9-3-对敲对市场的危害"><a href="#9-3-对敲对市场的危害" class="headerlink" title="9.3 对敲对市场的危害"></a>9.3 对敲对市场的危害</h3><ul>
+<li><strong>扭曲价格信号</strong>：虚假成交价误导其他投资者的决策</li>
+<li><strong>破坏市场公平</strong>：操纵者获取不正当利益，损害普通投资者</li>
+<li><strong>削弱市场信心</strong>：长期来看降低市场参与度，推高融资成本</li>
+</ul>
+<h3 id="9-4-如何识别对敲"><a href="#9-4-如何识别对敲" class="headerlink" title="9.4 如何识别对敲"></a>9.4 如何识别对敲</h3><p><strong>主要特征：</strong></p>
+<table>
+<thead>
+<tr>
+<th>特征</th>
+<th>具体表现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>交易模式异常</td>
+<td>同一账户或关联账户频繁互相交易</td>
+</tr>
+<tr>
+<td>价格偏离市场</td>
+<td>成交价与当时市场价格显著不符</td>
+</tr>
+<tr>
+<td>资产无实质转移</td>
+<td>交易完成后，经济利益未发生实质变化</td>
+</tr>
+<tr>
+<td>时机可疑</td>
+<td>交易集中在特定时段，与正常交易节奏明显不同</td>
+</tr>
+</tbody></table>
+<p><strong>监管机构的技术手段：</strong></p>
+<p>现代监控系统利用大数据分析和网络关系识别，自动标记以下异常：</p>
+<ul>
+<li>资产所有权没有实质变化但频繁交易的账户</li>
+<li>成交价格与市场公允价值的显著偏离</li>
+<li>关联账户（相同实际控制人）之间的交易模式</li>
+</ul>
+<p><strong>投资者的防范措施：</strong></p>
+<ul>
+<li>警惕<strong>交易量突然放大但无明显基本面原因</strong>的证券</li>
+<li>警惕<strong>价格走势与行业或大盘长期背离</strong>的情况</li>
+<li>对于参与者集中、缺乏透明度的小众市场（如冷门债券）保持警惕</li>
+</ul>
+<hr>
+<h2 id="十、做市商制度的未来演进"><a href="#十、做市商制度的未来演进" class="headerlink" title="十、做市商制度的未来演进"></a>十、做市商制度的未来演进</h2><h3 id="10-1-人工智能赋能"><a href="#10-1-人工智能赋能" class="headerlink" title="10.1 人工智能赋能"></a>10.1 人工智能赋能</h3><p>机器学习在做市商策略中的应用正在深化：</p>
+<ul>
+<li><strong>深度强化学习</strong>：让算法在模拟市场中反复训练，自动优化报价策略参数</li>
+<li><strong>自然语言处理</strong>：实时解析公告、新闻，在信息发布后毫秒内调整报价</li>
+<li><strong>预测模型</strong>：基于历史订单流数据，预测短期内买卖力量的变化方向</li>
+</ul>
+<p><strong>科创板做市商数据（2023 年）：</strong></p>
+<ul>
+<li>做市商平均价差：0.2%~0.5%</li>
+<li>做市商贡献的日均交易量：25%~40%</li>
+<li>头部做市商年收益规模：超 10 亿元</li>
+</ul>
+<p><strong>50ETF 期权做市商典型表现：</strong></p>
+<ul>
+<li>平值期权价差：0.0003~0.0005 元</li>
+<li>日均报价更新次数：5,000 次以上</li>
+<li>报价成交比：约 15:1（报价 15 次，实际成交 1 次）</li>
+</ul>
+<h3 id="10-2-区块链与去中心化做市"><a href="#10-2-区块链与去中心化做市" class="headerlink" title="10.2 区块链与去中心化做市"></a>10.2 区块链与去中心化做市</h3><p>去中心化交易所（DEX）中已出现<strong>自动化做市商（AMM，Automated Market Maker）</strong> 模式，以 Uniswap 为代表，通过算法（如 x×y&#x3D;k 常数乘积公式）自动管理流动性池，无需人工持续报价。</p>
+<p>这一模式改变了传统做市商的运作方式：</p>
+<ul>
+<li><strong>原子交换</strong>：降低跨链结算风险</li>
+<li><strong>智能合约自动执行</strong>：无需中间方介入，降低信任成本</li>
+<li><strong>透明性提升</strong>：链上数据公开，对敲等操纵行为更难隐藏</li>
+</ul>
+<hr>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><table>
+<thead>
+<tr>
+<th>核心概念</th>
+<th>要点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>做市商定义</strong></td>
+<td>持续双向报价，承诺随时与投资者交易的金融机构</td>
+</tr>
+<tr>
+<td><strong>价差</strong></td>
+<td>买卖价差是做市商主要利润来源，受波动性、流动性、规模等因素影响</td>
+</tr>
+<tr>
+<td><strong>库存管理</strong></td>
+<td>通过调整报价、对冲操作维持合理库存，避免方向性风险</td>
+</tr>
+<tr>
+<td><strong>基础策略</strong></td>
+<td>价差获取（反应性 &#x2F; 主动性）、风险中性（Delta 对冲）、统计套利</td>
+</tr>
+<tr>
+<td><strong>高频做市</strong></td>
+<td>微秒级报价更新，依赖共址服务器和算法；正常时提升效率，压力时可能撤流动性</td>
+</tr>
+<tr>
+<td><strong>对敲交易</strong></td>
+<td>同一控制人账户间的虚假交易；扭曲价格、破坏市场公平，是监管重点打击对象</td>
+</tr>
+<tr>
+<td><strong>识别对敲</strong></td>
+<td>关注交易量异常放大、价格偏离市场、资产无实质转移等特征</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>本文仅作学习交流用途，不构成任何投资建议。市场有风险，投资需谨慎。</p>
+</blockquote>
+<hr>
+<p><em>参考资料：《做市商机制全景解析》&#x2F; 《做市商策略全景解析》&#x2F; NASDAQ 市场规则 &#x2F; 中国新三板做市商制度相关规定</em></p>
+
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%87%91%E8%9E%8D%E4%B8%9A%E5%8A%A1/">金融业务</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E5%81%9A%E5%B8%82%E5%95%86/">做市商</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E6%B5%81%E5%8A%A8%E6%80%A7/">流动性</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                            <div class="prev-post">
+                                <a class="prev"
+                                   rel="prev"
+                                   href="/posts/2e6f521c/"
+                                   title="Agrona 零基础入门"
+                                >
+                                    <span class="left arrow-icon flex-center">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </span>
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">Agrona 零基础入门</span>
+                                        <span class="post-nav-item">上一篇</span>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/posts/129667d0/"
+                                   title="撮合系统：订单簿与自成交保护"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">撮合系统：订单簿与自成交保护</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+            <div class="pc-post-toc right-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E6%98%AF%E4%BB%80%E4%B9%88"><span class="nav-text">一、做市商是什么</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E7%9A%84%E5%88%86%E7%B1%BB"><span class="nav-text">二、做市商的分类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E7%9A%84%E6%A0%B8%E5%BF%83%E8%81%8C%E8%83%BD%EF%BC%9A%E6%B5%81%E5%8A%A8%E6%80%A7%E6%8F%90%E4%BE%9B"><span class="nav-text">三、做市商的核心职能：流动性提供</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E5%8D%B3%E6%97%B6%E6%80%A7"><span class="nav-text">3.1 即时性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E4%BB%B7%E6%A0%BC%E7%A8%B3%E5%AE%9A"><span class="nav-text">3.2 价格稳定</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E4%BB%B7%E6%A0%BC%E5%8F%91%E7%8E%B0"><span class="nav-text">3.3 价格发现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E6%8A%A5%E4%BB%B7%E6%9C%BA%E5%88%B6%E4%B8%8E%E4%BB%B7%E5%B7%AE%E7%AE%A1%E7%90%86"><span class="nav-text">四、报价机制与价差管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E4%BB%B7%E5%B7%AE%E7%9A%84%E5%BD%A2%E6%88%90"><span class="nav-text">4.1 价差的形成</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E6%8A%A5%E4%BB%B7%E7%9A%84%E5%8A%A8%E6%80%81%E6%80%A7"><span class="nav-text">4.2 报价的动态性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86%E4%B8%8E%E9%A3%8E%E9%99%A9%E6%8E%A7%E5%88%B6"><span class="nav-text">五、库存管理与风险控制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86%E7%9B%AE%E6%A0%87"><span class="nav-text">5.1 库存管理目标</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E4%B8%BB%E8%A6%81%E9%A3%8E%E9%99%A9%E7%B1%BB%E5%9E%8B"><span class="nav-text">5.2 主要风险类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E5%AF%B9%E5%86%B2%E6%93%8D%E4%BD%9C"><span class="nav-text">5.3 对冲操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E7%9A%84%E7%9B%88%E5%88%A9%E6%A8%A1%E5%BC%8F"><span class="nav-text">六、做市商的盈利模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%81%9A%E5%B8%82%E7%AD%96%E7%95%A5%E8%AF%A6%E8%A7%A3"><span class="nav-text">七、做市策略详解</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-%E5%9F%BA%E7%A1%80%E4%BB%B7%E5%B7%AE%E8%8E%B7%E5%8F%96%E7%AD%96%E7%95%A5"><span class="nav-text">7.1 基础价差获取策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-%E9%A3%8E%E9%99%A9%E4%B8%AD%E6%80%A7%E7%AD%96%E7%95%A5%EF%BC%88Delta-%E4%B8%AD%E6%80%A7%EF%BC%89"><span class="nav-text">7.2 风险中性策略（Delta 中性）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-%E7%BB%9F%E8%AE%A1%E5%A5%97%E5%88%A9%E7%AD%96%E7%95%A5"><span class="nav-text">7.3 统计套利策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-%E9%AB%98%E9%A2%91%E5%81%9A%E5%B8%82%E7%AD%96%E7%95%A5"><span class="nav-text">7.4 高频做市策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-5-%E8%B7%A8%E5%B8%82%E5%9C%BA%E5%81%9A%E5%B8%82%E7%AD%96%E7%95%A5"><span class="nav-text">7.5 跨市场做市策略</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E7%9A%84%E9%A3%8E%E9%99%A9%E7%AE%A1%E6%8E%A7%E4%BD%93%E7%B3%BB"><span class="nav-text">八、做市商的风险管控体系</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-1-%E5%85%B3%E9%94%AE%E9%A3%8E%E9%99%A9%E6%8C%87%E6%A0%87"><span class="nav-text">8.1 关键风险指标</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-%E6%9E%81%E7%AB%AF%E6%83%85%E6%99%AF%E5%BA%94%E5%AF%B9"><span class="nav-text">8.2 极端情景应对</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E5%AF%B9%E6%95%B2%E4%BA%A4%E6%98%93%EF%BC%9A%E5%AE%9A%E4%B9%89%E3%80%81%E5%8A%A8%E6%9C%BA%E4%B8%8E%E8%AF%86%E5%88%AB"><span class="nav-text">九、对敲交易：定义、动机与识别</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-%E4%BB%80%E4%B9%88%E6%98%AF%E5%AF%B9%E6%95%B2"><span class="nav-text">9.1 什么是对敲</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-%E5%AF%B9%E6%95%B2%E7%9A%84%E5%8A%A8%E6%9C%BA"><span class="nav-text">9.2 对敲的动机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-%E5%AF%B9%E6%95%B2%E5%AF%B9%E5%B8%82%E5%9C%BA%E7%9A%84%E5%8D%B1%E5%AE%B3"><span class="nav-text">9.3 对敲对市场的危害</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-4-%E5%A6%82%E4%BD%95%E8%AF%86%E5%88%AB%E5%AF%B9%E6%95%B2"><span class="nav-text">9.4 如何识别对敲</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E5%88%B6%E5%BA%A6%E7%9A%84%E6%9C%AA%E6%9D%A5%E6%BC%94%E8%BF%9B"><span class="nav-text">十、做市商制度的未来演进</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-1-%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E8%B5%8B%E8%83%BD"><span class="nav-text">10.1 人工智能赋能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-2-%E5%8C%BA%E5%9D%97%E9%93%BE%E4%B8%8E%E5%8E%BB%E4%B8%AD%E5%BF%83%E5%8C%96%E5%81%9A%E5%B8%82"><span class="nav-text">10.2 区块链与去中心化做市</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-text">总结</span></a></li></ol>
+    </div>
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Reln Ding</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+            <li class="tools-item flex-center toggle-show-toc">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        <!-- PC go comment -->
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+            <li class="tools-item toggle-show-toc-tablet flex-center">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="close-popup-btn">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+    <!-- tablet toc -->
+    
+        <div class="tablet-post-toc-mask">
+            <div class="tablet-post-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E6%98%AF%E4%BB%80%E4%B9%88"><span class="nav-text">一、做市商是什么</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E7%9A%84%E5%88%86%E7%B1%BB"><span class="nav-text">二、做市商的分类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E7%9A%84%E6%A0%B8%E5%BF%83%E8%81%8C%E8%83%BD%EF%BC%9A%E6%B5%81%E5%8A%A8%E6%80%A7%E6%8F%90%E4%BE%9B"><span class="nav-text">三、做市商的核心职能：流动性提供</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E5%8D%B3%E6%97%B6%E6%80%A7"><span class="nav-text">3.1 即时性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E4%BB%B7%E6%A0%BC%E7%A8%B3%E5%AE%9A"><span class="nav-text">3.2 价格稳定</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E4%BB%B7%E6%A0%BC%E5%8F%91%E7%8E%B0"><span class="nav-text">3.3 价格发现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E6%8A%A5%E4%BB%B7%E6%9C%BA%E5%88%B6%E4%B8%8E%E4%BB%B7%E5%B7%AE%E7%AE%A1%E7%90%86"><span class="nav-text">四、报价机制与价差管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E4%BB%B7%E5%B7%AE%E7%9A%84%E5%BD%A2%E6%88%90"><span class="nav-text">4.1 价差的形成</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E6%8A%A5%E4%BB%B7%E7%9A%84%E5%8A%A8%E6%80%81%E6%80%A7"><span class="nav-text">4.2 报价的动态性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86%E4%B8%8E%E9%A3%8E%E9%99%A9%E6%8E%A7%E5%88%B6"><span class="nav-text">五、库存管理与风险控制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86%E7%9B%AE%E6%A0%87"><span class="nav-text">5.1 库存管理目标</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E4%B8%BB%E8%A6%81%E9%A3%8E%E9%99%A9%E7%B1%BB%E5%9E%8B"><span class="nav-text">5.2 主要风险类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E5%AF%B9%E5%86%B2%E6%93%8D%E4%BD%9C"><span class="nav-text">5.3 对冲操作</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E7%9A%84%E7%9B%88%E5%88%A9%E6%A8%A1%E5%BC%8F"><span class="nav-text">六、做市商的盈利模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%81%9A%E5%B8%82%E7%AD%96%E7%95%A5%E8%AF%A6%E8%A7%A3"><span class="nav-text">七、做市策略详解</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-%E5%9F%BA%E7%A1%80%E4%BB%B7%E5%B7%AE%E8%8E%B7%E5%8F%96%E7%AD%96%E7%95%A5"><span class="nav-text">7.1 基础价差获取策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-%E9%A3%8E%E9%99%A9%E4%B8%AD%E6%80%A7%E7%AD%96%E7%95%A5%EF%BC%88Delta-%E4%B8%AD%E6%80%A7%EF%BC%89"><span class="nav-text">7.2 风险中性策略（Delta 中性）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-%E7%BB%9F%E8%AE%A1%E5%A5%97%E5%88%A9%E7%AD%96%E7%95%A5"><span class="nav-text">7.3 统计套利策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-%E9%AB%98%E9%A2%91%E5%81%9A%E5%B8%82%E7%AD%96%E7%95%A5"><span class="nav-text">7.4 高频做市策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-5-%E8%B7%A8%E5%B8%82%E5%9C%BA%E5%81%9A%E5%B8%82%E7%AD%96%E7%95%A5"><span class="nav-text">7.5 跨市场做市策略</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E7%9A%84%E9%A3%8E%E9%99%A9%E7%AE%A1%E6%8E%A7%E4%BD%93%E7%B3%BB"><span class="nav-text">八、做市商的风险管控体系</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-1-%E5%85%B3%E9%94%AE%E9%A3%8E%E9%99%A9%E6%8C%87%E6%A0%87"><span class="nav-text">8.1 关键风险指标</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-%E6%9E%81%E7%AB%AF%E6%83%85%E6%99%AF%E5%BA%94%E5%AF%B9"><span class="nav-text">8.2 极端情景应对</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E5%AF%B9%E6%95%B2%E4%BA%A4%E6%98%93%EF%BC%9A%E5%AE%9A%E4%B9%89%E3%80%81%E5%8A%A8%E6%9C%BA%E4%B8%8E%E8%AF%86%E5%88%AB"><span class="nav-text">九、对敲交易：定义、动机与识别</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-%E4%BB%80%E4%B9%88%E6%98%AF%E5%AF%B9%E6%95%B2"><span class="nav-text">9.1 什么是对敲</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-%E5%AF%B9%E6%95%B2%E7%9A%84%E5%8A%A8%E6%9C%BA"><span class="nav-text">9.2 对敲的动机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-%E5%AF%B9%E6%95%B2%E5%AF%B9%E5%B8%82%E5%9C%BA%E7%9A%84%E5%8D%B1%E5%AE%B3"><span class="nav-text">9.3 对敲对市场的危害</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-4-%E5%A6%82%E4%BD%95%E8%AF%86%E5%88%AB%E5%AF%B9%E6%95%B2"><span class="nav-text">9.4 如何识别对敲</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%81%9A%E5%B8%82%E5%95%86%E5%88%B6%E5%BA%A6%E7%9A%84%E6%9C%AA%E6%9D%A5%E6%BC%94%E8%BF%9B"><span class="nav-text">十、做市商制度的未来演进</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-1-%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E8%B5%8B%E8%83%BD"><span class="nav-text">10.1 人工智能赋能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-2-%E5%8C%BA%E5%9D%97%E9%93%BE%E4%B8%8E%E5%8E%BB%E4%B8%AD%E5%BF%83%E5%8C%96%E5%81%9A%E5%B8%82"><span class="nav-text">10.2 区块链与去中心化做市</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-text">总结</span></a></li></ol>
+    </div>
+</div>
+
+            </div>
+        </div>
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/toggle-theme.js"></script>
+
+<script src="/js/code-block.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+
+<!-- local search -->
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+<!-- lazyload -->
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="pjax">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        
+<script src="/js/post/post-helper.js"></script>
+
+
+        <!-- toc -->
+        
+            
+<script src="/js/post/toc.js"></script>
+
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+
+<!-- pjax -->
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        window.pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart()
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd()
+            window.pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'))
+            KEEP.initExecute()
+        });
+    });
+</script>
+
+
+
+
+    
+        
+    
+
+</body>
+</html>

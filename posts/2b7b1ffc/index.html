@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="blog,技术,生活">
+    <meta name="description" content="Reln 的个人博客，记录学习与生活">
+    <meta name="author" content="Reln Ding">
+    
+    <title>
+        
+            ZooKeeper 命令 |
+        
+        Reln 的小窝
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/favicon.svg">
+    
+    
+<link rel="stylesheet" href="/font/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/brands.min.css">
+
+    
+        
+            
+        
+            
+                
+<link rel="stylesheet" href="/css/custom.css">
+
+            
+        
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"lcha-reln.github.io","root":"/","language":"zh-CN","path":"content.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#24c6dc","title":"Reln 的小窝","author":"Reln Ding","avatar":"/images/site/avatar.svg","logo":"/images/site/logo.svg","favicon":"/favicon.svg"},"menu":{"home":"/ || fas fa-home","archives":"/archives || fas fa-archive","tags":"/tags || fas fa-tags","categories":"/categories || fas fa-th","about":"/about || fas fa-user"},"first_screen":{"enable":true,"background_img":"/images/hero-bg.svg","background_img_dark":"/images/hero-bg-dark.svg","description":"记录技术与思考的点滴","hitokoto":false},"social_contact":{"enable":true,"links":{"github":"https://github.com/lcha-reln","weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":null}},"scroll":{"progress_bar":true,"percent":false,"hide_header":true},"home":{"announcement":null,"category":true,"tag":true,"post_datetime":"created","post_datetime_format":"YYYY-MM-DD"},"post":{"author_badge":{"enable":false,"level_badge":true,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":true,"min2read":true},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null}},"code_block":{"tools":{"enable":true,"style":"mac"},"highlight_theme":"obsidian"},"toc":{"enable":true,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":true,"preload":false},"comment":{"enable":false,"use":"valine","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":null,"repo_id":null,"category":"Announcements","category_id":null,"reactions_enabled":false},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":true},"lazyload":{"enable":true},"cdn":{"enable":false,"provider":"cdnjs"},"pjax":{"enable":true},"footer":{"since":2026,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]}},"inject":{"enable":true,"css":[null,"/css/custom.css"],"js":[null]},"version":"4.2.5","root":"","source_data":{}}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.1"><link rel="alternate" href="/atom.xml" title="Reln 的小窝" type="application/atom+xml">
+</head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+        <span class="scroll-progress-bar"></span>
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <i class="pjax-progress-icon fas fa-circle-notch fa-spin"></i>
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/site/logo.svg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Reln 的小窝
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-home"></i>
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-archive"></i>
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/tags">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-tags"></i>
+                                
+                                标签
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/categories">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-th"></i>
+                                
+                                分类
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/about">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-user"></i>
+                                
+                                关于
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="menu-text-color fas search fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-home"></i>
+                                </span>
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-archive"></i>
+                                </span>
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/tags">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-tags"></i>
+                                </span>
+                            
+                            标签
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/categories">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-th"></i>
+                                </span>
+                            
+                            分类
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/about">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-user"></i>
+                                </span>
+                            
+                            关于
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        ZooKeeper 命令
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/site/avatar.svg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Reln Ding</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-03-11 12:02:00</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                </span>
+            
+        
+
+        
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a></li>
+                        
+                    
+                            <li class="category-item">&nbsp;<i class="icon fas fa-angle-right"></i>&nbsp;<a href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/ZooKeeper/">ZooKeeper</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/ZooKeeper/">ZooKeeper</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E8%BF%90%E7%BB%B4/">运维</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+            <span class="meta-info-item post-wordcount">
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>1.8k 字</span>
+            </span>
+        
+        
+            <span class="meta-info-item post-min2read">
+                <i class="icon fas fa-clock"></i>&nbsp;<span>7 分钟</span>
+            </span>
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <blockquote>
+<p>ZooKeeper 命令行客户端（zkCli）操作手册，涵盖节点增删改查、监听器及四字命令。</p>
+</blockquote>
+<h2 id="1-启动服务与命令行"><a href="#1-启动服务与命令行" class="headerlink" title="1. 启动服务与命令行"></a>1. 启动服务与命令行</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动服务</span></span><br><span class="line">bin/zkServer.sh start</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动命令行（不指定地址则默认连接 localhost:2181）</span></span><br><span class="line">bin/zkCli.sh -server hadoop001:2181</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="2-查看节点列表"><a href="#2-查看节点列表" class="headerlink" title="2. 查看节点列表"></a>2. 查看节点列表</h2><h3 id="2-1-ls-命令"><a href="#2-1-ls-命令" class="headerlink" title="2.1 ls 命令"></a>2.1 <code>ls</code> 命令</h3><p>查看某个路径下的目录列表。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 语法</span></span><br><span class="line"><span class="built_in">ls</span> path</span><br><span class="line"></span><br><span class="line"><span class="comment"># 示例</span></span><br><span class="line">[zk: localhost:2181(CONNECTED) 0] <span class="built_in">ls</span> /</span><br><span class="line">[cluster, controller_epoch, brokers, storm, zookeeper, admin, ...]</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-ls2-命令"><a href="#2-2-ls2-命令" class="headerlink" title="2.2 ls2 命令"></a>2.2 <code>ls2</code> 命令</h3><p>查看某个路径下的目录列表，比 <code>ls</code> 命令列出更多的详细信息（同时展示节点的 Stat 信息）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 语法</span></span><br><span class="line">ls2 path</span><br><span class="line"></span><br><span class="line"><span class="comment"># 示例</span></span><br><span class="line">[zk: localhost:2181(CONNECTED) 1] ls2 /</span><br><span class="line">[cluster, controller_epoch, brokers, ...]</span><br><span class="line">cZxid = 0x0</span><br><span class="line">ctime = Thu Jan 01 08:00:00 CST 1970</span><br><span class="line">mZxid = 0x0</span><br><span class="line">mtime = Thu Jan 01 08:00:00 CST 1970</span><br><span class="line">pZxid = 0x130</span><br><span class="line">cversion = 19</span><br><span class="line">dataVersion = 0</span><br><span class="line">aclVersion = 0</span><br><span class="line">ephemeralOwner = 0x0</span><br><span class="line">dataLength = 0</span><br><span class="line">numChildren = 11</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="3-节点的增删改查"><a href="#3-节点的增删改查" class="headerlink" title="3. 节点的增删改查"></a>3. 节点的增删改查</h2><h3 id="3-1-get-命令"><a href="#3-1-get-命令" class="headerlink" title="3.1 get 命令"></a>3.1 <code>get</code> 命令</h3><p>获取节点数据和状态信息。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 语法</span></span><br><span class="line">get path [watch]</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><code>-w</code> 参数对节点进行事件监听（<code>get path [watch]</code> 在当前版本已废弃，使用 <code>get path -w</code>）</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">[zk: localhost:2181(CONNECTED) 31] get /hadoop</span><br><span class="line">123456      <span class="comment"># 节点数据</span></span><br><span class="line">cZxid = 0x14b</span><br><span class="line">ctime = Fri May 24 17:03:06 CST 2019</span><br><span class="line">mZxid = 0x14b</span><br><span class="line">mtime = Fri May 24 17:03:06 CST 2019</span><br><span class="line">pZxid = 0x14b</span><br><span class="line">cversion = 0</span><br><span class="line">dataVersion = 0</span><br><span class="line">aclVersion = 0</span><br><span class="line">ephemeralOwner = 0x0</span><br><span class="line">dataLength = 6</span><br><span class="line">numChildren = 0</span><br></pre></td></tr></table></figure>
+
+<p><strong>节点 Stat 属性说明：</strong></p>
+<table>
+<thead>
+<tr>
+<th>状态属性</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>cZxid</code></td>
+<td>数据节点创建时的事务 ID</td>
+</tr>
+<tr>
+<td><code>ctime</code></td>
+<td>数据节点创建时的时间</td>
+</tr>
+<tr>
+<td><code>mZxid</code></td>
+<td>数据节点最后一次更新时的事务 ID</td>
+</tr>
+<tr>
+<td><code>mtime</code></td>
+<td>数据节点最后一次更新时的时间</td>
+</tr>
+<tr>
+<td><code>pZxid</code></td>
+<td>数据节点的子节点最后一次被修改时的事务 ID</td>
+</tr>
+<tr>
+<td><code>cversion</code></td>
+<td>子节点的更改次数</td>
+</tr>
+<tr>
+<td><code>dataVersion</code></td>
+<td>节点数据的更改次数</td>
+</tr>
+<tr>
+<td><code>aclVersion</code></td>
+<td>节点的 ACL 的更改次数</td>
+</tr>
+<tr>
+<td><code>ephemeralOwner</code></td>
+<td>临时节点时为创建该节点的会话 SessionID；持久节点时为 0</td>
+</tr>
+<tr>
+<td><code>dataLength</code></td>
+<td>数据内容的长度</td>
+</tr>
+<tr>
+<td><code>numChildren</code></td>
+<td>数据节点当前的子节点个数</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>Zxid（ZooKeeper Transaction Id）</strong>：ZooKeeper 节点的每一次更改都具有唯一的 Zxid，如果 Zxid1 &lt; Zxid2，则 Zxid1 的更改发生在 Zxid2 更改之前。</p>
+</blockquote>
+<h3 id="3-2-stat-命令"><a href="#3-2-stat-命令" class="headerlink" title="3.2 stat 命令"></a>3.2 <code>stat</code> 命令</h3><p>查看节点状态信息，返回值和 <code>get</code> 命令类似，但<strong>不会返回节点数据</strong>。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 语法</span></span><br><span class="line"><span class="built_in">stat</span> path [watch]</span><br><span class="line"></span><br><span class="line"><span class="comment"># 示例</span></span><br><span class="line">[zk: localhost:2181(CONNECTED) 32] <span class="built_in">stat</span> /hadoop</span><br><span class="line">cZxid = 0x14b</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-create-命令"><a href="#3-3-create-命令" class="headerlink" title="3.3 create 命令"></a>3.3 <code>create</code> 命令</h3><p>创建节点并赋值。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 语法</span></span><br><span class="line">create [-s] [-e] path data acl</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>-s</code></td>
+<td>顺序节点，节点名会自动追加自增序号</td>
+</tr>
+<tr>
+<td><code>-e</code></td>
+<td>临时节点，会话结束或客户端断开连接时自动删除（临时节点不能再创建子节点）</td>
+</tr>
+<tr>
+<td><code>path</code></td>
+<td>指定要创建节点的路径</td>
+</tr>
+<tr>
+<td><code>data</code></td>
+<td>要在此节点存储的数据</td>
+</tr>
+<tr>
+<td><code>acl</code></td>
+<td>访问权限，默认 <code>world</code>，相当于全世界都能访问</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建持久节点</span></span><br><span class="line">[zk: localhost:2181(CONNECTED) 4] create /hadoop 123456</span><br><span class="line">Created /hadoop</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建有序节点（节点名 = 指定名 + 自增序号）</span></span><br><span class="line">[zk: localhost:2181(CONNECTED) 23] create -s /a <span class="string">&quot;aaa&quot;</span></span><br><span class="line">Created /a0000000022</span><br><span class="line">[zk: localhost:2181(CONNECTED) 24] create -s /b <span class="string">&quot;bbb&quot;</span></span><br><span class="line">Created /b0000000023</span><br><span class="line">[zk: localhost:2181(CONNECTED) 25] create -s /c <span class="string">&quot;ccc&quot;</span></span><br><span class="line">Created /c0000000024</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建临时节点</span></span><br><span class="line">[zk: localhost:2181(CONNECTED) 26] create -e /tmp <span class="string">&quot;tmp&quot;</span></span><br><span class="line">Created /tmp</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-set-命令"><a href="#3-4-set-命令" class="headerlink" title="3.4 set 命令"></a>3.4 <code>set</code> 命令</h3><p>修改节点存储的数据。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 语法</span></span><br><span class="line"><span class="built_in">set</span> path data [version]</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><code>[version]</code> 可选，版本号可用作<strong>乐观锁</strong>：传入的 <code>dataVersion</code> 和当前节点的版本号不符合时，ZooKeeper 会拒绝本次修改。</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[zk: localhost:2181(CONNECTED) 33] <span class="built_in">set</span> /hadoop 345</span><br><span class="line">...</span><br><span class="line">dataVersion = 1   <span class="comment"># 更改后版本号为 1（默认创建时为 0）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 传入错误版本号，操作会被拒绝</span></span><br><span class="line">[zk: localhost:2181(CONNECTED) 34] <span class="built_in">set</span> /hadoop 678 0</span><br><span class="line">version No is not valid : /hadoop</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-delete-命令"><a href="#3-5-delete-命令" class="headerlink" title="3.5 delete 命令"></a>3.5 <code>delete</code> 命令</h3><p>删除某节点。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 语法</span></span><br><span class="line">delete path [version]</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<ul>
+<li><code>[version]</code> 可选，版本号不匹配时不会执行删除操作</li>
+<li><code>delete</code> 命令<strong>不能删除带有子节点的节点</strong></li>
+<li>如果想要删除节点及其子节点，使用 <code>deleteall path</code></li>
+</ul>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[zk: localhost:2181(CONNECTED) 36] delete /hadoop 0</span><br><span class="line">version No is not valid : /hadoop   <span class="comment"># 版本号无效</span></span><br><span class="line"></span><br><span class="line">[zk: localhost:2181(CONNECTED) 37] delete /hadoop 1   <span class="comment"># 传入正确版本号，删除成功</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="4-监听器（Watcher）"><a href="#4-监听器（Watcher）" class="headerlink" title="4. 监听器（Watcher）"></a>4. 监听器（Watcher）</h2><p>针对每个节点的操作，都会有一个监听者（watcher）。</p>
+<p><strong>监听器特点：</strong></p>
+<ul>
+<li>当监听的某个对象（znode）发生了变化，则触发监听事件</li>
+<li>ZooKeeper 中的监听事件是<strong>一次性的</strong>，触发后立即销毁，需要重新注册</li>
+<li>父节点、子节点的增删改都能够触发监听者</li>
+</ul>
+<p><strong>触发事件类型：</strong></p>
+<table>
+<thead>
+<tr>
+<th>操作类型</th>
+<th>触发事件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>创建父节点</td>
+<td><code>NodeCreated</code></td>
+</tr>
+<tr>
+<td>修改节点数据</td>
+<td><code>NodeDataChanged</code></td>
+</tr>
+<tr>
+<td>删除节点</td>
+<td><code>NodeDeleted</code></td>
+</tr>
+<tr>
+<td>创建子节点</td>
+<td><code>NodeChildrenChanged</code></td>
+</tr>
+<tr>
+<td>删除子节点</td>
+<td><code>NodeChildrenChanged</code></td>
+</tr>
+<tr>
+<td>修改子节点</td>
+<td>不触发事件</td>
+</tr>
+</tbody></table>
+<h3 id="4-1-监听节点数据变化：get-path-w"><a href="#4-1-监听节点数据变化：get-path-w" class="headerlink" title="4.1 监听节点数据变化：get path -w"></a>4.1 监听节点数据变化：<code>get path -w</code></h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[zk: localhost:2181(CONNECTED) 4] get /hadoop -w</span><br><span class="line">[zk: localhost:2181(CONNECTED) 5] <span class="built_in">set</span> /hadoop 45678</span><br><span class="line">WATCHER::</span><br><span class="line">WatchedEvent state:SyncConnected <span class="built_in">type</span>:NodeDataChanged path:/hadoop</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><code>get path [watch]</code> 在当前版本已废弃，使用 <code>get path -w</code></p>
+</blockquote>
+<h3 id="4-2-监听节点状态变化：stat-path-w"><a href="#4-2-监听节点状态变化：stat-path-w" class="headerlink" title="4.2 监听节点状态变化：stat path -w"></a>4.2 监听节点状态变化：<code>stat path -w</code></h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[zk: localhost:2181(CONNECTED) 7] <span class="built_in">stat</span> /hadoop -w</span><br><span class="line">[zk: localhost:2181(CONNECTED) 8] <span class="built_in">set</span> /hadoop 112233</span><br><span class="line">WATCHER::</span><br><span class="line">WatchedEvent state:SyncConnected <span class="built_in">type</span>:NodeDataChanged path:/hadoop</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><code>stat path [watch]</code> 在当前版本已废弃，使用 <code>stat path -w</code></p>
+</blockquote>
+<h3 id="4-3-监听子节点变化：ls-path-w"><a href="#4-3-监听子节点变化：ls-path-w" class="headerlink" title="4.3 监听子节点变化：ls path -w"></a>4.3 监听子节点变化：<code>ls path -w</code></h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[zk: localhost:2181(CONNECTED) 9] <span class="built_in">ls</span> /hadoop -w</span><br><span class="line">[]</span><br><span class="line">[zk: localhost:2181(CONNECTED) 10] create /hadoop/yarn <span class="string">&quot;aaa&quot;</span></span><br><span class="line">WATCHER::</span><br><span class="line">WatchedEvent state:SyncConnected <span class="built_in">type</span>:NodeChildrenChanged path:/hadoop</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><code>ls path [watch]</code> 在当前版本已废弃，使用 <code>ls path -w</code></p>
+</blockquote>
+<hr>
+<h2 id="5-辅助命令"><a href="#5-辅助命令" class="headerlink" title="5. 辅助命令"></a>5. 辅助命令</h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>help</code></td>
+<td>查看所有命令帮助信息</td>
+</tr>
+<tr>
+<td><code>history</code></td>
+<td>查看最近 10 条历史记录</td>
+</tr>
+<tr>
+<td><code>quit</code></td>
+<td>退出命令行</td>
+</tr>
+<tr>
+<td><code>close</code></td>
+<td>关闭当前连接</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="6-ZooKeeper-四字命令"><a href="#6-ZooKeeper-四字命令" class="headerlink" title="6. ZooKeeper 四字命令"></a>6. ZooKeeper 四字命令</h2><p>使用前需要安装 <code>nc</code> 命令（<code>yum install nc</code>），使用格式：<code>echo &lt;cmd&gt; | nc &lt;host&gt; &lt;port&gt;</code></p>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>功能描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>conf</code></td>
+<td>打印服务配置的详细信息</td>
+</tr>
+<tr>
+<td><code>cons</code></td>
+<td>列出连接到此服务器的所有客户端的完整连接&#x2F;会话详细信息（接收&#x2F;发送包数量、会话 ID、操作延迟等）</td>
+</tr>
+<tr>
+<td><code>dump</code></td>
+<td>列出未完成的会话和临时节点（只适用于 Leader 节点）</td>
+</tr>
+<tr>
+<td><code>envi</code></td>
+<td>打印服务环境的详细信息</td>
+</tr>
+<tr>
+<td><code>ruok</code></td>
+<td>测试服务是否处于正确状态，正确则返回 “imok”</td>
+</tr>
+<tr>
+<td><code>stat</code></td>
+<td>列出服务器和连接客户端的简要详细信息</td>
+</tr>
+<tr>
+<td><code>wchs</code></td>
+<td>列出所有 watch 的简单信息</td>
+</tr>
+<tr>
+<td><code>wchc</code></td>
+<td>按会话列出服务器 watch 的详细信息</td>
+</tr>
+<tr>
+<td><code>wchp</code></td>
+<td>按路径列出服务器 watch 的详细信息</td>
+</tr>
+</tbody></table>
+<p><strong>使用示例：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">[root@hadoop001 bin]# <span class="built_in">echo</span> <span class="built_in">stat</span> | nc localhost 2181</span><br><span class="line">Zookeeper version: 3.4.13-2d71af4dbe22557fda74f9a9b4309b15a7487f03,</span><br><span class="line">built on 06/29/2018 04:05 GMT</span><br><span class="line">Clients:</span><br><span class="line"> /0:0:0:0:0:0:0:1:50584[1](queued=0,recved=371,sent=371)</span><br><span class="line"> /0:0:0:0:0:0:0:1:50656[0](queued=0,recved=1,sent=0)</span><br><span class="line">Latency min/avg/max: 0/0/19</span><br><span class="line">Received: 372</span><br><span class="line">Sent: 371</span><br><span class="line">Connections: 2</span><br><span class="line">Outstanding: 0</span><br><span class="line">Zxid: 0x150</span><br><span class="line">Mode: standalone</span><br><span class="line">Node count: 167</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>更多四字命令参阅官方文档：<a class="link"   target="_blank" rel="noopener" href="https://zookeeper.apache.org/doc/current/zookeeperAdmin.html" >ZooKeeper Administrator’s Guide<i class="fas fa-external-link-alt"></i></a></p>
+</blockquote>
+<hr>
+<h2 id="7-常用命令速查"><a href="#7-常用命令速查" class="headerlink" title="7. 常用命令速查"></a>7. 常用命令速查</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 服务管理</span></span><br><span class="line">bin/zkServer.sh start|stop|restart|status</span><br><span class="line"></span><br><span class="line"><span class="comment"># 连接</span></span><br><span class="line">bin/zkCli.sh -server host:2181</span><br><span class="line"></span><br><span class="line"><span class="comment"># 节点操作</span></span><br><span class="line"><span class="built_in">ls</span> /                                          <span class="comment"># 列出根节点子节点</span></span><br><span class="line"><span class="built_in">ls</span> /path -w                                   <span class="comment"># 监听子节点变化</span></span><br><span class="line">get /path                                     <span class="comment"># 获取节点数据</span></span><br><span class="line">get /path -w                                  <span class="comment"># 获取数据并监听变化</span></span><br><span class="line"><span class="built_in">stat</span> /path                                    <span class="comment"># 查看节点状态</span></span><br><span class="line">create /path <span class="string">&quot;data&quot;</span>                           <span class="comment"># 创建持久节点</span></span><br><span class="line">create -e /path <span class="string">&quot;data&quot;</span>                        <span class="comment"># 创建临时节点</span></span><br><span class="line">create -s /path <span class="string">&quot;data&quot;</span>                        <span class="comment"># 创建有序节点</span></span><br><span class="line">create -s -e /path <span class="string">&quot;data&quot;</span>                     <span class="comment"># 创建有序临时节点</span></span><br><span class="line"><span class="built_in">set</span> /path <span class="string">&quot;newdata&quot;</span>                           <span class="comment"># 修改节点数据</span></span><br><span class="line"><span class="built_in">set</span> /path <span class="string">&quot;newdata&quot;</span> 1                         <span class="comment"># 乐观锁修改（指定版本号）</span></span><br><span class="line">delete /path                                  <span class="comment"># 删除节点（无子节点）</span></span><br><span class="line">deleteall /path                               <span class="comment"># 递归删除节点及子节点</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ACL</span></span><br><span class="line">getAcl /path                                  <span class="comment"># 查看节点权限</span></span><br><span class="line">setAcl /path world:anyone:cdrwa              <span class="comment"># 设置权限</span></span><br><span class="line">addauth digest user:password                  <span class="comment"># 添加认证信息</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 四字命令</span></span><br><span class="line"><span class="built_in">echo</span> ruok | nc localhost 2181                 <span class="comment"># 健康检查</span></span><br><span class="line"><span class="built_in">echo</span> <span class="built_in">stat</span> | nc localhost 2181                 <span class="comment"># 状态信息</span></span><br><span class="line"><span class="built_in">echo</span> conf | nc localhost 2181                 <span class="comment"># 配置信息</span></span><br></pre></td></tr></table></figure>
+
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/ZooKeeper/">ZooKeeper</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E8%BF%90%E7%BB%B4/">运维</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                            <div class="prev-post">
+                                <a class="prev"
+                                   rel="prev"
+                                   href="/posts/9c5ba27e/"
+                                   title="ZooKeeper 运维指南"
+                                >
+                                    <span class="left arrow-icon flex-center">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </span>
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">ZooKeeper 运维指南</span>
+                                        <span class="post-nav-item">上一篇</span>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/posts/11315422/"
+                                   title="ZooKeeper Java API"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">ZooKeeper Java API</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+            <div class="pc-post-toc right-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E5%90%AF%E5%8A%A8%E6%9C%8D%E5%8A%A1%E4%B8%8E%E5%91%BD%E4%BB%A4%E8%A1%8C"><span class="nav-text">1. 启动服务与命令行</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E6%9F%A5%E7%9C%8B%E8%8A%82%E7%82%B9%E5%88%97%E8%A1%A8"><span class="nav-text">2. 查看节点列表</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-ls-%E5%91%BD%E4%BB%A4"><span class="nav-text">2.1 ls 命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-ls2-%E5%91%BD%E4%BB%A4"><span class="nav-text">2.2 ls2 命令</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E8%8A%82%E7%82%B9%E7%9A%84%E5%A2%9E%E5%88%A0%E6%94%B9%E6%9F%A5"><span class="nav-text">3. 节点的增删改查</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-get-%E5%91%BD%E4%BB%A4"><span class="nav-text">3.1 get 命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-stat-%E5%91%BD%E4%BB%A4"><span class="nav-text">3.2 stat 命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-create-%E5%91%BD%E4%BB%A4"><span class="nav-text">3.3 create 命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-set-%E5%91%BD%E4%BB%A4"><span class="nav-text">3.4 set 命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-delete-%E5%91%BD%E4%BB%A4"><span class="nav-text">3.5 delete 命令</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E7%9B%91%E5%90%AC%E5%99%A8%EF%BC%88Watcher%EF%BC%89"><span class="nav-text">4. 监听器（Watcher）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E7%9B%91%E5%90%AC%E8%8A%82%E7%82%B9%E6%95%B0%E6%8D%AE%E5%8F%98%E5%8C%96%EF%BC%9Aget-path-w"><span class="nav-text">4.1 监听节点数据变化：get path -w</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E7%9B%91%E5%90%AC%E8%8A%82%E7%82%B9%E7%8A%B6%E6%80%81%E5%8F%98%E5%8C%96%EF%BC%9Astat-path-w"><span class="nav-text">4.2 监听节点状态变化：stat path -w</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E7%9B%91%E5%90%AC%E5%AD%90%E8%8A%82%E7%82%B9%E5%8F%98%E5%8C%96%EF%BC%9Als-path-w"><span class="nav-text">4.3 监听子节点变化：ls path -w</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E8%BE%85%E5%8A%A9%E5%91%BD%E4%BB%A4"><span class="nav-text">5. 辅助命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-ZooKeeper-%E5%9B%9B%E5%AD%97%E5%91%BD%E4%BB%A4"><span class="nav-text">6. ZooKeeper 四字命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E9%80%9F%E6%9F%A5"><span class="nav-text">7. 常用命令速查</span></a></li></ol>
+    </div>
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Reln Ding</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+            <li class="tools-item flex-center toggle-show-toc">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        <!-- PC go comment -->
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+            <li class="tools-item toggle-show-toc-tablet flex-center">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="close-popup-btn">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+    <!-- tablet toc -->
+    
+        <div class="tablet-post-toc-mask">
+            <div class="tablet-post-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E5%90%AF%E5%8A%A8%E6%9C%8D%E5%8A%A1%E4%B8%8E%E5%91%BD%E4%BB%A4%E8%A1%8C"><span class="nav-text">1. 启动服务与命令行</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E6%9F%A5%E7%9C%8B%E8%8A%82%E7%82%B9%E5%88%97%E8%A1%A8"><span class="nav-text">2. 查看节点列表</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-ls-%E5%91%BD%E4%BB%A4"><span class="nav-text">2.1 ls 命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-ls2-%E5%91%BD%E4%BB%A4"><span class="nav-text">2.2 ls2 命令</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E8%8A%82%E7%82%B9%E7%9A%84%E5%A2%9E%E5%88%A0%E6%94%B9%E6%9F%A5"><span class="nav-text">3. 节点的增删改查</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-get-%E5%91%BD%E4%BB%A4"><span class="nav-text">3.1 get 命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-stat-%E5%91%BD%E4%BB%A4"><span class="nav-text">3.2 stat 命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-create-%E5%91%BD%E4%BB%A4"><span class="nav-text">3.3 create 命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-set-%E5%91%BD%E4%BB%A4"><span class="nav-text">3.4 set 命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-delete-%E5%91%BD%E4%BB%A4"><span class="nav-text">3.5 delete 命令</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E7%9B%91%E5%90%AC%E5%99%A8%EF%BC%88Watcher%EF%BC%89"><span class="nav-text">4. 监听器（Watcher）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E7%9B%91%E5%90%AC%E8%8A%82%E7%82%B9%E6%95%B0%E6%8D%AE%E5%8F%98%E5%8C%96%EF%BC%9Aget-path-w"><span class="nav-text">4.1 监听节点数据变化：get path -w</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E7%9B%91%E5%90%AC%E8%8A%82%E7%82%B9%E7%8A%B6%E6%80%81%E5%8F%98%E5%8C%96%EF%BC%9Astat-path-w"><span class="nav-text">4.2 监听节点状态变化：stat path -w</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E7%9B%91%E5%90%AC%E5%AD%90%E8%8A%82%E7%82%B9%E5%8F%98%E5%8C%96%EF%BC%9Als-path-w"><span class="nav-text">4.3 监听子节点变化：ls path -w</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E8%BE%85%E5%8A%A9%E5%91%BD%E4%BB%A4"><span class="nav-text">5. 辅助命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-ZooKeeper-%E5%9B%9B%E5%AD%97%E5%91%BD%E4%BB%A4"><span class="nav-text">6. ZooKeeper 四字命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E9%80%9F%E6%9F%A5"><span class="nav-text">7. 常用命令速查</span></a></li></ol>
+    </div>
+</div>
+
+            </div>
+        </div>
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/toggle-theme.js"></script>
+
+<script src="/js/code-block.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+
+<!-- local search -->
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+<!-- lazyload -->
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="pjax">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        
+<script src="/js/post/post-helper.js"></script>
+
+
+        <!-- toc -->
+        
+            
+<script src="/js/post/toc.js"></script>
+
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+
+<!-- pjax -->
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        window.pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart()
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd()
+            window.pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'))
+            KEEP.initExecute()
+        });
+    });
+</script>
+
+
+
+
+    
+        
+    
+
+</body>
+</html>
