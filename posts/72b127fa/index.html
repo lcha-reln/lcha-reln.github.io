@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -344,7 +344,7 @@
         
         
             <span class="meta-info-item post-wordcount">
-                <i class="icon fas fa-file-word"></i>&nbsp;<span>2.8k 字</span>
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>2.9k 字</span>
             </span>
         
         
@@ -550,7 +550,23 @@
 </blockquote>
 <hr>
 <h3 id="3-1-永续合约平仓"><a href="#3-1-永续合约平仓" class="headerlink" title="3.1 永续合约平仓"></a>3.1 永续合约平仓</h3><p>永续合约<strong>无到期日</strong>，完全依赖<strong>资金费用（Funding Rate）</strong> 机制使合约价格锚定现货价格。</p>
-<h4 id="永续合约平仓流程"><a href="#永续合约平仓流程" class="headerlink" title="永续合约平仓流程"></a>永续合约平仓流程</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">持有永续仓位</span><br><span class="line">      │</span><br><span class="line">      ├── 主动平仓 ──────────────────────────────┐</span><br><span class="line">      │   （用户手动操作）                         │</span><br><span class="line">      │                                          │</span><br><span class="line">      ├── 强制平仓 ──────────────────────────────┤</span><br><span class="line">      │   （保证金率 &lt; 维持保证金率，系统触发）       │</span><br><span class="line">      │                                          ▼</span><br><span class="line">      │                               执行平仓交易（市价）</span><br><span class="line">      │                                          │</span><br><span class="line">      │                               计算盈亏（平仓价 - 开仓价）× 数量</span><br><span class="line">      │                                          │</span><br><span class="line">      │                               检查资金费用窗口</span><br><span class="line">      │                               （每 8 小时一次）</span><br><span class="line">      │                                          │</span><br><span class="line">      └──────────────────────────────────────────▼</span><br><span class="line">                                        仓位结束，资金结算</span><br></pre></td></tr></table></figure>
+<h4 id="永续合约平仓流程"><a href="#永续合约平仓流程" class="headerlink" title="永续合约平仓流程"></a>永续合约平仓流程</h4><div class="mermaid">
+flowchart TD
+    A[持有永续仓位]
+    B["主动平仓(用户手动操作)"]
+    C["强制平仓(保证金率小于维持保证金率,系统触发)"]
+    D["执行平仓交易(市价)"]
+    E["计算盈亏(平仓价减开仓价)乘以数量"]
+    F["检查资金费用窗口(每 8 小时一次)"]
+    G[仓位结束,资金结算]
+    A --> B
+    A --> C
+    B --> D
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+</div>
 
 <h4 id="资金费用（Funding-Rate）说明"><a href="#资金费用（Funding-Rate）说明" class="headerlink" title="资金费用（Funding Rate）说明"></a>资金费用（Funding Rate）说明</h4><ul>
 <li>每 8 小时收取&#x2F;支付一次（各平台略有差异，部分为每 4 小时）</li>
@@ -563,7 +579,17 @@
 </blockquote>
 <hr>
 <h3 id="3-2-交割合约平仓"><a href="#3-2-交割合约平仓" class="headerlink" title="3.2 交割合约平仓"></a>3.2 交割合约平仓</h3><p>交割合约有<strong>固定到期日</strong>，到期时系统按<strong>交割价格</strong>自动结算，无需用户手动操作。</p>
-<h4 id="交割合约平仓流程"><a href="#交割合约平仓流程" class="headerlink" title="交割合约平仓流程"></a>交割合约平仓流程</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">持有交割仓位</span><br><span class="line">      │</span><br><span class="line">      ├── 主动平仓 ──────────── 用户在到期前手动平仓，按市价计算盈亏</span><br><span class="line">      │</span><br><span class="line">      ├── 强制平仓 ──────────── 保证金不足时，系统强制以市价平仓</span><br><span class="line">      │</span><br><span class="line">      └── 到期自动交割 ─────── 合约到期，系统停止交易</span><br><span class="line">                                按官方公布的「交割价格」（通常为到期前一段时间的平均价）结算盈亏</span><br><span class="line">                                无需用户操作，仓位自动消失</span><br></pre></td></tr></table></figure>
+<h4 id="交割合约平仓流程"><a href="#交割合约平仓流程" class="headerlink" title="交割合约平仓流程"></a>交割合约平仓流程</h4><div class="mermaid">
+graph TD
+    A[持有交割仓位] --> B[主动平仓]
+    A --> C[强制平仓]
+    A --> D[到期自动交割]
+    B --> B1["用户在到期前手动平仓,按市价计算盈亏"]
+    C --> C1["保证金不足时,系统强制以市价平仓"]
+    D --> D1[合约到期,系统停止交易]
+    D1 --> D2["按官方公布的「交割价格」(通常为到期前一段时间的平均价)结算盈亏"]
+    D2 --> D3[无需用户操作,仓位自动消失]
+</div>
 
 <hr>
 <h3 id="3-3-永续合约-vs-交割合约对比"><a href="#3-3-永续合约-vs-交割合约对比" class="headerlink" title="3.3 永续合约 vs 交割合约对比"></a>3.3 永续合约 vs 交割合约对比</h3><table>
@@ -725,7 +751,28 @@
 </tr>
 </tbody></table>
 <hr>
-<h2 id="六、完整流程总结"><a href="#六、完整流程总结" class="headerlink" title="六、完整流程总结"></a>六、完整流程总结</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────┐</span><br><span class="line">│                    合约交易完整流程                        │</span><br><span class="line">└─────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">  1. 分析市场 → 判断方向（多/空）</span><br><span class="line">           │</span><br><span class="line">  2. 选择交易对、设置杠杆</span><br><span class="line">           │</span><br><span class="line">  3. 下委托单（限价/市价）→ 撮合成交</span><br><span class="line">           │</span><br><span class="line">  4. 仓位建立 ─── 设置止盈止损价格</span><br><span class="line">           │</span><br><span class="line">  5. 持仓中 ─── 监控浮动盈亏 / 保证金率 / 资金费率（永续）</span><br><span class="line">           │</span><br><span class="line">  6. 平仓触发</span><br><span class="line">     ├── 主动止盈 → 盈利结算，保证金释放</span><br><span class="line">     ├── 主动止损 → 亏损结算，保证金部分释放</span><br><span class="line">     └── 强制平仓 → 保证金全部（或大部分）损失</span><br></pre></td></tr></table></figure>
+<h2 id="六、完整流程总结"><a href="#六、完整流程总结" class="headerlink" title="六、完整流程总结"></a>六、完整流程总结</h2><div class="mermaid">
+graph TD
+  T[合约交易完整流程]
+  S1["1. 分析市场,判断方向(多/空)"]
+  S2["2. 选择交易对,设置杠杆"]
+  S3["3. 下委托单(限价/市价),撮合成交"]
+  S4["4. 仓位建立 — 设置止盈止损价格"]
+  S5["5. 持仓中 — 监控浮动盈亏 / 保证金率 / 资金费率(永续)"]
+  S6[6. 平仓触发]
+  B1["主动止盈 → 盈利结算,保证金释放"]
+  B2["主动止损 → 亏损结算,保证金部分释放"]
+  B3["强制平仓 → 保证金全部(或大部分)损失"]
+  T --> S1
+  S1 --> S2
+  S2 --> S3
+  S3 --> S4
+  S4 --> S5
+  S5 --> S6
+  S6 --> B1
+  S6 --> B2
+  S6 --> B3
+</div>
 
 <hr>
 <h2 id="七、核心风险提示"><a href="#七、核心风险提示" class="headerlink" title="七、核心风险提示"></a>七、核心风险提示</h2><blockquote>
@@ -1076,6 +1123,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

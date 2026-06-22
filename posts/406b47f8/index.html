@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="blog,技术,生活">
+    <meta name="description" content="Reln 的个人博客，记录学习与生活">
+    <meta name="author" content="Reln Ding">
+    
+    <title>
+        
+            Aeron 编程模型深度解析 |
+        
+        Reln 的小窝
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/favicon.svg">
+    
+    
+<link rel="stylesheet" href="/font/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/brands.min.css">
+
+    
+        
+            
+        
+            
+                
+<link rel="stylesheet" href="/css/custom.css">
+
+            
+        
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"lcha-reln.github.io","root":"/","language":"zh-CN","path":"content.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#24c6dc","title":"Reln 的小窝","author":"Reln Ding","avatar":"/images/site/avatar.svg","logo":"/images/site/logo.svg","favicon":"/favicon.svg"},"menu":{"home":"/ || fas fa-home","archives":"/archives || fas fa-archive","tags":"/tags || fas fa-tags","categories":"/categories || fas fa-th","about":"/about || fas fa-user"},"first_screen":{"enable":true,"background_img":"/images/hero-bg.svg","background_img_dark":"/images/hero-bg-dark.svg","description":"记录技术与思考的点滴","hitokoto":false},"social_contact":{"enable":true,"links":{"github":"https://github.com/lcha-reln","weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":null}},"scroll":{"progress_bar":true,"percent":false,"hide_header":true},"home":{"announcement":null,"category":true,"tag":true,"post_datetime":"created","post_datetime_format":"YYYY-MM-DD"},"post":{"author_badge":{"enable":false,"level_badge":true,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":true,"min2read":true},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null}},"code_block":{"tools":{"enable":true,"style":"mac"},"highlight_theme":"obsidian"},"toc":{"enable":true,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":true,"preload":false},"comment":{"enable":false,"use":"valine","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":null,"repo_id":null,"category":"Announcements","category_id":null,"reactions_enabled":false},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":true},"lazyload":{"enable":true},"cdn":{"enable":false,"provider":"cdnjs"},"pjax":{"enable":true},"footer":{"since":2026,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]}},"inject":{"enable":true,"css":[null,"/css/custom.css"],"js":[null]},"version":"4.2.5","root":"","source_data":{}}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.1"><link rel="alternate" href="/atom.xml" title="Reln 的小窝" type="application/atom+xml">
+</head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+        <span class="scroll-progress-bar"></span>
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <i class="pjax-progress-icon fas fa-circle-notch fa-spin"></i>
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/site/logo.svg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Reln 的小窝
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-home"></i>
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-archive"></i>
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/tags">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-tags"></i>
+                                
+                                标签
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/categories">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-th"></i>
+                                
+                                分类
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/about">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-user"></i>
+                                
+                                关于
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="menu-text-color fas search fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-home"></i>
+                                </span>
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-archive"></i>
+                                </span>
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/tags">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-tags"></i>
+                                </span>
+                            
+                            标签
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/categories">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-th"></i>
+                                </span>
+                            
+                            分类
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/about">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-user"></i>
+                                </span>
+                            
+                            关于
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        Aeron 编程模型深度解析
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/site/avatar.svg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Reln Ding</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-03-12 10:00:00</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
+                </span>
+            
+        
+
+        
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BB%84%E4%BB%B6/">高性能组件</a></li>
+                        
+                    
+                            <li class="category-item">&nbsp;<i class="icon fas fa-angle-right"></i>&nbsp;<a href="/categories/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BB%84%E4%BB%B6/Aeron/">Aeron</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/Aeron/">Aeron</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+            <span class="meta-info-item post-wordcount">
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>3.3k 字</span>
+            </span>
+        
+        
+            <span class="meta-info-item post-min2read">
+                <i class="icon fas fa-clock"></i>&nbsp;<span>15 分钟</span>
+            </span>
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <p>本文聚焦 Aeron <strong>应用面向的编程模型</strong>：发布端 <code>Publication</code> 与订阅端 <code>Subscription</code> 的 API 语义、底层的 Log Buffer &#x2F; Image 内存模型、Position 位置体系，以及一对多分发的 MDC（Multi-Destination-Cast）。读完即可写出正确、高效的 Aeron 收发代码。</p>
+<blockquote>
+<p>前置概念见 <a href="/posts/43d5f152/">Aeron Channel、Stream、Session 深度解析</a>；引擎内部见 <a href="/posts/bc5589ca/">Aeron Media Driver 深度解析</a>；传输与流控见 <a href="/posts/fbf83150/">传输模式与 NAK 流控深度解析</a>。</p>
+</blockquote>
+<span id="more"></span>
+
+<h2 id="一、Publication-发布端"><a href="#一、Publication-发布端" class="headerlink" title="一、Publication 发布端"></a>一、Publication 发布端</h2><p>Publication 是应用程序发送数据的主要接口，提供<strong>非阻塞</strong>的发送 API。</p>
+<h3 id="1-1-两种-Publication-类型"><a href="#1-1-两种-Publication-类型" class="headerlink" title="1.1 两种 Publication 类型"></a>1.1 两种 Publication 类型</h3><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>创建方式</th>
+<th>线程安全</th>
+<th>Session ID</th>
+<th>性能</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ConcurrentPublication</code></td>
+<td><code>aeron.addPublication()</code></td>
+<td>是（内部加锁）</td>
+<td>共享</td>
+<td>略低</td>
+</tr>
+<tr>
+<td><code>ExclusivePublication</code></td>
+<td><code>aeron.addExclusivePublication()</code></td>
+<td>否</td>
+<td>独立</td>
+<td>更高</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>最佳实践</strong>：单线程发送用 <code>ExclusivePublication</code>，多线程共享发送用 <code>ConcurrentPublication</code>。</p>
+</blockquote>
+<h3 id="1-2-offer-方法"><a href="#1-2-offer-方法" class="headerlink" title="1.2 offer 方法"></a>1.2 <code>offer</code> 方法</h3><p><code>offer</code> 是最常用的发送方式，<strong>会将数据复制到 Log Buffer</strong>。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">offer() 返回值语义：</span><br><span class="line"></span><br><span class="line">返回值 &gt; 0   ✓  发送成功，值为新的流位置（stream position）</span><br><span class="line">返回值 = -1  ✗  无订阅者连接（NOT_CONNECTED），非错误，可重试</span><br><span class="line">返回值 = -2  ✗  被背压（BACK_PRESSURED），日志缓冲区满，需等待</span><br><span class="line">返回值 = -3  ✗  管理员动作中（ADMIN_ACTION），Term 轮转，立即重试</span><br><span class="line">返回值 = -4  ✗  Publication 已关闭（CLOSED），不可恢复</span><br><span class="line">返回值 = -5  ✗  流已达最大位置（MAX_POSITION_EXCEEDED），需增大 Term 缓冲</span><br></pre></td></tr></table></figure>
+
+<p><strong>offer 的多个重载变体：</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 基础版本</span></span><br><span class="line"><span class="type">long</span> <span class="variable">pos</span> <span class="operator">=</span> pub.offer(buffer, offset, length);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 双 Buffer 版本（header + body，零拷贝组合）</span></span><br><span class="line"><span class="type">long</span> <span class="variable">pos</span> <span class="operator">=</span> pub.offer(headerBuffer, hOffset, hLen, bodyBuffer, bOffset, bLen);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 带 ReservedValueSupplier（注入 checksum 或 timestamp）</span></span><br><span class="line"><span class="type">long</span> <span class="variable">pos</span> <span class="operator">=</span> pub.offer(buffer, offset, length,</span><br><span class="line">    (termBuffer, termOffset, frameLength) -&gt; System.currentTimeMillis());</span><br><span class="line"></span><br><span class="line"><span class="comment">// DirectBufferVector 数组版本</span></span><br><span class="line"><span class="type">long</span> <span class="variable">pos</span> <span class="operator">=</span> pub.offer(<span class="keyword">new</span> <span class="title class_">DirectBufferVector</span>[]&#123;vec1, vec2&#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-3-tryClaim-方法（零拷贝发送）"><a href="#1-3-tryClaim-方法（零拷贝发送）" class="headerlink" title="1.3 tryClaim 方法（零拷贝发送）"></a>1.3 <code>tryClaim</code> 方法（零拷贝发送）</h3><p><code>tryClaim</code> 是性能更高的方式：<strong>直接在 Log Buffer 上申请写入空间，无需额外复制</strong>。</p>
+<div class="mermaid">
+graph TD
+    A["1. tryClaim(length, bufferClaim)"]
+    B["成功: 在 Log Buffer 中预留 length 字节空间"]
+    C["2. 直接向 bufferClaim.buffer() 写入数据 (使用 bufferClaim.offset() 作为起始偏移)"]
+    D{"3. 提交或中止"}
+    E["bufferClaim.commit(): 提交, Media Driver 随即发送"]
+    F["bufferClaim.abort(): 中止, 释放预留空间"]
+    A --> B
+    B --> C
+    C --> D
+    D -->|提交| E
+    D -->|中止| F
+</div>
+
+<blockquote>
+<p><strong>重要警告</strong>：</p>
+<ul>
+<li>最大 claim 长度 &#x3D; <code>maxPayloadLength()</code>（默认 MTU 1376 字节）</li>
+<li>必须在 unblock 超时（默认 15 秒）内 <code>commit()</code> 或 <code>abort()</code>，否则 Media Driver 强制 unblock</li>
+<li>使用 <code>bufferClaim.offset()</code> 而非 <code>0</code> 作为写入偏移，否则会损坏数据</li>
+</ul>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tryClaim 标准使用模式</span></span><br><span class="line"><span class="keyword">final</span> <span class="type">BufferClaim</span> <span class="variable">bufferClaim</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BufferClaim</span>(); <span class="comment">// 每线程一个（ThreadLocal）</span></span><br><span class="line"></span><br><span class="line"><span class="type">long</span> <span class="variable">result</span> <span class="operator">=</span> publication.tryClaim(messageLength, bufferClaim);</span><br><span class="line"><span class="keyword">if</span> (result &gt; <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="type">MutableDirectBuffer</span> <span class="variable">buf</span> <span class="operator">=</span> bufferClaim.buffer();</span><br><span class="line">        <span class="type">int</span> <span class="variable">offset</span> <span class="operator">=</span> bufferClaim.offset();</span><br><span class="line">        <span class="comment">// 直接写入，无拷贝</span></span><br><span class="line">        buf.putInt(offset, myValue);</span><br><span class="line">        buf.putBytes(offset + <span class="number">4</span>, myData, <span class="number">0</span>, myData.length);</span><br><span class="line">        bufferClaim.commit();</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">        bufferClaim.abort();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-4-消息分片机制"><a href="#1-4-消息分片机制" class="headerlink" title="1.4 消息分片机制"></a>1.4 消息分片机制</h3><div class="mermaid">
+graph TD
+  A["Application Message (200KB)"]
+  A -->|"offer 数据超过 maxPayloadLength() 时, Aeron 自动分片"| B
+  subgraph B["分片 (每片 ≤ MTU - 32字节头)"]
+    F1["Frag 1 (BEGIN)"]
+    F2["Frag 2"]
+    F3["Frag 3"]
+    F4["Frag 4 (END)"]
+  end
+  B -->|"网络传输 (可能乱序到达)"| C["接收端: FragmentAssembler 重新组装"]
+  C --> D["FragmentHandler.onFragment() 收到完整消息"]
+</div>
+
+<blockquote>
+<p><strong>注意</strong>：<code>tryClaim</code> 不支持超过 <code>maxPayloadLength()</code> 的消息，因此不需要 <code>FragmentAssembler</code>。</p>
+</blockquote>
+<h3 id="1-5-异步构建-Publication（Aeron-1-35-0-）"><a href="#1-5-异步构建-Publication（Aeron-1-35-0-）" class="headerlink" title="1.5 异步构建 Publication（Aeron 1.35.0+）"></a>1.5 异步构建 Publication（Aeron 1.35.0+）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 传统同步方式（会阻塞几毫秒）</span></span><br><span class="line"><span class="type">Publication</span> <span class="variable">pub</span> <span class="operator">=</span> aeron.addExclusivePublication(channel, streamId);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 新的异步方式（适合对暂停敏感的 duty cycle）</span></span><br><span class="line"><span class="type">long</span> <span class="variable">regId</span> <span class="operator">=</span> aeron.asyncAddExclusivePublication(channel, streamId);</span><br><span class="line"><span class="type">Publication</span> <span class="variable">pub</span> <span class="operator">=</span> <span class="literal">null</span>;</span><br><span class="line"><span class="keyword">while</span> ((pub = aeron.getExclusivePublication(regId)) == <span class="literal">null</span>) &#123;</span><br><span class="line">    aeron.context().idleStrategy().idle();</span><br><span class="line">    <span class="comment">// 此处可以做其他事情</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、Subscription-订阅端"><a href="#二、Subscription-订阅端" class="headerlink" title="二、Subscription 订阅端"></a>二、Subscription 订阅端</h2><p>Subscription 用于接收消息流，必须在单线程内使用（非线程安全）。</p>
+<h3 id="2-1-基本轮询模式"><a href="#2-1-基本轮询模式" class="headerlink" title="2.1 基本轮询模式"></a>2.1 基本轮询模式</h3><p>Subscription 的核心设计是**主动轮询（polling）**而非事件回调，天然适配 Agrona Agent 的 duty cycle 模型。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 创建 Subscription（阻塞直到 Media Driver 响应）</span></span><br><span class="line"><span class="type">Subscription</span> <span class="variable">sub</span> <span class="operator">=</span> aeron.addSubscription(channel, streamId);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 在 duty cycle 中轮询</span></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">int</span> <span class="title function_">doWork</span><span class="params">()</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">    <span class="comment">// poll 返回值 = 消费的 fragment 数量（注意：不是消息数量）</span></span><br><span class="line">    <span class="keyword">return</span> subscription.poll(fragmentHandler, FRAGMENT_LIMIT);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-FragmentHandler-注意事项"><a href="#2-2-FragmentHandler-注意事项" class="headerlink" title="2.2 FragmentHandler 注意事项"></a>2.2 FragmentHandler 注意事项</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ⚠️ 关键约束：FragmentHandler 中收到的 buffer 只在本次 doWork 期间有效</span></span><br><span class="line"><span class="comment">// 不要持有 buffer 引用超过一个 duty cycle！</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">void</span> <span class="title function_">onFragment</span><span class="params">(DirectBuffer buffer, <span class="type">int</span> offset, <span class="type">int</span> length, Header header)</span> &#123;</span><br><span class="line">    <span class="comment">// ✅ 正确：立即解码数据</span></span><br><span class="line">    <span class="type">int</span> <span class="variable">value</span> <span class="operator">=</span> buffer.getInt(offset);</span><br><span class="line">    <span class="type">String</span> <span class="variable">msg</span> <span class="operator">=</span> buffer.getStringAscii(offset + <span class="number">4</span>);</span><br><span class="line">    process(value, msg);  <span class="comment">// 传递值而非 buffer 引用</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// ❌ 错误：持有 buffer 引用</span></span><br><span class="line">    <span class="comment">// this.lastBuffer = buffer;  // 危险！Aeron 可能清除底层数据</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-大消息重组（FragmentAssembler）"><a href="#2-3-大消息重组（FragmentAssembler）" class="headerlink" title="2.3 大消息重组（FragmentAssembler）"></a>2.3 大消息重组（FragmentAssembler）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">MyService</span> &#123;</span><br><span class="line">    <span class="comment">// FragmentAssembler 维护内部状态用于重组分片消息</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">FragmentAssembler</span> <span class="variable">assembler</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">FragmentAssembler</span>(<span class="built_in">this</span>::onMessage);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">doWork</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="comment">// 将 assembler 作为 fragmentHandler 传入，而非 this</span></span><br><span class="line">        <span class="keyword">return</span> subscription.poll(assembler, FRAGMENT_LIMIT);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 只有完整消息才会到达这里</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">onMessage</span><span class="params">(DirectBuffer buffer, <span class="type">int</span> offset, <span class="type">int</span> length, Header header)</span> &#123;</span><br><span class="line">        <span class="comment">// 处理完整的重组消息</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-受控轮询（ControlledFragmentHandler）"><a href="#2-4-受控轮询（ControlledFragmentHandler）" class="headerlink" title="2.4 受控轮询（ControlledFragmentHandler）"></a>2.4 受控轮询（ControlledFragmentHandler）</h3><p>当需要精细控制消费进度时（例如消息处理失败需要重试），使用 <code>controlledPoll</code>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 实现 ControlledFragmentHandler 接口</span></span><br><span class="line">Action <span class="title function_">onFragment</span><span class="params">(DirectBuffer buffer, <span class="type">int</span> offset, <span class="type">int</span> length, Header header)</span> &#123;</span><br><span class="line">    <span class="type">boolean</span> <span class="variable">success</span> <span class="operator">=</span> processMessage(buffer, offset, length);</span><br><span class="line">    <span class="keyword">if</span> (!success) &#123;</span><br><span class="line">        <span class="keyword">return</span> Action.ABORT;    <span class="comment">// 取消本轮，下次重新消费（位置不推进）</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> Action.CONTINUE;     <span class="comment">// 继续处理下一个 fragment</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 可用的 Action 类型</span></span><br><span class="line"><span class="comment">// ABORT   - 回滚本轮所有位置，下次 poll 重新消费</span></span><br><span class="line"><span class="comment">// BREAK   - 停止继续 poll，提交当前已消费位置</span></span><br><span class="line"><span class="comment">// COMMIT  - 提交当前位置并继续 poll</span></span><br><span class="line"><span class="comment">// CONTINUE - 正常继续（等同于标准 poll 行为）</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="三、Log-Buffer-与-Image-内存模型"><a href="#三、Log-Buffer-与-Image-内存模型" class="headerlink" title="三、Log Buffer 与 Image 内存模型"></a>三、Log Buffer 与 Image 内存模型</h2><p>Log Buffer 是 Aeron 零拷贝、低延迟的核心数据结构。发布端写入它，Media Driver 的 Sender 从中读取发送，接收端则在 Image 的 Log Buffer 中重建有序流。</p>
+<h3 id="3-1-Log-Buffer-物理结构"><a href="#3-1-Log-Buffer-物理结构" class="headerlink" title="3.1 Log Buffer 物理结构"></a>3.1 Log Buffer 物理结构</h3><div class="mermaid">
+graph TD
+  subgraph FILE["Log Buffer File (内存映射, 通常在 /dev/shm)"]
+    direction TB
+    T0["Term 0 (termLength) | offset 0 | 状态: clean / active / dirty"]
+    T1["Term 1 (termLength) | offset: termLength"]
+    T2["Term 2 (termLength) | offset: 2 × termLength"]
+    META["Metadata | offset: 3 × termLength | Term 状态、Term ID、位置信息等"]
+    T0 --> T1 --> T2 --> META
+  end
+  subgraph TERM["每个 Term 内部"]
+    direction LR
+    H1["Header (32byte)"] --> M1["Message 1"] --> H2["Header (32byte)"] --> M2["Message 2"] --> DOTS["..."]
+  end
+  FILE -.-> TERM
+</div>
+
+<h3 id="3-2-Term-状态轮转"><a href="#3-2-Term-状态轮转" class="headerlink" title="3.2 Term 状态轮转"></a>3.2 Term 状态轮转</h3><div class="mermaid">
+stateDiagram-v2
+direction LR
+[*] --> clean
+clean --> active: 开始写入
+active --> dirty: 写满
+dirty --> clean: 被重置后
+note right of dirty
+三个 Term 轮转过程:
+时刻1: Term0=active Term1=clean Term2=clean
+时刻2: Term0=dirty Term1=active Term2=clean (Term0 写满,切换)
+时刻3: Term0=clean Term1=dirty Term2=active (Term1 写满,切换)
+时刻4: Term0=active Term1=clean Term2=dirty (循环)
+Publication.offer() 返回 ADMIN_ACTION(-3)
+= Term 轮转的瞬间,应用层应立即重试
+end note
+</div>
+
+<h3 id="3-3-Term-Buffer-大小约束"><a href="#3-3-Term-Buffer-大小约束" class="headerlink" title="3.3 Term Buffer 大小约束"></a>3.3 Term Buffer 大小约束</h3><table>
+<thead>
+<tr>
+<th>约束条件</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>最小值</td>
+<td>65,536 bytes（64KB）</td>
+</tr>
+<tr>
+<td>最大值</td>
+<td>1,073,741,824 bytes（1GB）</td>
+</tr>
+<tr>
+<td>必须是</td>
+<td>2 的幂次</td>
+</tr>
+<tr>
+<td>单条消息最大长度</td>
+<td>min(16MB, termLength &#x2F; 8)</td>
+</tr>
+<tr>
+<td>整个流的最大位置</td>
+<td>termLength × 2³¹</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>Term Buffer 大小如何影响吞吐与背压（结合 BDP 计算），详见 <a href="/posts/fbf83150/">传输模式与 NAK 流控深度解析</a> 的流控章节。</p>
+</blockquote>
+<h3 id="3-4-乱序重建与-Watermark"><a href="#3-4-乱序重建与-Watermark" class="headerlink" title="3.4 乱序重建与 Watermark"></a>3.4 乱序重建与 Watermark</h3><p>UDP 报文可能乱序到达，Aeron 通过 Log Buffer 正确重建有序流：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">数据包到达顺序（乱序）：Msg3, Msg1, Msg4, Msg2</span><br><span class="line"></span><br><span class="line">rcv-hwm（High Water Mark）= 已接收的最远位置</span><br><span class="line">rcv-pos（Receiver Position）= 连续已完成的位置</span><br><span class="line"></span><br><span class="line">时刻1: 收到 Msg3 → hwm=3, pos=0（Msg1/2 缺失，不能推进 pos）</span><br><span class="line">时刻2: 收到 Msg1 → hwm=3, pos=1（Msg2 仍缺失）</span><br><span class="line">时刻3: 收到 Msg4 → hwm=4, pos=1（Msg2 仍缺失）</span><br><span class="line">时刻4: 发送 NAK（请求重传 Msg2）</span><br><span class="line">时刻5: 收到 Msg2 → hwm=4, pos=4（连续，sub-pos 可推进到 4）</span><br><span class="line"></span><br><span class="line">订阅端只在 rcv-pos 推进时收到新消息！</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-Image"><a href="#3-5-Image" class="headerlink" title="3.5 Image"></a>3.5 Image</h3><p>Image 是 Subscription 端对某个 Publication 流的本地副本：</p>
+<ul>
+<li>每个 <code>channel + streamId + sessionId</code> 组合对应一个 Image</li>
+<li>存储在 Media Driver 的 <code>images/</code> 目录</li>
+<li>通常不需要直接操作 Image，Aeron Cluster 的 snapshot 加载除外</li>
+</ul>
+<hr>
+<h2 id="四、Position-位置追踪体系"><a href="#四、Position-位置追踪体系" class="headerlink" title="四、Position 位置追踪体系"></a>四、Position 位置追踪体系</h2><p>Position 是 Aeron 中唯一标识流中某个字节的全局指针，贯穿发送和接收的全链路，是流控与背压的数学基础。</p>
+<h3 id="4-1-完整的-Position-流转链"><a href="#4-1-完整的-Position-流转链" class="headerlink" title="4.1 完整的 Position 流转链"></a>4.1 完整的 Position 流转链</h3><div class="mermaid">
+flowchart TD
+  subgraph PUB["Publisher Application"]
+    PP["pub-pos (pub限流点)"]
+    PL["pub-lmt (背压控制)"]
+    LB["Log Buf"]
+    SND["Sender"]
+    SP["snd-pos (已发位置)"]
+    SL["snd-lmt (发送窗口)"]
+  end
+  subgraph SUB["Subscriber Application"]
+    SUBP["sub-pos (subscription 已消费位置)"]
+    HWM["rcv-hwm (最远收到位置)"]
+    RP["rcv-pos (连续完成位置)"]
+  end
+  PP -->|write| LB
+  LB -->|"Sender reads"| SND
+  SND --> SP
+  SND -.->|背压反馈| PL
+  SP -->|"UDP/IPC"| RP
+</div>
+
+<h3 id="4-2-Position-计算方式"><a href="#4-2-Position-计算方式" class="headerlink" title="4.2 Position 计算方式"></a>4.2 Position 计算方式</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">position = (termId - initialTermId) × termLength + termOffset</span><br><span class="line"></span><br><span class="line">其中：</span><br><span class="line">  termOffset  = 消息在当前 Term 中的字节偏移</span><br><span class="line">  termId      = 当前 Term 的 ID（递增）</span><br><span class="line">  initialTermId = Publication 创建时的初始 Term ID</span><br><span class="line"></span><br><span class="line">注意：Position 包含 Aeron 头部(32字节)和填充字节，</span><br><span class="line">      不只是应用数据大小！MTU 大小会影响 Position 增量。</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>这些位置计数器在运行时如何通过 <code>AeronStat</code> 观测，以及健康检查口径（<code>snd-pos ≈ pub-pos</code>、<code>rcv-pos ≈ rcv-hwm</code>、<code>sub-pos ≈ rcv-pos</code>），详见 <a href="/posts/fed0dafe/">Aeron Cluster 与运维工具</a>。</p>
+</blockquote>
+<hr>
+<h2 id="五、Multi-Destination-Cast-MDC"><a href="#五、Multi-Destination-Cast-MDC" class="headerlink" title="五、Multi-Destination-Cast (MDC)"></a>五、Multi-Destination-Cast (MDC)</h2><p>MDC 允许单个 Publication 同时发送数据到多个 Subscription，适合替代 UDP 多播（在不支持多播的环境中）。</p>
+<h3 id="5-1-MDC-vs-标准-Publication"><a href="#5-1-MDC-vs-标准-Publication" class="headerlink" title="5.1 MDC vs 标准 Publication"></a>5.1 MDC vs 标准 Publication</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">标准 Publication：</span><br><span class="line">  Publication.channel → 指向 Subscription 的地址</span><br><span class="line">  Subscription.channel → 本机监听地址</span><br><span class="line"></span><br><span class="line">动态 MDC（地址方向反转）：</span><br><span class="line">  Publication.channel → 本机地址（订阅方来连接我）</span><br><span class="line">  Subscription.channel → 指向 Publication 的控制地址</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-动态-MDC-拓扑"><a href="#5-2-动态-MDC-拓扑" class="headerlink" title="5.2 动态 MDC 拓扑"></a>5.2 动态 MDC 拓扑</h3><div class="mermaid">
+graph TD
+  subgraph PUB["MDC Publisher Process"]
+    PC["Publication Channel: aeron:udp?control-mode=dynamic|control=10.1.0.2:20121"]
+  end
+  S1["Subscriber 1 (10.1.0.3:0) control=10.1.0.2:20121|control-mode=dynamic"]
+  S2["Subscriber 2 (10.1.0.4:0) control=10.1.0.2:20121|control-mode=dynamic"]
+  S3["Subscriber 3 (10.1.0.5:0) control=10.1.0.2:20121|control-mode=dynamic"]
+  PC -->|"控制平面(Subscriptions 动态注册)"| S1
+  PC -->|"控制平面(Subscriptions 动态注册)"| S2
+  PC -->|"控制平面(Subscriptions 动态注册)"| S3
+</div>
+
+<h3 id="5-3-MDC-流控策略"><a href="#5-3-MDC-流控策略" class="headerlink" title="5.3 MDC 流控策略"></a>5.3 MDC 流控策略</h3><p>当慢消费者拖累快消费者时，有三种流控策略：</p>
+<table>
+<thead>
+<tr>
+<th>流控策略</th>
+<th>行为特征</th>
+<th>配置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>max（默认）：以最快订阅者为准</td>
+<td>快消费者不受慢消费者影响；慢消费者可能丢包</td>
+<td><code>fc=max</code></td>
+</tr>
+<tr>
+<td>min：以最慢订阅者为准</td>
+<td>所有订阅者保证无丢包；Publication 速度受最慢订阅者限制</td>
+<td><code>fc=min</code>；支持 group size：<code>fc=min,g:/5</code>（至少 5 个订阅者才算 connected）</td>
+</tr>
+<tr>
+<td>tagged：精细分组控制</td>
+<td>部分订阅者加入流控组（tagged），其余不参与；Publication 速度受 tagged 订阅者中最慢的限制；非 tagged 订阅者可能丢包但不影响 tagged 组</td>
+<td>Publication：<code>fc=tagged,g:101</code>；Subscriber（受控）：<code>gtag=101</code>；Subscriber（不受控）：不设 gtag</td>
+</tr>
+</tbody></table>
+<p><strong>代码配置示例：</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Publication：动态 MDC + Tagged 流控 + 组大小5</span></span><br><span class="line"><span class="type">String</span> <span class="variable">pubChannel</span> <span class="operator">=</span> <span class="string">&quot;aeron:udp?control-mode=dynamic&quot;</span></span><br><span class="line">    + <span class="string">&quot;|control=10.1.0.2:20121&quot;</span></span><br><span class="line">    + <span class="string">&quot;|fc=tagged,g:101/5&quot;</span>;   <span class="comment">// tag=101, 至少5个tagged订阅者</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// Subscription（参与流控）：</span></span><br><span class="line"><span class="type">String</span> <span class="variable">subChannel</span> <span class="operator">=</span> <span class="string">&quot;aeron:udp?endpoint=10.1.0.3:0&quot;</span></span><br><span class="line">    + <span class="string">&quot;|control=10.1.0.2:20121&quot;</span></span><br><span class="line">    + <span class="string">&quot;|control-mode=dynamic&quot;</span></span><br><span class="line">    + <span class="string">&quot;|gtag=101&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Subscription（不参与流控，可能丢包）：</span></span><br><span class="line"><span class="type">String</span> <span class="variable">subChannelNoCtrl</span> <span class="operator">=</span> <span class="string">&quot;aeron:udp?endpoint=10.1.0.4:0&quot;</span></span><br><span class="line">    + <span class="string">&quot;|control=10.1.0.2:20121&quot;</span></span><br><span class="line">    + <span class="string">&quot;|control-mode=dynamic&quot;</span>;</span><br><span class="line">    <span class="comment">// 无 gtag</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="六、背压（Back-Pressure）的处理决策"><a href="#六、背压（Back-Pressure）的处理决策" class="headerlink" title="六、背压（Back Pressure）的处理决策"></a>六、背压（Back Pressure）的处理决策</h2><p><code>offer()</code> 的返回值即是端到端背压信号。应用层需要根据返回值选择合适的处理策略：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="variable">result</span> <span class="operator">=</span> publication.offer(buffer, offset, length);</span><br><span class="line"></span><br><span class="line"><span class="keyword">switch</span> ((<span class="type">int</span>) result) &#123;</span><br><span class="line">    <span class="keyword">case</span> NOT_CONNECTED:      <span class="comment">// -1</span></span><br><span class="line">        <span class="comment">// 订阅者不在线，可以等待或记录</span></span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> BACK_PRESSURED:     <span class="comment">// -2</span></span><br><span class="line">        <span class="comment">// 下游积压，有三种策略：</span></span><br><span class="line">        <span class="comment">// 策略1：丢弃消息（适合实时数据，如行情）</span></span><br><span class="line">        <span class="comment">// strategy1_drop(message);</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 策略2：自旋重试（适合关键消息，注意 duty cycle 影响）</span></span><br><span class="line">        <span class="comment">// while (publication.offer(buffer) &lt; 0) idle.idle();</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 策略3：切换到 Archive 流（增加缓冲容量）</span></span><br><span class="line">        <span class="comment">// archiveProducer.record(message);</span></span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> ADMIN_ACTION:       <span class="comment">// -3</span></span><br><span class="line">        <span class="comment">// Term 轮转，立即重试</span></span><br><span class="line">        result = publication.offer(buffer, offset, length);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> CLOSED:             <span class="comment">// -4</span></span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;Publication closed&quot;</span>);</span><br><span class="line">    <span class="keyword">default</span>:                 <span class="comment">// &gt; 0</span></span><br><span class="line">        <span class="comment">// 成功，result 是新的流位置</span></span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>背压的成因分析、容量层面的缓解方案（增大 Term &#x2F; 压缩 &#x2F; 接入 Archive &#x2F; Conflation &#x2F; 扩容）详见 <a href="/posts/fed0dafe/">Aeron Cluster 与运维工具</a>。</p>
+</blockquote>
+<hr>
+<h2 id="七、快速入门示例"><a href="#七、快速入门示例" class="headerlink" title="七、快速入门示例"></a>七、快速入门示例</h2><h3 id="7-1-最简-IPC-示例"><a href="#7-1-最简-IPC-示例" class="headerlink" title="7.1 最简 IPC 示例"></a>7.1 最简 IPC 示例</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> io.aeron.*;</span><br><span class="line"><span class="keyword">import</span> io.aeron.driver.MediaDriver;</span><br><span class="line"><span class="keyword">import</span> io.aeron.logbuffer.FragmentHandler;</span><br><span class="line"><span class="keyword">import</span> org.agrona.DirectBuffer;</span><br><span class="line"><span class="keyword">import</span> org.agrona.concurrent.*;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">AeronHelloWorld</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// ① 定义传输通道和消息</span></span><br><span class="line">        <span class="keyword">final</span> <span class="type">String</span> <span class="variable">channel</span> <span class="operator">=</span> <span class="string">&quot;aeron:ipc&quot;</span>;    <span class="comment">// IPC 通道（同机内进程通信）</span></span><br><span class="line">        <span class="keyword">final</span> <span class="type">int</span>    <span class="variable">streamId</span> <span class="operator">=</span> <span class="number">42</span>;             <span class="comment">// 流 ID，开发者自定义</span></span><br><span class="line">        <span class="keyword">final</span> <span class="type">String</span> <span class="variable">message</span>  <span class="operator">=</span> <span class="string">&quot;Hello Aeron!&quot;</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// ② 准备工具对象</span></span><br><span class="line">        <span class="keyword">final</span> <span class="type">IdleStrategy</span> <span class="variable">idle</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">SleepingIdleStrategy</span>(); <span class="comment">// 1μs 睡眠</span></span><br><span class="line">        <span class="keyword">final</span> <span class="type">UnsafeBuffer</span>  <span class="variable">buf</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">UnsafeBuffer</span>(<span class="keyword">new</span> <span class="title class_">byte</span>[<span class="number">256</span>]);  <span class="comment">// 堆外 Buffer</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// ③ 启动 Media Driver + Aeron 客户端（try-with-resources 自动关闭）</span></span><br><span class="line">        <span class="keyword">try</span> (<span class="type">MediaDriver</span> <span class="variable">driver</span> <span class="operator">=</span> MediaDriver.launch();         <span class="comment">// 启动 Media Driver</span></span><br><span class="line">             <span class="type">Aeron</span>       <span class="variable">aeron</span>  <span class="operator">=</span> Aeron.connect();             <span class="comment">// 连接到 Driver</span></span><br><span class="line">             <span class="type">Subscription</span> <span class="variable">sub</span>   <span class="operator">=</span> aeron.addSubscription(channel, streamId);</span><br><span class="line">             <span class="type">Publication</span>  <span class="variable">pub</span>   <span class="operator">=</span> aeron.addPublication(channel, streamId)) &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// ④ 等待 Publication 连接到 Subscription</span></span><br><span class="line">            <span class="keyword">while</span> (!pub.isConnected()) idle.idle();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// ⑤ 发送消息</span></span><br><span class="line">            buf.putStringAscii(<span class="number">0</span>, message);</span><br><span class="line">            System.out.println(<span class="string">&quot;&gt;&gt; Sending: &quot;</span> + message);</span><br><span class="line">            <span class="keyword">while</span> (pub.offer(buf, <span class="number">0</span>, buf.capacity()) &lt; <span class="number">0</span>) idle.idle();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// ⑥ 接收消息</span></span><br><span class="line">            <span class="type">FragmentHandler</span> <span class="variable">handler</span> <span class="operator">=</span> (buffer, offset, length, header) -&gt;</span><br><span class="line">                System.out.println(<span class="string">&quot;&lt;&lt; Received: &quot;</span> + buffer.getStringAscii(offset));</span><br><span class="line"></span><br><span class="line">            <span class="keyword">while</span> (sub.poll(handler, <span class="number">1</span>) &lt;= <span class="number">0</span>) idle.idle();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&gt;&gt; Sending: Hello Aeron!</span><br><span class="line">&lt;&lt; Received: Hello Aeron!</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-UDP-示例（跨进程-跨机器）"><a href="#7-2-UDP-示例（跨进程-跨机器）" class="headerlink" title="7.2 UDP 示例（跨进程&#x2F;跨机器）"></a>7.2 UDP 示例（跨进程&#x2F;跨机器）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 发布方（Publication）使用订阅方的地址</span></span><br><span class="line"><span class="type">String</span> <span class="variable">publisherChannel</span> <span class="operator">=</span> <span class="string">&quot;aeron:udp?endpoint=localhost:2000&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 订阅方（Subscription）监听本机端口</span></span><br><span class="line"><span class="type">String</span> <span class="variable">subscriberChannel</span> <span class="operator">=</span> <span class="string">&quot;aeron:udp?endpoint=localhost:2000&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 注意：Publication 的 channel 指向 Subscription 的地址（推模式）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="7-3-MDC-示例（一对多）"><a href="#7-3-MDC-示例（一对多）" class="headerlink" title="7.3 MDC 示例（一对多）"></a>7.3 MDC 示例（一对多）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Publisher</span></span><br><span class="line"><span class="type">String</span> <span class="variable">mdcChannel</span> <span class="operator">=</span> <span class="string">&quot;aeron:udp?control-mode=dynamic|control=10.1.0.2:20121&quot;</span>;</span><br><span class="line"><span class="type">Publication</span> <span class="variable">pub</span> <span class="operator">=</span> aeron.addExclusivePublication(mdcChannel, <span class="number">100</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// Subscriber（动态加入）</span></span><br><span class="line"><span class="type">String</span> <span class="variable">subChannel</span> <span class="operator">=</span> <span class="string">&quot;aeron:udp?endpoint=10.1.0.3:0&quot;</span></span><br><span class="line">                  + <span class="string">&quot;|control=10.1.0.2:20121&quot;</span></span><br><span class="line">                  + <span class="string">&quot;|control-mode=dynamic&quot;</span>;</span><br><span class="line"><span class="type">Subscription</span> <span class="variable">sub</span> <span class="operator">=</span> aeron.addSubscription(subChannel, <span class="number">100</span>);</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="Aeron-系列"><a href="#Aeron-系列" class="headerlink" title="Aeron 系列"></a>Aeron 系列</h2><ul>
+<li><a href="/posts/fdcdfbb5/">Aeron 概述</a></li>
+<li><a href="/posts/43d5f152/">Channel、Stream、Session 深度解析</a></li>
+<li><a href="/posts/bc5589ca/">Media Driver 深度解析</a></li>
+<li><a href="/posts/fbf83150/">传输模式与 NAK 流控深度解析</a></li>
+<li><strong>编程模型深度解析</strong>（本文）</li>
+<li><a href="/posts/987bb85b/">Aeron Archive 深度解析</a></li>
+<li><a href="/posts/fed0dafe/">Aeron Cluster 与运维工具</a></li>
+</ul>
+
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/Aeron/">Aeron</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                            <div class="prev-post">
+                                <a class="prev"
+                                   rel="prev"
+                                   href="/posts/5ebb723b/"
+                                   title="etcd - 核心概念与数据模型"
+                                >
+                                    <span class="left arrow-icon flex-center">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </span>
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">etcd - 核心概念与数据模型</span>
+                                        <span class="post-nav-item">上一篇</span>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/posts/2d7c540/"
+                                   title="etcd - 概述与快速入门"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">etcd - 概述与快速入门</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+            <div class="pc-post-toc right-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81Publication-%E5%8F%91%E5%B8%83%E7%AB%AF"><span class="nav-text">一、Publication 发布端</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E4%B8%A4%E7%A7%8D-Publication-%E7%B1%BB%E5%9E%8B"><span class="nav-text">1.1 两种 Publication 类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-offer-%E6%96%B9%E6%B3%95"><span class="nav-text">1.2 offer 方法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-tryClaim-%E6%96%B9%E6%B3%95%EF%BC%88%E9%9B%B6%E6%8B%B7%E8%B4%9D%E5%8F%91%E9%80%81%EF%BC%89"><span class="nav-text">1.3 tryClaim 方法（零拷贝发送）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-4-%E6%B6%88%E6%81%AF%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6"><span class="nav-text">1.4 消息分片机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-%E5%BC%82%E6%AD%A5%E6%9E%84%E5%BB%BA-Publication%EF%BC%88Aeron-1-35-0-%EF%BC%89"><span class="nav-text">1.5 异步构建 Publication（Aeron 1.35.0+）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81Subscription-%E8%AE%A2%E9%98%85%E7%AB%AF"><span class="nav-text">二、Subscription 订阅端</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E5%9F%BA%E6%9C%AC%E8%BD%AE%E8%AF%A2%E6%A8%A1%E5%BC%8F"><span class="nav-text">2.1 基本轮询模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-FragmentHandler-%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-text">2.2 FragmentHandler 注意事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%A4%A7%E6%B6%88%E6%81%AF%E9%87%8D%E7%BB%84%EF%BC%88FragmentAssembler%EF%BC%89"><span class="nav-text">2.3 大消息重组（FragmentAssembler）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-%E5%8F%97%E6%8E%A7%E8%BD%AE%E8%AF%A2%EF%BC%88ControlledFragmentHandler%EF%BC%89"><span class="nav-text">2.4 受控轮询（ControlledFragmentHandler）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81Log-Buffer-%E4%B8%8E-Image-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B"><span class="nav-text">三、Log Buffer 与 Image 内存模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-Log-Buffer-%E7%89%A9%E7%90%86%E7%BB%93%E6%9E%84"><span class="nav-text">3.1 Log Buffer 物理结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-Term-%E7%8A%B6%E6%80%81%E8%BD%AE%E8%BD%AC"><span class="nav-text">3.2 Term 状态轮转</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-Term-Buffer-%E5%A4%A7%E5%B0%8F%E7%BA%A6%E6%9D%9F"><span class="nav-text">3.3 Term Buffer 大小约束</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-%E4%B9%B1%E5%BA%8F%E9%87%8D%E5%BB%BA%E4%B8%8E-Watermark"><span class="nav-text">3.4 乱序重建与 Watermark</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-Image"><span class="nav-text">3.5 Image</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81Position-%E4%BD%8D%E7%BD%AE%E8%BF%BD%E8%B8%AA%E4%BD%93%E7%B3%BB"><span class="nav-text">四、Position 位置追踪体系</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%AE%8C%E6%95%B4%E7%9A%84-Position-%E6%B5%81%E8%BD%AC%E9%93%BE"><span class="nav-text">4.1 完整的 Position 流转链</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-Position-%E8%AE%A1%E7%AE%97%E6%96%B9%E5%BC%8F"><span class="nav-text">4.2 Position 计算方式</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81Multi-Destination-Cast-MDC"><span class="nav-text">五、Multi-Destination-Cast (MDC)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-MDC-vs-%E6%A0%87%E5%87%86-Publication"><span class="nav-text">5.1 MDC vs 标准 Publication</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E5%8A%A8%E6%80%81-MDC-%E6%8B%93%E6%89%91"><span class="nav-text">5.2 动态 MDC 拓扑</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-MDC-%E6%B5%81%E6%8E%A7%E7%AD%96%E7%95%A5"><span class="nav-text">5.3 MDC 流控策略</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E8%83%8C%E5%8E%8B%EF%BC%88Back-Pressure%EF%BC%89%E7%9A%84%E5%A4%84%E7%90%86%E5%86%B3%E7%AD%96"><span class="nav-text">六、背压（Back Pressure）的处理决策</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8%E7%A4%BA%E4%BE%8B"><span class="nav-text">七、快速入门示例</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-%E6%9C%80%E7%AE%80-IPC-%E7%A4%BA%E4%BE%8B"><span class="nav-text">7.1 最简 IPC 示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-UDP-%E7%A4%BA%E4%BE%8B%EF%BC%88%E8%B7%A8%E8%BF%9B%E7%A8%8B-%E8%B7%A8%E6%9C%BA%E5%99%A8%EF%BC%89"><span class="nav-text">7.2 UDP 示例（跨进程&#x2F;跨机器）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-MDC-%E7%A4%BA%E4%BE%8B%EF%BC%88%E4%B8%80%E5%AF%B9%E5%A4%9A%EF%BC%89"><span class="nav-text">7.3 MDC 示例（一对多）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Aeron-%E7%B3%BB%E5%88%97"><span class="nav-text">Aeron 系列</span></a></li></ol>
+    </div>
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Reln Ding</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+            <li class="tools-item flex-center toggle-show-toc">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        <!-- PC go comment -->
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+            <li class="tools-item toggle-show-toc-tablet flex-center">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="close-popup-btn">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+    <!-- tablet toc -->
+    
+        <div class="tablet-post-toc-mask">
+            <div class="tablet-post-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81Publication-%E5%8F%91%E5%B8%83%E7%AB%AF"><span class="nav-text">一、Publication 发布端</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E4%B8%A4%E7%A7%8D-Publication-%E7%B1%BB%E5%9E%8B"><span class="nav-text">1.1 两种 Publication 类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-offer-%E6%96%B9%E6%B3%95"><span class="nav-text">1.2 offer 方法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-tryClaim-%E6%96%B9%E6%B3%95%EF%BC%88%E9%9B%B6%E6%8B%B7%E8%B4%9D%E5%8F%91%E9%80%81%EF%BC%89"><span class="nav-text">1.3 tryClaim 方法（零拷贝发送）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-4-%E6%B6%88%E6%81%AF%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6"><span class="nav-text">1.4 消息分片机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-%E5%BC%82%E6%AD%A5%E6%9E%84%E5%BB%BA-Publication%EF%BC%88Aeron-1-35-0-%EF%BC%89"><span class="nav-text">1.5 异步构建 Publication（Aeron 1.35.0+）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81Subscription-%E8%AE%A2%E9%98%85%E7%AB%AF"><span class="nav-text">二、Subscription 订阅端</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E5%9F%BA%E6%9C%AC%E8%BD%AE%E8%AF%A2%E6%A8%A1%E5%BC%8F"><span class="nav-text">2.1 基本轮询模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-FragmentHandler-%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-text">2.2 FragmentHandler 注意事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%A4%A7%E6%B6%88%E6%81%AF%E9%87%8D%E7%BB%84%EF%BC%88FragmentAssembler%EF%BC%89"><span class="nav-text">2.3 大消息重组（FragmentAssembler）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-%E5%8F%97%E6%8E%A7%E8%BD%AE%E8%AF%A2%EF%BC%88ControlledFragmentHandler%EF%BC%89"><span class="nav-text">2.4 受控轮询（ControlledFragmentHandler）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81Log-Buffer-%E4%B8%8E-Image-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B"><span class="nav-text">三、Log Buffer 与 Image 内存模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-Log-Buffer-%E7%89%A9%E7%90%86%E7%BB%93%E6%9E%84"><span class="nav-text">3.1 Log Buffer 物理结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-Term-%E7%8A%B6%E6%80%81%E8%BD%AE%E8%BD%AC"><span class="nav-text">3.2 Term 状态轮转</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-Term-Buffer-%E5%A4%A7%E5%B0%8F%E7%BA%A6%E6%9D%9F"><span class="nav-text">3.3 Term Buffer 大小约束</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-%E4%B9%B1%E5%BA%8F%E9%87%8D%E5%BB%BA%E4%B8%8E-Watermark"><span class="nav-text">3.4 乱序重建与 Watermark</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-Image"><span class="nav-text">3.5 Image</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81Position-%E4%BD%8D%E7%BD%AE%E8%BF%BD%E8%B8%AA%E4%BD%93%E7%B3%BB"><span class="nav-text">四、Position 位置追踪体系</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%AE%8C%E6%95%B4%E7%9A%84-Position-%E6%B5%81%E8%BD%AC%E9%93%BE"><span class="nav-text">4.1 完整的 Position 流转链</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-Position-%E8%AE%A1%E7%AE%97%E6%96%B9%E5%BC%8F"><span class="nav-text">4.2 Position 计算方式</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81Multi-Destination-Cast-MDC"><span class="nav-text">五、Multi-Destination-Cast (MDC)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-MDC-vs-%E6%A0%87%E5%87%86-Publication"><span class="nav-text">5.1 MDC vs 标准 Publication</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E5%8A%A8%E6%80%81-MDC-%E6%8B%93%E6%89%91"><span class="nav-text">5.2 动态 MDC 拓扑</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-MDC-%E6%B5%81%E6%8E%A7%E7%AD%96%E7%95%A5"><span class="nav-text">5.3 MDC 流控策略</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E8%83%8C%E5%8E%8B%EF%BC%88Back-Pressure%EF%BC%89%E7%9A%84%E5%A4%84%E7%90%86%E5%86%B3%E7%AD%96"><span class="nav-text">六、背压（Back Pressure）的处理决策</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8%E7%A4%BA%E4%BE%8B"><span class="nav-text">七、快速入门示例</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-%E6%9C%80%E7%AE%80-IPC-%E7%A4%BA%E4%BE%8B"><span class="nav-text">7.1 最简 IPC 示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-UDP-%E7%A4%BA%E4%BE%8B%EF%BC%88%E8%B7%A8%E8%BF%9B%E7%A8%8B-%E8%B7%A8%E6%9C%BA%E5%99%A8%EF%BC%89"><span class="nav-text">7.2 UDP 示例（跨进程&#x2F;跨机器）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-MDC-%E7%A4%BA%E4%BE%8B%EF%BC%88%E4%B8%80%E5%AF%B9%E5%A4%9A%EF%BC%89"><span class="nav-text">7.3 MDC 示例（一对多）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Aeron-%E7%B3%BB%E5%88%97"><span class="nav-text">Aeron 系列</span></a></li></ol>
+    </div>
+</div>
+
+            </div>
+        </div>
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/toggle-theme.js"></script>
+
+<script src="/js/code-block.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+
+<!-- local search -->
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+<!-- lazyload -->
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="pjax">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        
+<script src="/js/post/post-helper.js"></script>
+
+
+        <!-- toc -->
+        
+            
+<script src="/js/post/toc.js"></script>
+
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
+
+
+<!-- pjax -->
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        window.pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart()
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd()
+            window.pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'))
+            KEEP.initExecute()
+        });
+    });
+</script>
+
+
+
+
+    
+        
+    
+
+</body>
+</html>

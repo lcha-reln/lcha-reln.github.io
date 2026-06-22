@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -393,7 +393,13 @@
 <li>多头获得额外收益 → 鼓励开多</li>
 <li>双重压力推动合约价格回升，向现货靠拢</li>
 </ul>
-<h3 id="自动平衡机制示意"><a href="#自动平衡机制示意" class="headerlink" title="自动平衡机制示意"></a>自动平衡机制示意</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">合约价 &gt; 现货价</span><br><span class="line">      ↓</span><br><span class="line">资金费率为正：多头 → 支付费用 → 空头</span><br><span class="line">      ↓</span><br><span class="line">多头成本↑，开多意愿↓；空头收益↑，开空意愿↑</span><br><span class="line">      ↓</span><br><span class="line">合约价格承压回落，趋近现货价</span><br><span class="line">      ↓</span><br><span class="line">溢价收窄，资金费率回归正常</span><br></pre></td></tr></table></figure>
+<h3 id="自动平衡机制示意"><a href="#自动平衡机制示意" class="headerlink" title="自动平衡机制示意"></a>自动平衡机制示意</h3><div class="mermaid">
+graph TD
+A["合约价 大于 现货价"] --> B["资金费率为正：多头支付费用给空头"]
+B --> C["多头成本上升，开多意愿下降；空头收益上升，开空意愿上升"]
+C --> D["合约价格承压回落，趋近现货价"]
+D --> E["溢价收窄，资金费率回归正常"]
+</div>
 
 <hr>
 <h2 id="三、资金费率的计算"><a href="#三、资金费率的计算" class="headerlink" title="三、资金费率的计算"></a>三、资金费率的计算</h2><h3 id="核心公式"><a href="#核心公式" class="headerlink" title="核心公式"></a>核心公式</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">资金费率 = clamp(溢价指数 + 利率差调整, 下限, 上限)</span><br></pre></td></tr></table></figure>
@@ -961,6 +967,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

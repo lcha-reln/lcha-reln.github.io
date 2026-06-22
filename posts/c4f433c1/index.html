@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -347,12 +347,12 @@
         
         
             <span class="meta-info-item post-wordcount">
-                <i class="icon fas fa-file-word"></i>&nbsp;<span>4.4k 字</span>
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>5.5k 字</span>
             </span>
         
         
             <span class="meta-info-item post-min2read">
-                <i class="icon fas fa-clock"></i>&nbsp;<span>17 分钟</span>
+                <i class="icon fas fa-clock"></i>&nbsp;<span>23 分钟</span>
             </span>
         
         
@@ -371,12 +371,19 @@
 
                     
                          <p><strong>本文摘录自：<a class="link"   target="_blank" rel="noopener" href="https://tech.meituan.com/2016/11/18/disruptor.html" >https://tech.meituan.com/2016/11/18/disruptor.html<i class="fas fa-external-link-alt"></i></a></strong></p>
-<h1 id="1-Java-内置队列"><a href="#1-Java-内置队列" class="headerlink" title="1.Java 内置队列"></a>1.Java 内置队列</h1><p>让我们先看看常用的线程安全的内置队列有什么问题：<br><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/disruptor/disruptor-queues.png"
-                        alt="Java常用的线程安全的内置队列"
-                 ><br>队列的底层一般分成三种：数组、链表和堆。其中，堆一般情况下是为了实现带有优先级特性的队列，暂且不考虑。</p>
+<h1 id="1-Java-内置队列"><a href="#1-Java-内置队列" class="headerlink" title="1.Java 内置队列"></a>1.Java 内置队列</h1><p>让我们先看看常用的线程安全的内置队列有什么问题：</p>
+<div class="mermaid">
+graph LR
+H["队列 / 有界性 / 锁 / 数据结构"]
+H --> R1["ArrayBlockingQueue | bounded | 加锁 | arraylist"]
+H --> R2["LinkedBlockingQueue | optionally-bounded | 加锁 | linkedlist"]
+H --> R3["ConcurrentLinkedQueue | unbounded | 无锁 | linkedlist"]
+H --> R4["LinkedTransferQueue | unbounded | 无锁 | linkedlist"]
+H --> R5["PriorityBlockingQueue | unbounded | 加锁 | heap"]
+H --> R6["DelayQueue | unbounded | 加锁 | heap"]
+</div>
+队列的底层一般分成三种：数组、链表和堆。其中，堆一般情况下是为了实现带有优先级特性的队列，暂且不考虑。
+
 <p>我们就从数组和链表两种数据结构来看，基于数组线程安全的队列，比较典型的是ArrayBlockingQueue，它主要通过加锁的方式来保证线程安全；基于链表的线程安全队列分成LinkedBlockingQueue和ConcurrentLinkedQueue两大类，前者也通过锁的方式来实现线程安全，而后者以及上面表格中的LinkedTransferQueue都是通过原子变量compare and swap（以下简称“CAS”）这种不加锁的方式来实现的。</p>
 <p>通过不加锁的方式实现的队列都是无界的（无法保证队列的长度在确定的范围内）；而加锁的方式，可以实现有界队列。在稳定性要求特别高的系统中，为了防止生产者速度过快，导致内存溢出，只能选择有界队列；同时，为了减少Java的垃圾回收对系统性能的影响，会尽量选择array&#x2F;heap格式的数据结构。这样筛选下来，符合条件的队列就只有ArrayBlockingQueue。</p>
 <h1 id="2-ArrayBlockingQueue的问题"><a href="#2-ArrayBlockingQueue的问题" class="headerlink" title="2.ArrayBlockingQueue的问题"></a>2.ArrayBlockingQueue的问题</h1><p>ArrayBlockingQueue在实际使用过程中，会因为加锁和伪共享等出现严重的性能问题，我们下面来分析一下。</p>
@@ -388,39 +395,97 @@
 <p>在多线程情况下，为了保证线程安全，必须使用CAS或锁，这种情况下，CAS的性能超过锁的性能，前者大约是后者的8倍。</p>
 <p>综上可知，加锁的性能是最差的。</p>
 <h2 id="2-2-关于锁和CAS"><a href="#2-2-关于锁和CAS" class="headerlink" title="2.2.关于锁和CAS"></a>2.2.关于锁和CAS</h2><p>保证线程安全一般分成两种方式：锁和原子变量。</p>
-<h3 id="2-2-1-锁"><a href="#2-2-1-锁" class="headerlink" title="2.2.1 锁"></a>2.2.1 锁</h3><p><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/disruptor/%E9%94%81.png"
-                        alt="锁"
-                 ><br>采取加锁的方式，默认线程会冲突，访问数据时，先加上锁再访问，访问之后再解锁。通过锁界定一个临界区，同时只有一个线程进入。如上图所示，Thread2访问Entry的时候，加了锁，Thread1就不能再执行访问Entry的代码，从而保证线程安全。</p>
+<h3 id="2-2-1-锁"><a href="#2-2-1-锁" class="headerlink" title="2.2.1 锁"></a>2.2.1 锁</h3><div class="mermaid">
+graph LR
+    T1["Thread 1 (myValue = getValue(); setValue(3);)"]
+    LOCK["锁 (lock)"]
+    T2["Thread 2 (myValue = getValue(); setValue(2);)"]
+    subgraph CS["临界区 (同时只有一个线程进入)"]
+        ENTRY["Entry (+ value: int = 1)"]
+    end
+    T1 -. "X 被锁拦截 无法访问" .-> LOCK
+    T2 -- "加锁后访问" --> ENTRY
+</div>
+采取加锁的方式，默认线程会冲突，访问数据时，先加上锁再访问，访问之后再解锁。通过锁界定一个临界区，同时只有一个线程进入。如上图所示，Thread2访问Entry的时候，加了锁，Thread1就不能再执行访问Entry的代码，从而保证线程安全。
+
 <p>下面是ArrayBlockingQueue通过加锁的方式实现的offer方法，保证线程安全。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">offer</span><span class="params">(E e)</span> &#123;</span><br><span class="line">    checkNotNull(e);</span><br><span class="line">    <span class="keyword">final</span> <span class="type">ReentrantLock</span> <span class="variable">lock</span> <span class="operator">=</span> <span class="built_in">this</span>.lock;</span><br><span class="line">    lock.lock();</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (count == items.length)</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            insert(e);</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        lock.unlock();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h3 id="2-2-2-原子变量"><a href="#2-2-2-原子变量" class="headerlink" title="2.2.2.原子变量"></a>2.2.2.原子变量</h3><p>原子变量能够保证原子性的操作，意思是某个任务在执行过程中，要么全部成功，要么全部失败回滚，恢复到执行之前的初态，不存在初态和成功之间的中间状态。例如CAS操作，要么比较并交换成功，要么比较并交换失败。由CPU保证原子性。</p>
-<p>通过原子变量可以实现线程安全。执行某个任务的时候，先假定不会有冲突，若不发生冲突，则直接执行成功；当发生冲突的时候，则执行失败，回滚再重新操作，直到不发生冲突。<br><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/disruptor/%E9%80%9A%E8%BF%87%E5%8E%9F%E5%AD%90%E5%8F%98%E9%87%8FCAS%E5%AE%9E%E7%8E%B0%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8.png"
-                        alt="通过原子变量CAS实现线程安全"
-                 ><br>如图所示，Thread1和Thread2都要把Entry加1。若不加锁，也不使用CAS，有可能Thread1取到了myValue&#x3D;1，Thread2也取到了myValue&#x3D;1，然后相加，Entry中的value值为2。这与预期不相符，我们预期的是Entry的值经过两次相加后等于3。</p>
+<p>通过原子变量可以实现线程安全。执行某个任务的时候，先假定不会有冲突，若不发生冲突，则直接执行成功；当发生冲突的时候，则执行失败，回滚再重新操作，直到不发生冲突。</p>
+<div class="mermaid">
+graph BT
+ENTRY["Entry --- + value: int = 1"]
+T1["Thread 1 --- myValue = getValue() --- newValue = myValue + 1; --- compareAndSet(myValue, newValue)"]
+T2["Thread 2 --- myValue = getValue() --- newValue = myValue + 1; --- compareAndSet(myValue, newValue)"]
+T1 --> ENTRY
+T2 --> ENTRY
+</div>
+如图所示，Thread1和Thread2都要把Entry加1。若不加锁，也不使用CAS，有可能Thread1取到了myValue=1，Thread2也取到了myValue=1，然后相加，Entry中的value值为2。这与预期不相符，我们预期的是Entry的值经过两次相加后等于3。
+
 <p>CAS会先把Entry现在的value跟线程当初读出的值相比较，若相同，则赋值；若不相同，则赋值执行失败。一般会通过while&#x2F;for循环来重新执行，直到赋值成功。</p>
 <p>代码示例是AtomicInteger的getAndAdd方法。CAS是CPU的一个指令，由CPU保证原子性。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Atomically adds the given value to the current value.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> delta the value to add</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span> the previous value</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="type">int</span> <span class="title function_">getAndAdd</span><span class="params">(<span class="type">int</span> delta)</span> &#123;</span><br><span class="line">    <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">current</span> <span class="operator">=</span> get();</span><br><span class="line">        <span class="type">int</span> <span class="variable">next</span> <span class="operator">=</span> current + delta;</span><br><span class="line">        <span class="keyword">if</span> (compareAndSet(current, next))</span><br><span class="line">            <span class="keyword">return</span> current;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">  </span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Atomically sets the value to the given updated value</span></span><br><span class="line"><span class="comment"> * if the current value &#123;<span class="doctag">@code</span> ==&#125; the expected value.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> expect the expected value</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> update the new value</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span> true if successful. False return indicates that</span></span><br><span class="line"><span class="comment"> * the actual value was not equal to the expected value.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="type">boolean</span> <span class="title function_">compareAndSet</span><span class="params">(<span class="type">int</span> expect, <span class="type">int</span> update)</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> unsafe.compareAndSwapInt(<span class="built_in">this</span>, valueOffset, expect, update);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>在高度竞争的情况下，锁的性能将超过原子变量的性能，但是更真实的竞争情况下，原子变量的性能将超过锁的性能。同时原子变量不会有死锁等活跃性问题。</p>
-<h2 id="2-3-伪共享"><a href="#2-3-伪共享" class="headerlink" title="2.3.伪共享"></a>2.3.伪共享</h2><h3 id="2-3-1-共享"><a href="#2-3-1-共享" class="headerlink" title="2.3.1.共享"></a>2.3.1.共享</h3><p>下图是计算的基本结构。L1、L2、L3分别表示一级缓存、二级缓存、三级缓存，越靠近CPU的缓存，速度越快，容量也越小。所以L1缓存很小但很快，并且紧靠着在使用它的CPU内核；L2大一些，也慢一些，并且仍然只能被一个单独的CPU核使用；L3更大、更慢，并且被单个插槽上的所有CPU核共享；最后是主存，由全部插槽上的所有CPU核共享。<br><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/disruptor/%E8%AE%A1%E7%AE%97%E6%9C%BACPU%E4%B8%8E%E7%BC%93%E5%AD%98%E7%A4%BA%E6%84%8F%E5%9B%BE.png"
-                        alt="计算机CPU与缓存示意图"
-                 ><br>当CPU执行运算的时候，它先去L1查找所需的数据、再去L2、然后是L3，如果最后这些缓存中都没有，所需的数据就要去主内存拿。走得越远，运算耗费的时间就越长。所以如果你在做一些很频繁的事，你要尽量确保数据在L1缓存中。</p>
+<h2 id="2-3-伪共享"><a href="#2-3-伪共享" class="headerlink" title="2.3.伪共享"></a>2.3.伪共享</h2><h3 id="2-3-1-共享"><a href="#2-3-1-共享" class="headerlink" title="2.3.1.共享"></a>2.3.1.共享</h3><p>下图是计算的基本结构。L1、L2、L3分别表示一级缓存、二级缓存、三级缓存，越靠近CPU的缓存，速度越快，容量也越小。所以L1缓存很小但很快，并且紧靠着在使用它的CPU内核；L2大一些，也慢一些，并且仍然只能被一个单独的CPU核使用；L3更大、更慢，并且被单个插槽上的所有CPU核共享；最后是主存，由全部插槽上的所有CPU核共享。</p>
+<div class="mermaid">
+graph TD
+MEM["Memory"]
+MEM --- L3A["L3"]
+MEM --- L3B["L3"]
+L3A --- L2A["L2"]
+L3A --- L2B["L2"]
+L3B --- L2C["L2"]
+L3B --- L2D["L2"]
+L2A --- L1A["L1"]
+L2B --- L1B["L1"]
+L2C --- L1C["L1"]
+L2D --- L1D["L1"]
+L1A --- C1(("cpu1"))
+L1B --- C2(("cpu2"))
+L1C --- C3(("cpu3"))
+L1D --- C4(("cpu3"))
+</div>
+当CPU执行运算的时候，它先去L1查找所需的数据、再去L2、然后是L3，如果最后这些缓存中都没有，所需的数据就要去主内存拿。走得越远，运算耗费的时间就越长。所以如果你在做一些很频繁的事，你要尽量确保数据在L1缓存中。
+
 <p>另外，线程之间共享一份数据的时候，需要一个线程把数据写回主存，而另一个线程访问主存中相应的数据。</p>
-<p>下面是从CPU访问不同层级数据的时间概念:<br><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/disruptor/CPU%E8%AE%BF%E9%97%AE.png"
-                        alt="CPU访问"
-                 ><br>可见CPU读取主存中的数据会比从L1中读取慢了近2个数量级。</p>
-<h3 id="2-3-2-缓存行"><a href="#2-3-2-缓存行" class="headerlink" title="2.3.2.缓存行"></a>2.3.2.缓存行</h3><p>Cache是由很多个cache line组成的。每个cache line通常是64字节，并且它有效地引用主内存中的一块儿地址。一个Java的long类型变量是8字节，因此在一个缓存行中可以存8个long类型的变量。</p>
+<p>下面是从CPU访问不同层级数据的时间概念:</p>
+<div class="mermaid">
+graph TD
+  subgraph HDR["从CPU访问不同层级数据耗时"]
+    H1["从CPU到"]
+    H2["大约需要的CPU周期"]
+    H3["大约需要的时间"]
+  end
+  R1A["主存"]
+  R1B["-"]
+  R1C["约60-80ns"]
+  R2A["QPI 总线传输(between sockets, not drawn)"]
+  R2B["-"]
+  R2C["约20ns"]
+  R3A["L3 cache"]
+  R3B["约40-45 cycles"]
+  R3C["约15ns"]
+  R4A["L2 cache"]
+  R4B["约10 cycles"]
+  R4C["约3ns"]
+  R5A["L1 cache"]
+  R5B["约3-4 cycles"]
+  R5C["约1ns"]
+  R6A["寄存器"]
+  R6B["1 cycle"]
+  R6C["-"]
+  H1 --> R1A --> R2A --> R3A --> R4A --> R5A --> R6A
+  R1A --- R1B --- R1C
+  R2A --- R2B --- R2C
+  R3A --- R3B --- R3C
+  R4A --- R4B --- R4C
+  R5A --- R5B --- R5C
+  R6A --- R6B --- R6C
+</div>
+可见CPU读取主存中的数据会比从L1中读取慢了近2个数量级。
+### 2.3.2.缓存行
+Cache是由很多个cache line组成的。每个cache line通常是64字节，并且它有效地引用主内存中的一块儿地址。一个Java的long类型变量是8字节，因此在一个缓存行中可以存8个long类型的变量。
+
 <p>CPU每次从主存中拉取数据时，会把相邻的数据也存入同一个cache line。</p>
 <p>在访问一个long数组的时候，如果数组中的一个值被加载到缓存中，它会自动加载另外7个。因此你能非常快的遍历这个数组。事实上，你可以非常快速的遍历在连续内存块中分配的任意数据结构。</p>
 <p>下面的例子是测试利用cache line的特性和不利用cache line的特性的效果对比。</p>
@@ -428,12 +493,41 @@
 <p>在2G Hz、2核、8G内存的运行环境中测试，速度差一倍。</p>
 <p>结果：<br>Loop times:30ms Loop times:65ms</p>
 <h3 id="2-3-3-伪共享"><a href="#2-3-3-伪共享" class="headerlink" title="2.3.3.伪共享"></a>2.3.3.伪共享</h3><p>ArrayBlockingQueue有三个成员变量： - takeIndex：需要被取走的元素下标 - putIndex：可被元素插入的位置的下标 - count：队列中元素的数量</p>
-<p>这三个变量很容易放到一个缓存行中，但是之间修改没有太多的关联。所以每次修改，都会使之前缓存的数据失效，从而不能完全达到共享的效果。<br><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/disruptor/%E4%BC%AA%E5%85%B1%E4%BA%AB%E7%A4%BA%E6%84%8F%E5%9B%BE.png"
-                        alt="伪共享示意图"
-                 ><br>如上图所示，当生产者线程put一个元素到ArrayBlockingQueue时，putIndex会修改，从而导致消费者线程的缓存中的缓存行无效，需要从主存中重新读取。</p>
+<p>这三个变量很容易放到一个缓存行中，但是之间修改没有太多的关联。所以每次修改，都会使之前缓存的数据失效，从而不能完全达到共享的效果。</p>
+<div class="mermaid">
+graph LR
+  subgraph PROD["Producer Thread"]
+    direction TB
+    PL2["L2"]
+    PL1["L1"]
+    PCPU(("cpu"))
+    PL2 --> PL1
+    PL1 --> PCPU
+  end
+  subgraph CONS["Consumer Thread"]
+    direction TB
+    CL2["L2"]
+    CL1["L1"]
+    CCPU(("cpu"))
+    CL2 --> CL1
+    CL1 --> CCPU
+  end
+  ABQ["ArrayBlockingQueue"]
+  subgraph CACHE["Cache Line"]
+    direction LR
+    PUT["putIndex"]
+    COUNT["count"]
+    TAKE["takeIndex"]
+  end
+  PROD ==> ABQ
+  ABQ ==> CONS
+  PUT --> ABQ
+  TAKE --> ABQ
+  PL1 -.-> PUT
+  TAKE -.-> CL1
+</div>
+如上图所示，当生产者线程put一个元素到ArrayBlockingQueue时，putIndex会修改，从而导致消费者线程的缓存中的缓存行无效，需要从主存中重新读取。
+
 <p>这种无法充分使用缓存行特性的现象，称为伪共享。</p>
 <p>对于伪共享，一般的解决方案是，增大数组元素的间隔使得由不同线程存取的元素位于不同的缓存行上，以空间换时间。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">FalseSharing</span> <span class="keyword">implements</span> <span class="title class_">Runnable</span>&#123;</span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">static</span> <span class="type">long</span> <span class="variable">ITERATIONS</span> <span class="operator">=</span> <span class="number">500L</span> * <span class="number">1000L</span> * <span class="number">100L</span>;</span><br><span class="line">        <span class="keyword">private</span> <span class="type">int</span> <span class="variable">arrayIndex</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> ValuePadding[] longs;</span><br><span class="line">        <span class="keyword">public</span> <span class="title function_">FalseSharing</span><span class="params">(<span class="keyword">final</span> <span class="type">int</span> arrayIndex)</span> &#123;</span><br><span class="line">            <span class="built_in">this</span>.arrayIndex = arrayIndex;</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(<span class="keyword">final</span> String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">            <span class="keyword">for</span>(<span class="type">int</span> i=<span class="number">1</span>;i&lt;<span class="number">10</span>;i++)&#123;</span><br><span class="line">                System.gc();</span><br><span class="line">                <span class="keyword">final</span> <span class="type">long</span> <span class="variable">start</span> <span class="operator">=</span> System.currentTimeMillis();</span><br><span class="line">                runTest(i);</span><br><span class="line">                System.out.println(<span class="string">&quot;Thread num &quot;</span>+i+<span class="string">&quot; duration = &quot;</span> + (System.currentTimeMillis() - start));</span><br><span class="line">            &#125;</span><br><span class="line"> </span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">runTest</span><span class="params">(<span class="type">int</span> NUM_THREADS)</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">            Thread[] threads = <span class="keyword">new</span> <span class="title class_">Thread</span>[NUM_THREADS];</span><br><span class="line">            longs = <span class="keyword">new</span> <span class="title class_">ValuePadding</span>[NUM_THREADS];</span><br><span class="line">            <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; longs.length; i++) &#123;</span><br><span class="line">                longs[i] = <span class="keyword">new</span> <span class="title class_">ValuePadding</span>();</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; threads.length; i++) &#123;</span><br><span class="line">                threads[i] = <span class="keyword">new</span> <span class="title class_">Thread</span>(<span class="keyword">new</span> <span class="title class_">FalseSharing</span>(i));</span><br><span class="line">            &#125;</span><br><span class="line"> </span><br><span class="line">            <span class="keyword">for</span> (Thread t : threads) &#123;</span><br><span class="line">                t.start();</span><br><span class="line">            &#125;</span><br><span class="line"> </span><br><span class="line">            <span class="keyword">for</span> (Thread t : threads) &#123;</span><br><span class="line">                t.join();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">run</span><span class="params">()</span> &#123;</span><br><span class="line">            <span class="type">long</span> <span class="variable">i</span> <span class="operator">=</span> ITERATIONS + <span class="number">1</span>;</span><br><span class="line">            <span class="keyword">while</span> (<span class="number">0</span> != --i) &#123;</span><br><span class="line">                longs[arrayIndex].value = <span class="number">0L</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">static</span> <span class="keyword">class</span> <span class="title class_">ValuePadding</span> &#123;</span><br><span class="line">            <span class="keyword">protected</span> <span class="type">long</span> p1, p2, p3, p4, p5, p6, p7;</span><br><span class="line">            <span class="keyword">protected</span> <span class="keyword">volatile</span> <span class="type">long</span> <span class="variable">value</span> <span class="operator">=</span> <span class="number">0L</span>;</span><br><span class="line">            <span class="keyword">protected</span> <span class="type">long</span> p9, p10, p11, p12, p13, p14;</span><br><span class="line">            <span class="keyword">protected</span> <span class="type">long</span> p15;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">static</span> <span class="keyword">class</span> <span class="title class_">ValueNoPadding</span> &#123;</span><br><span class="line">            <span class="comment">// protected long p1, p2, p3, p4, p5, p6, p7;</span></span><br><span class="line">            <span class="keyword">protected</span> <span class="keyword">volatile</span> <span class="type">long</span> <span class="variable">value</span> <span class="operator">=</span> <span class="number">0L</span>;</span><br><span class="line">            <span class="comment">// protected long p9, p10, p11, p12, p13, p14, p15;</span></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -449,45 +543,162 @@
 </ul>
 <p>下面忽略数组的环形结构，介绍一下如何实现无锁设计。整个过程通过原子变量CAS，保证操作的线程安全。</p>
 <h2 id="3-1-一个生产者"><a href="#3-1-一个生产者" class="headerlink" title="3.1.一个生产者"></a>3.1.一个生产者</h2><p>生产者单线程写数据的流程比较简单：</p>
-<p>申请写入m个元素；<br>若是有m个元素可以入，则返回最大的序列号。这儿主要判断是否会覆盖未读的元素；<br>若是返回的正确，则生产者开始写入元素。<br><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/disruptor/%E5%8D%95%E7%94%9F%E4%BA%A7%E8%80%85%E7%94%9F%E4%BA%A7%E8%BF%87%E7%A8%8B.png"
-                        alt="单生产者生产过程"
-                 ></p>
-<h2 id="3-2-多个生产者"><a href="#3-2-多个生产者" class="headerlink" title="3.2.多个生产者"></a>3.2.多个生产者</h2><p>多个生产者的情况下，会遇到“如何防止多个线程重复写同一个元素”的问题。Disruptor的解决方法是，每个线程获取不同的一段数组空间进行操作。这个通过CAS很容易达到。只需要在分配元素的时候，通过CAS判断一下这段空间是否已经分配出去即可。</p>
+<p>申请写入m个元素；<br>若是有m个元素可以入，则返回最大的序列号。这儿主要判断是否会覆盖未读的元素；<br>若是返回的正确，则生产者开始写入元素。</p>
+<div class="mermaid">
+flowchart TB
+  subgraph S1["阶段一: 初始状态"]
+    direction LR
+    A1["1..5 (已写入)"]
+    A2["6..12 (空闲)"]
+    A3["cursor 指向 5"]
+    A4["next 指向 5"]
+    A1 --- A2
+    A1 -.-> A3
+    A1 -.-> A4
+  end
+  T1["next(n): 申请可写的序号"]
+  subgraph S2["阶段二: 申请到序号"]
+    direction LR
+    B1["1..5 (已写入)"]
+    B2["6..7 (申请占位)"]
+    B3["8..12 (空闲)"]
+    B4["cursor 指向 5"]
+    B5["next 指向 7"]
+    B1 --- B2
+    B2 --- B3
+    B1 -.-> B4
+    B2 -.-> B5
+  end
+  T2["写入完成"]
+  subgraph S3["阶段三: 写入完成"]
+    direction LR
+    C1["1..7 (已写入)"]
+    C2["8..12 (空闲)"]
+    C3["next 指向 7"]
+    C4["cursor 指向 7"]
+    C1 --- C2
+    C1 -.-> C3
+    C1 -.-> C4
+  end
+  S1 --> T1
+  T1 --> S2
+  S2 --> T2
+  T2 --> S3
+</div>
+## 3.2.多个生产者
+多个生产者的情况下，会遇到“如何防止多个线程重复写同一个元素”的问题。Disruptor的解决方法是，每个线程获取不同的一段数组空间进行操作。这个通过CAS很容易达到。只需要在分配元素的时候，通过CAS判断一下这段空间是否已经分配出去即可。
+
 <p>但是会遇到一个新问题：如何防止读取的时候，读到还未写的元素。Disruptor在多个生产者的情况下，引入了一个与Ring Buffer大小相同的buffer：available Buffer。当某个位置写入成功的时候，便把availble Buffer相应的位置置位，标记为写入成功。读取的时候，会遍历available Buffer，来判断元素是否已经就绪。</p>
 <p>下面分读数据和写数据两种情况介绍。</p>
 <h3 id="3-2-1-读数据"><a href="#3-2-1-读数据" class="headerlink" title="3.2.1.读数据"></a>3.2.1.读数据</h3><p>生产者多线程写入的情况会复杂很多：</p>
 <p>申请读取到序号n；<br>若writer cursor &gt;&#x3D; n，这时仍然无法确定连续可读的最大下标。从reader cursor开始读取available Buffer，一直查到第一个不可用的元素，然后返回最大连续可读元素的位置；<br>消费者读取元素。<br>如下图所示，读线程读到下标为2的元素，三个线程Writer1&#x2F;Writer2&#x2F;Writer3正在向RingBuffer相应位置写数据，写线程被分配到的最大元素下标是11。</p>
 <p>读线程申请读取到下标从3到11的元素，判断writer cursor&gt;&#x3D;11。然后开始读取availableBuffer，从3开始，往后读取，发现下标为7的元素没有生产成功，于是WaitFor(11)返回6。</p>
-<p>然后，消费者读取下标从3到6共计4个元素。<br><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/disruptor/%E5%A4%9A%E7%94%9F%E4%BA%A7%E4%B8%8B%E7%9A%84%E6%B6%88%E8%B4%B9%E8%80%85.png"
-                        alt="多生产下的消费者"
-                 ></p>
-<h3 id="3-2-2-写数据"><a href="#3-2-2-写数据" class="headerlink" title="3.2.2.写数据"></a>3.2.2.写数据</h3><p>多个生产者写入的时候：</p>
+<p>然后，消费者读取下标从3到6共计4个元素。</p>
+<div class="mermaid">
+flowchart TB
+  subgraph S1["阶段一: 申请读取"]
+    direction LR
+    R1["RingBuffer (next/reader cursor 指向下标2; 下标3到11 已写区域)"]
+    W1["Writer1 写下标7  Writer2 写下标9  Writer3 写下标11 (writer cursor 11)"]
+    A1["availableBuffer (3到6 已置位; 8/10 已置位; 7/9/11/12 为 -1 未就绪)"]
+    R1 --> W1
+    R1 -.对应位置标记.-> A1
+  end
+  S1 -->|"waitFor(12) 申请可读的最大序号"| S2
+  subgraph S2["阶段二: 遍历 availableBuffer"]
+    direction LR
+    R2["RingBuffer (reader cursor 2; next 指向 6; writer cursor 11)"]
+    A2["availableBuffer (从下标3 往后查, 遇到下标7 不可用, 返回最大连续可读 6)"]
+    R2 -.遍历判断就绪.-> A2
+  end
+  S2 -->|"读取完成"| S3
+  subgraph S3["阶段三: 消费者读取完成"]
+    direction LR
+    R3["RingBuffer (reader cursor 与 next 同指向 6; 已消费下标3到6共4个元素; writer cursor 11)"]
+    A3["availableBuffer (状态不变)"]
+    R3 -.对应位置.-> A3
+  end
+</div>
+### 3.2.2.写数据
+多个生产者写入的时候：
+
 <p>申请写入m个元素；<br>若是有m个元素可以写入，则返回最大的序列号。每个生产者会被分配一段独享的空间；<br>生产者写入元素，写入元素的同时设置available Buffer里面相应的位置，以标记自己哪些位置是已经写入成功的。<br>如下图所示，Writer1和Writer2两个线程写入数组，都申请可写的数组空间。Writer1被分配了下标3到下表5的空间，Writer2被分配了下标6到下标9的空间。</p>
-<p>Writer1写入下标3位置的元素，同时把available Buffer相应位置置位，标记已经写入成功，往后移一位，开始写下标4位置的元素。Writer2同样的方式。最终都写入完成。<br><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/disruptor/%E5%A4%9A%E7%94%9F%E4%BA%A7%E4%B8%8B%E7%9A%84%E7%94%9F%E4%BA%A7%E8%80%85.png"
-                        alt="多生产下的生产者"
-                 ><br>防止不同生产者对同一段空间写入的代码，如下所示：</p>
+<p>Writer1写入下标3位置的元素，同时把available Buffer相应位置置位，标记已经写入成功，往后移一位，开始写下标4位置的元素。Writer2同样的方式。最终都写入完成。</p>
+<div class="mermaid">
+graph TD
+  subgraph S1["阶段一: 申请可写的数组空间 next(n)"]
+    direction LR
+    R1["RingBuffer: 1,2 已写入(绿); 3..12 空闲. cursor / Writer1 / Writer2 同指向下标2"]
+    A1["availableBuffer: 1,2 置位; 3..12 全为 -1"]
+    R1 --- A1
+  end
+  subgraph S2["阶段二: 各生产者分配独享空间, 开始写入"]
+    direction LR
+    R2["RingBuffer: 1,2,3 已写入; cursor 指向下标9. Writer1 分配下标3到5(指向4); Writer2 分配下标6到9(指向7); 下标6已写入"]
+    A2["availableBuffer: 1,2,3 与 6 置位; 4,5 为 -1; 7..12 为 -1"]
+    R2 --- A2
+  end
+  subgraph S3["阶段三: 写入完成"]
+    direction LR
+    R3["RingBuffer: 1..9 全部写入成功(绿); 10,11,12 空闲. cursor / Writer1 / Writer2 同指向下标9"]
+    A3["availableBuffer: 1..9 全部置位; 10,11,12 为 -1"]
+    R3 --- A3
+  end
+  S1 -->|"next(n) 申请可写的序号"| S2
+  S2 -->|"写入完成, 同时置位 availableBuffer"| S3
+</div>
+防止不同生产者对同一段空间写入的代码，如下所示：
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">long</span> <span class="title function_">tryNext</span><span class="params">(<span class="type">int</span> n)</span> <span class="keyword">throws</span> InsufficientCapacityException</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (n &lt; <span class="number">1</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">IllegalArgumentException</span>(<span class="string">&quot;n must be &gt; 0&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="type">long</span> current;</span><br><span class="line">    <span class="type">long</span> next;</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">do</span></span><br><span class="line">    &#123;</span><br><span class="line">        current = cursor.get();</span><br><span class="line">        next = current + n;</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">if</span> (!hasAvailableCapacity(gatingSequences, n, current))</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">throw</span> InsufficientCapacityException.INSTANCE;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">while</span> (!cursor.compareAndSet(current, next));</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">return</span> next;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>通过do&#x2F;while循环的条件cursor.compareAndSet(current, next)，来判断每次申请的空间是否已经被其他生产者占据。假如已经被占据，该函数会返回失败，While循环重新执行，申请写入空间。</p>
+通过do/while循环的条件cursor.compareAndSet(current, next)，来判断每次申请的空间是否已经被其他生产者占据。假如已经被占据，该函数会返回失败，While循环重新执行，申请写入空间。
+
 <p>消费者的流程与生产者非常类似，这儿就不多描述了。</p>
 <h2 id="3-3-案例：每10ms向disruptor中插入一个元素，消费者读取数据，并打印到终端"><a href="#3-3-案例：每10ms向disruptor中插入一个元素，消费者读取数据，并打印到终端" class="headerlink" title="3.3.案例：每10ms向disruptor中插入一个元素，消费者读取数据，并打印到终端"></a>3.3.案例：每10ms向disruptor中插入一个元素，消费者读取数据，并打印到终端</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@description</span> disruptor代码样例。每10ms向disruptor中插入一个元素，消费者读取数据，并打印到终端</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">import</span> com.lmax.disruptor.*;</span><br><span class="line"><span class="keyword">import</span> com.lmax.disruptor.dsl.Disruptor;</span><br><span class="line"><span class="keyword">import</span> com.lmax.disruptor.dsl.ProducerType;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.ThreadFactory;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">DisruptorMain</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 队列中的元素</span></span><br><span class="line">        <span class="keyword">class</span> <span class="title class_">Element</span> &#123;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">private</span> <span class="type">int</span> value;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">get</span><span class="params">()</span>&#123;</span><br><span class="line">                <span class="keyword">return</span> value;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">set</span><span class="params">(<span class="type">int</span> value)</span>&#123;</span><br><span class="line">                <span class="built_in">this</span>.value= value;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 生产者的线程工厂</span></span><br><span class="line">        <span class="type">ThreadFactory</span> <span class="variable">threadFactory</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadFactory</span>()&#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="keyword">public</span> Thread <span class="title function_">newThread</span><span class="params">(Runnable r)</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(r, <span class="string">&quot;simpleThread&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// RingBuffer生产工厂,初始化RingBuffer的时候使用</span></span><br><span class="line">        EventFactory&lt;Element&gt; factory = <span class="keyword">new</span> <span class="title class_">EventFactory</span>&lt;Element&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="keyword">public</span> Element <span class="title function_">newInstance</span><span class="params">()</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">Element</span>();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 处理Event的handler</span></span><br><span class="line">        EventHandler&lt;Element&gt; handler = <span class="keyword">new</span> <span class="title class_">EventHandler</span>&lt;Element&gt;()&#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onEvent</span><span class="params">(Element element, <span class="type">long</span> sequence, <span class="type">boolean</span> endOfBatch)</span></span><br><span class="line">            &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;Element: &quot;</span> + element.get());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 阻塞策略</span></span><br><span class="line">        <span class="type">BlockingWaitStrategy</span> <span class="variable">strategy</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BlockingWaitStrategy</span>();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 指定RingBuffer的大小</span></span><br><span class="line">        <span class="type">int</span> <span class="variable">bufferSize</span> <span class="operator">=</span> <span class="number">16</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建disruptor，采用单生产者模式</span></span><br><span class="line">        Disruptor&lt;Element&gt; disruptor = <span class="keyword">new</span> <span class="title class_">Disruptor</span>(factory, bufferSize, threadFactory, ProducerType.SINGLE, strategy);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 设置EventHandler</span></span><br><span class="line">        disruptor.handleEventsWith(handler);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 启动disruptor的线程</span></span><br><span class="line">        disruptor.start();</span><br><span class="line"></span><br><span class="line">        RingBuffer&lt;Element&gt; ringBuffer = disruptor.getRingBuffer();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">l</span> <span class="operator">=</span> <span class="number">0</span>; <span class="literal">true</span>; l++)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">// 获取下一个可用位置的下标</span></span><br><span class="line">            <span class="type">long</span> <span class="variable">sequence</span> <span class="operator">=</span> ringBuffer.next();  </span><br><span class="line">            <span class="keyword">try</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">// 返回可用位置的元素</span></span><br><span class="line">                <span class="type">Element</span> <span class="variable">event</span> <span class="operator">=</span> ringBuffer.get(sequence); </span><br><span class="line">                <span class="comment">// 设置该位置元素的值</span></span><br><span class="line">                event.set(l); </span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">finally</span></span><br><span class="line">            &#123;</span><br><span class="line">                ringBuffer.publish(sequence);</span><br><span class="line">            &#125;</span><br><span class="line">            Thread.sleep(<span class="number">10</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h1 id="4-等待策略"><a href="#4-等待策略" class="headerlink" title="4.等待策略"></a>4.等待策略</h1><h2 id="4-1-生产者等待策略"><a href="#4-1-生产者等待策略" class="headerlink" title="4.1.生产者等待策略"></a>4.1.生产者等待策略</h2><p>暂时只有休眠1ns。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">LockSupport.parkNanos(<span class="number">1</span>);</span><br></pre></td></tr></table></figure>
-<h2 id="4-2-消费者的等待策略"><a href="#4-2-消费者的等待策略" class="headerlink" title="4.2.消费者的等待策略"></a>4.2.消费者的等待策略</h2><p><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/disruptor/%E6%B6%88%E8%B4%B9%E8%80%85%E7%9A%84%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5.png"
-                        alt="消费者的等待策略"
-                 ></p>
-
+<h2 id="4-2-消费者的等待策略"><a href="#4-2-消费者的等待策略" class="headerlink" title="4.2.消费者的等待策略"></a>4.2.消费者的等待策略</h2><div class="mermaid">
+graph LR
+H0["名称"]
+H1["措施"]
+H2["适用场景"]
+H0 --- H1
+H1 --- H2
+A0["BlockingWaitStrategy"]
+A1["加锁"]
+A2["CPU资源紧缺,吞吐量和延迟并不重要的场景"]
+A0 --- A1
+A1 --- A2
+B0["BusySpinWaitStrategy"]
+B1["自旋"]
+B2["通过不断重试,减少切换线程导致的系统调用,而降低延迟。推荐在线程绑定到固定的CPU的场景下使用"]
+B0 --- B1
+B1 --- B2
+C0["PhasedBackoffWaitStrategy"]
+C1["自旋 + yield + 自定义策略"]
+C2["CPU资源紧缺,吞吐量和延迟并不重要的场景"]
+C0 --- C1
+C1 --- C2
+D0["SleepingWaitStrategy"]
+D1["自旋 + yield + sleep"]
+D2["性能和CPU资源之间有很好的折中。延迟不均匀"]
+D0 --- D1
+D1 --- D2
+E0["TimeoutBlockingWaitStrategy"]
+E1["加锁,有超时限制"]
+E2["CPU资源紧缺,吞吐量和延迟并不重要的场景"]
+E0 --- E1
+E1 --- E2
+F0["YieldingWaitStrategy"]
+F1["自旋 + yield + 自旋"]
+F2["性能和CPU资源之间有很好的折中。延迟比较均匀"]
+F0 --- F1
+F1 --- F2
+H0 --- A0
+A0 --- B0
+B0 --- C0
+C0 --- D0
+D0 --- E0
+E0 --- F0
+</div>
                     
                 </div>
 
@@ -555,7 +766,7 @@
             <div class="pc-post-toc right-toc">
                 <div class="post-toc-wrap border-box">
     <div class="post-toc border-box">
-        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-Java-%E5%86%85%E7%BD%AE%E9%98%9F%E5%88%97"><span class="nav-text">1.Java 内置队列</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-ArrayBlockingQueue%E7%9A%84%E9%97%AE%E9%A2%98"><span class="nav-text">2.ArrayBlockingQueue的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-%E5%8A%A0%E9%94%81"><span class="nav-text">2.1.加锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2-%E5%85%B3%E4%BA%8E%E9%94%81%E5%92%8CCAS"><span class="nav-text">2.2.关于锁和CAS</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-1-%E9%94%81"><span class="nav-text">2.2.1 锁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-2-%E5%8E%9F%E5%AD%90%E5%8F%98%E9%87%8F"><span class="nav-text">2.2.2.原子变量</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-3-%E4%BC%AA%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.伪共享</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-1-%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.1.共享</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-2-%E7%BC%93%E5%AD%98%E8%A1%8C"><span class="nav-text">2.3.2.缓存行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-3-%E4%BC%AA%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.3.伪共享</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-Disruptor%E7%9A%84%E8%AE%BE%E8%AE%A1%E6%96%B9%E6%A1%88"><span class="nav-text">3.Disruptor的设计方案</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1-%E4%B8%80%E4%B8%AA%E7%94%9F%E4%BA%A7%E8%80%85"><span class="nav-text">3.1.一个生产者</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-%E5%A4%9A%E4%B8%AA%E7%94%9F%E4%BA%A7%E8%80%85"><span class="nav-text">3.2.多个生产者</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-1-%E8%AF%BB%E6%95%B0%E6%8D%AE"><span class="nav-text">3.2.1.读数据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-2-%E5%86%99%E6%95%B0%E6%8D%AE"><span class="nav-text">3.2.2.写数据</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-3-%E6%A1%88%E4%BE%8B%EF%BC%9A%E6%AF%8F10ms%E5%90%91disruptor%E4%B8%AD%E6%8F%92%E5%85%A5%E4%B8%80%E4%B8%AA%E5%85%83%E7%B4%A0%EF%BC%8C%E6%B6%88%E8%B4%B9%E8%80%85%E8%AF%BB%E5%8F%96%E6%95%B0%E6%8D%AE%EF%BC%8C%E5%B9%B6%E6%89%93%E5%8D%B0%E5%88%B0%E7%BB%88%E7%AB%AF"><span class="nav-text">3.3.案例：每10ms向disruptor中插入一个元素，消费者读取数据，并打印到终端</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.等待策略</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#4-1-%E7%94%9F%E4%BA%A7%E8%80%85%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.1.生产者等待策略</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-2-%E6%B6%88%E8%B4%B9%E8%80%85%E7%9A%84%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.2.消费者的等待策略</span></a></li></ol></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-Java-%E5%86%85%E7%BD%AE%E9%98%9F%E5%88%97"><span class="nav-text">1.Java 内置队列</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-ArrayBlockingQueue%E7%9A%84%E9%97%AE%E9%A2%98"><span class="nav-text">2.ArrayBlockingQueue的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-%E5%8A%A0%E9%94%81"><span class="nav-text">2.1.加锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2-%E5%85%B3%E4%BA%8E%E9%94%81%E5%92%8CCAS"><span class="nav-text">2.2.关于锁和CAS</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-1-%E9%94%81"><span class="nav-text">2.2.1 锁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-2-%E5%8E%9F%E5%AD%90%E5%8F%98%E9%87%8F"><span class="nav-text">2.2.2.原子变量</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-3-%E4%BC%AA%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.伪共享</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-1-%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.1.共享</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-3-%E4%BC%AA%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.3.伪共享</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-Disruptor%E7%9A%84%E8%AE%BE%E8%AE%A1%E6%96%B9%E6%A1%88"><span class="nav-text">3.Disruptor的设计方案</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1-%E4%B8%80%E4%B8%AA%E7%94%9F%E4%BA%A7%E8%80%85"><span class="nav-text">3.1.一个生产者</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-1-%E8%AF%BB%E6%95%B0%E6%8D%AE"><span class="nav-text">3.2.1.读数据</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-3-%E6%A1%88%E4%BE%8B%EF%BC%9A%E6%AF%8F10ms%E5%90%91disruptor%E4%B8%AD%E6%8F%92%E5%85%A5%E4%B8%80%E4%B8%AA%E5%85%83%E7%B4%A0%EF%BC%8C%E6%B6%88%E8%B4%B9%E8%80%85%E8%AF%BB%E5%8F%96%E6%95%B0%E6%8D%AE%EF%BC%8C%E5%B9%B6%E6%89%93%E5%8D%B0%E5%88%B0%E7%BB%88%E7%AB%AF"><span class="nav-text">3.3.案例：每10ms向disruptor中插入一个元素，消费者读取数据，并打印到终端</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.等待策略</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#4-1-%E7%94%9F%E4%BA%A7%E8%80%85%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.1.生产者等待策略</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-2-%E6%B6%88%E8%B4%B9%E8%80%85%E7%9A%84%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.2.消费者的等待策略</span></a></li></ol></li></ol>
     </div>
 </div>
 
@@ -724,7 +935,7 @@
             <div class="tablet-post-toc">
                 <div class="post-toc-wrap border-box">
     <div class="post-toc border-box">
-        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-Java-%E5%86%85%E7%BD%AE%E9%98%9F%E5%88%97"><span class="nav-text">1.Java 内置队列</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-ArrayBlockingQueue%E7%9A%84%E9%97%AE%E9%A2%98"><span class="nav-text">2.ArrayBlockingQueue的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-%E5%8A%A0%E9%94%81"><span class="nav-text">2.1.加锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2-%E5%85%B3%E4%BA%8E%E9%94%81%E5%92%8CCAS"><span class="nav-text">2.2.关于锁和CAS</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-1-%E9%94%81"><span class="nav-text">2.2.1 锁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-2-%E5%8E%9F%E5%AD%90%E5%8F%98%E9%87%8F"><span class="nav-text">2.2.2.原子变量</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-3-%E4%BC%AA%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.伪共享</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-1-%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.1.共享</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-2-%E7%BC%93%E5%AD%98%E8%A1%8C"><span class="nav-text">2.3.2.缓存行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-3-%E4%BC%AA%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.3.伪共享</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-Disruptor%E7%9A%84%E8%AE%BE%E8%AE%A1%E6%96%B9%E6%A1%88"><span class="nav-text">3.Disruptor的设计方案</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1-%E4%B8%80%E4%B8%AA%E7%94%9F%E4%BA%A7%E8%80%85"><span class="nav-text">3.1.一个生产者</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-%E5%A4%9A%E4%B8%AA%E7%94%9F%E4%BA%A7%E8%80%85"><span class="nav-text">3.2.多个生产者</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-1-%E8%AF%BB%E6%95%B0%E6%8D%AE"><span class="nav-text">3.2.1.读数据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-2-%E5%86%99%E6%95%B0%E6%8D%AE"><span class="nav-text">3.2.2.写数据</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-3-%E6%A1%88%E4%BE%8B%EF%BC%9A%E6%AF%8F10ms%E5%90%91disruptor%E4%B8%AD%E6%8F%92%E5%85%A5%E4%B8%80%E4%B8%AA%E5%85%83%E7%B4%A0%EF%BC%8C%E6%B6%88%E8%B4%B9%E8%80%85%E8%AF%BB%E5%8F%96%E6%95%B0%E6%8D%AE%EF%BC%8C%E5%B9%B6%E6%89%93%E5%8D%B0%E5%88%B0%E7%BB%88%E7%AB%AF"><span class="nav-text">3.3.案例：每10ms向disruptor中插入一个元素，消费者读取数据，并打印到终端</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.等待策略</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#4-1-%E7%94%9F%E4%BA%A7%E8%80%85%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.1.生产者等待策略</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-2-%E6%B6%88%E8%B4%B9%E8%80%85%E7%9A%84%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.2.消费者的等待策略</span></a></li></ol></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-Java-%E5%86%85%E7%BD%AE%E9%98%9F%E5%88%97"><span class="nav-text">1.Java 内置队列</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-ArrayBlockingQueue%E7%9A%84%E9%97%AE%E9%A2%98"><span class="nav-text">2.ArrayBlockingQueue的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-%E5%8A%A0%E9%94%81"><span class="nav-text">2.1.加锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2-%E5%85%B3%E4%BA%8E%E9%94%81%E5%92%8CCAS"><span class="nav-text">2.2.关于锁和CAS</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-1-%E9%94%81"><span class="nav-text">2.2.1 锁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-2-%E5%8E%9F%E5%AD%90%E5%8F%98%E9%87%8F"><span class="nav-text">2.2.2.原子变量</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-3-%E4%BC%AA%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.伪共享</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-1-%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.1.共享</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-3-%E4%BC%AA%E5%85%B1%E4%BA%AB"><span class="nav-text">2.3.3.伪共享</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-Disruptor%E7%9A%84%E8%AE%BE%E8%AE%A1%E6%96%B9%E6%A1%88"><span class="nav-text">3.Disruptor的设计方案</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1-%E4%B8%80%E4%B8%AA%E7%94%9F%E4%BA%A7%E8%80%85"><span class="nav-text">3.1.一个生产者</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-1-%E8%AF%BB%E6%95%B0%E6%8D%AE"><span class="nav-text">3.2.1.读数据</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-3-%E6%A1%88%E4%BE%8B%EF%BC%9A%E6%AF%8F10ms%E5%90%91disruptor%E4%B8%AD%E6%8F%92%E5%85%A5%E4%B8%80%E4%B8%AA%E5%85%83%E7%B4%A0%EF%BC%8C%E6%B6%88%E8%B4%B9%E8%80%85%E8%AF%BB%E5%8F%96%E6%95%B0%E6%8D%AE%EF%BC%8C%E5%B9%B6%E6%89%93%E5%8D%B0%E5%88%B0%E7%BB%88%E7%AB%AF"><span class="nav-text">3.3.案例：每10ms向disruptor中插入一个元素，消费者读取数据，并打印到终端</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.等待策略</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#4-1-%E7%94%9F%E4%BA%A7%E8%80%85%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.1.生产者等待策略</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-2-%E6%B6%88%E8%B4%B9%E8%80%85%E7%9A%84%E7%AD%89%E5%BE%85%E7%AD%96%E7%95%A5"><span class="nav-text">4.2.消费者的等待策略</span></a></li></ol></li></ol>
     </div>
 </div>
 
@@ -807,6 +1018,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

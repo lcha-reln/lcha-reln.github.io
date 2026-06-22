@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -350,12 +350,12 @@
         
         
             <span class="meta-info-item post-wordcount">
-                <i class="icon fas fa-file-word"></i>&nbsp;<span>4k 字</span>
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>4.4k 字</span>
             </span>
         
         
             <span class="meta-info-item post-min2read">
-                <i class="icon fas fa-clock"></i>&nbsp;<span>15 分钟</span>
+                <i class="icon fas fa-clock"></i>&nbsp;<span>17 分钟</span>
             </span>
         
         
@@ -377,7 +377,20 @@
 <span id="more"></span>
 
 <h2 id="一、传输模式概览"><a href="#一、传输模式概览" class="headerlink" title="一、传输模式概览"></a>一、传输模式概览</h2><p>Aeron 的三种传输模式共享同一套可靠传输层（NAK 协议、流控窗口、重传机制），差异仅在于底层的数据投递手段：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    Aeron 传输协议体系                        │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐  │</span><br><span class="line">│   │  UDP 单播     │   │  UDP 多播     │   │     IPC      │  │</span><br><span class="line">│   │  (Unicast)   │   │  (Multicast) │   │  (共享内存)   │  │</span><br><span class="line">│   └──────┬───────┘   └──────┬───────┘   └──────┬───────┘  │</span><br><span class="line">│          │                  │                  │           │</span><br><span class="line">│   ┌──────▼──────────────────▼──────────────────▼────────┐  │</span><br><span class="line">│   │              Aeron 可靠传输层                        │  │</span><br><span class="line">│   │   NAK 重传协议  ·  滑动窗口流控  ·  位置计数器体系   │  │</span><br><span class="line">│   └──────────────────────────────────────────────────────┘  │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+  T["Aeron 传输协议体系"]
+  U["UDP 单播(Unicast)"]
+  M["UDP 多播(Multicast)"]
+  I["IPC(共享内存)"]
+  R["Aeron 可靠传输层(NAK 重传协议 · 滑动窗口流控 · 位置计数器体系)"]
+  T --> U
+  T --> M
+  T --> I
+  U --> R
+  M --> R
+  I --> R
+</div>
 
 <table>
 <thead>
@@ -409,17 +422,61 @@
 </tbody></table>
 <h2 id="二、为何不使用-TCP"><a href="#二、为何不使用-TCP" class="headerlink" title="二、为何不使用 TCP"></a>二、为何不使用 TCP</h2><p>TCP 在数据中心低延迟场景下存在三个结构性缺陷：</p>
 <h3 id="2-1-队头阻塞（Head-of-Line-Blocking）"><a href="#2-1-队头阻塞（Head-of-Line-Blocking）" class="headerlink" title="2.1 队头阻塞（Head-of-Line Blocking）"></a>2.1 队头阻塞（Head-of-Line Blocking）</h3><p>TCP 是严格有序的字节流协议，接收方的内核缓冲区必须按序向应用层交付数据。当中间某个 segment 丢失时，后续已到达的数据全部阻塞在内核缓冲区，应用层无法感知，也无法处理：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">TCP 接收端内核缓冲区：</span><br><span class="line"></span><br><span class="line">已交付应用层     阻塞等待 segment 3      已到达但无法交付</span><br><span class="line">  ┌───┬───┐    ┌─────────────────────┐  ┌───┬───┐</span><br><span class="line">  │ 1 │ 2 │    │  等待 segment 3 ...  │  │ 4 │ 5 │</span><br><span class="line">  └───┴───┘    └─────────────────────┘  └───┴───┘</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph LR
+  subgraph A["已交付应用层"]
+    S1["segment 1"]
+    S2["segment 2"]
+  end
+  subgraph B["阻塞等待 segment 3"]
+    W["等待 segment 3 ..."]
+  end
+  subgraph C["已到达但无法交付"]
+    S4["segment 4"]
+    S5["segment 5"]
+  end
+  A --> B
+  B --> C
+</div>
 
 <p>Aeron 基于 UDP，接收到的数据包直接写入 Log Buffer 的对应 term offset，后续连续帧可立即交付消费端处理，丢失的帧通过异步 NAK 请求重传，两者并行进行，消除了队头阻塞：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Aeron Receiver 的 Log Buffer：</span><br><span class="line"></span><br><span class="line">已处理         可立即处理（无论 seq=3 是否到达）</span><br><span class="line">  ┌───┬───┐   ┌───┬───┐</span><br><span class="line">  │ 1 │ 2 │   │ 4 │ 5 │   ← 后台异步 NAK 请求 seq=3 重传</span><br><span class="line">  └───┴───┘   └───┴───┘</span><br><span class="line">                 ↑</span><br><span class="line">         offset 已写入，可消费</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph LR
+  subgraph LB["Aeron Receiver 的 Log Buffer"]
+    direction LR
+    A["已处理: seq=1"]
+    B["已处理: seq=2"]
+    C["可立即处理: seq=4"]
+    D["可立即处理: seq=5"]
+  end
+  A --- B
+  C --- D
+  N["后台异步 NAK 请求 seq=3 重传"]
+  C -.-> N
+  D -.-> N
+  M["offset 已写入, 可消费(无论 seq=3 是否到达)"]
+  C --> M
+</div>
 
 <h3 id="2-2-慢启动与拥塞控制"><a href="#2-2-慢启动与拥塞控制" class="headerlink" title="2.2 慢启动与拥塞控制"></a>2.2 慢启动与拥塞控制</h3><p>TCP 的慢启动（Slow Start）和拥塞控制（CWND）算法面向广域网设计，其拥塞窗口从 1 MSS 起步，指数增长至 ssthresh 后线性增长。在数据中心 RTT 通常低于 100 μs 的环境下，TCP 的拥塞窗口收敛极慢，初始阶段的带宽利用率极低。</p>
 <p>Aeron 的流控基于接收端显式回报的 receiver window（通过 STATUS_MESSAGE 帧携带），发送端直接按接收端的实际消费能力推进，无需拥塞推断算法，带宽利用率从连接建立的第一帧起即可达到上限。</p>
 <h3 id="2-3-内核协议栈开销"><a href="#2-3-内核协议栈开销" class="headerlink" title="2.3 内核协议栈开销"></a>2.3 内核协议栈开销</h3><p>TCP 数据路径需要经过操作系统内核的完整协议栈处理，涉及：系统调用上下文切换、内核缓冲区到用户空间的内存拷贝、TCP 状态机的锁竞争。</p>
 <p>Aeron 的数据路径在用户态完成：Publication 直接写入 mmap 映射的 Log Buffer（堆外内存），Sender 通过 <code>sendmmsg</code> 系统调用批量发送，Receiver 写入 Image 的 Log Buffer 后由 Subscriber 直接 poll，全程无内核态数据拷贝。</p>
 <h2 id="三、UDP-单播"><a href="#三、UDP-单播" class="headerlink" title="三、UDP 单播"></a>三、UDP 单播</h2><p>UDP 单播是点对点的传输模式，每个 Subscriber 对应一条独立的 UDP 数据流：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">发布端进程                             订阅端进程</span><br><span class="line">┌──────────┐                          ┌──────────┐</span><br><span class="line">│ App A    │                          │ App B    │</span><br><span class="line">│ offer()  │                          │ poll()   │</span><br><span class="line">└────┬─────┘                          └────▲─────┘</span><br><span class="line">     │                                     │</span><br><span class="line">     ▼                                     │</span><br><span class="line">┌──────────────┐    UDP Packet        ┌──────────────┐</span><br><span class="line">│ Media Driver │ ──────────────────→  │ Media Driver │</span><br><span class="line">│     A        │  src: 10.0.0.1:9000  │      B       │</span><br><span class="line">└──────────────┘  dst: 10.0.0.2:9000  └──────────────┘</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+flowchart LR
+  subgraph PUB["发布端进程"]
+    AppA["App A offer()"]
+    MDA["Media Driver A"]
+    AppA --> MDA
+  end
+  subgraph SUB["订阅端进程"]
+    MDB["Media Driver B"]
+    AppB["App B poll()"]
+    MDB --> AppB
+  end
+  MDA -->|"UDP Packet (src: 10.0.0.1:9000 / dst: 10.0.0.2:9000)"| MDB
+</div>
 
 <p><strong>Channel URI 示例</strong>：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">aeron:udp?endpoint=10.0.0.2:9000</span><br></pre></td></tr></table></figure>
@@ -431,7 +488,18 @@
 </ul>
 <p><strong>注意</strong>：当 Subscriber 数量增加时，Sender 需要为每个 Subscriber 独立发送数据副本，发送端带宽消耗与订阅方数量线性增长。此时应切换为 UDP 多播。</p>
 <h2 id="四、UDP-多播"><a href="#四、UDP-多播" class="headerlink" title="四、UDP 多播"></a>四、UDP 多播</h2><p>UDP 多播利用 IP 组播协议（组播地址范围 <code>224.0.0.0 ~ 239.255.255.255</code>），网络设备（交换机&#x2F;路由器）负责将数据包复制并转发给所有加入该组播组的成员，发送端仅需发送一次：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">发布端                         订阅端 1        订阅端 2        订阅端 3</span><br><span class="line">┌──────────────┐              ┌────────┐      ┌────────┐      ┌────────┐</span><br><span class="line">│ Media Driver │  组播数据包   │ App B  │      │ App C  │      │ App D  │</span><br><span class="line">│  单次发送     │ ─────────────┴────────┴──────┴────────┴──────┴────────┘</span><br><span class="line">└──────────────┘  239.1.1.1:9000</span><br><span class="line">                  （交换机复制转发至所有组成员）</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph LR
+P["发布端 Media Driver(单次发送)"]
+SW["交换机(复制转发至所有组成员)"]
+B["订阅端 1 App B"]
+C["订阅端 2 App C"]
+D["订阅端 3 App D"]
+P -->|"组播数据包 239.1.1.1:9000"| SW
+SW --> B
+SW --> C
+SW --> D
+</div>
 
 <p><strong>Channel URI 示例</strong>：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># 发布端</span><br><span class="line">aeron:udp?control=10.0.0.1:9001|control-mode=dynamic</span><br><span class="line"></span><br><span class="line"># 订阅端</span><br><span class="line">aeron:udp?control=10.0.0.1:9001</span><br></pre></td></tr></table></figure>
@@ -445,7 +513,16 @@
 <li>在部分云环境和 overlay 网络中，组播支持受限，此时需退化为单播</li>
 </ul>
 <h2 id="五、IPC-进程间通信"><a href="#五、IPC-进程间通信" class="headerlink" title="五、IPC 进程间通信"></a>五、IPC 进程间通信</h2><p>IPC 模式完全绕过网络栈，通过操作系统的共享内存（<code>mmap</code>）在同机进程间直接传递数据：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        同一台主机                            │</span><br><span class="line">│                                                             │</span><br><span class="line">│  ┌────────────┐                      ┌────────────┐        │</span><br><span class="line">│  │ Process A  │                      │ Process B  │        │</span><br><span class="line">│  │  offer()   │                      │  poll()    │        │</span><br><span class="line">│  └─────┬──────┘                      └─────▲──────┘        │</span><br><span class="line">│        │ write（无系统调用）                │ read          │</span><br><span class="line">│        ▼                                   │               │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │          Shared Memory（mmap / /dev/shm）           │   │</span><br><span class="line">│  │          Log Buffer（Term Buffer × 3）              │   │</span><br><span class="line">│  └─────────────────────────────────────────────────────┘   │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+flowchart TB
+subgraph Host["同一台主机"]
+  PA["Process A (offer())"]
+  PB["Process B (poll())"]
+  SM["Shared Memory(mmap / /dev/shm) / Log Buffer(Term Buffer x 3)"]
+  PA -->|"write(无系统调用)"| SM
+  SM -->|read| PB
+end
+</div>
 
 <p><strong>Channel URI</strong>：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">aeron:ipc</span><br></pre></td></tr></table></figure>
@@ -459,10 +536,65 @@
 <p><strong>典型延迟</strong>：P50 约 200 ns，P99 约 500 ns（<code>DEDICATED</code> 线程模式 + <code>BusySpinIdleStrategy</code>）。</p>
 <h2 id="六、NAK-协议"><a href="#六、NAK-协议" class="headerlink" title="六、NAK 协议"></a>六、NAK 协议</h2><h3 id="6-1-设计动机：NAK-vs-ACK"><a href="#6-1-设计动机：NAK-vs-ACK" class="headerlink" title="6.1 设计动机：NAK vs ACK"></a>6.1 设计动机：NAK vs ACK</h3><p>传统可靠传输协议（TCP）使用 ACK（Positive Acknowledgment）机制：接收方确认每一个（或每批）成功收到的数据包。在低丢包率网络中，ACK 的成本远高于其提供的价值——绝大多数数据包都能成功投递，为每个成功投递的包发送 ACK 是巨大的带宽和处理浪费。</p>
 <p>Aeron 采用 <strong>NAK（Negative Acknowledgment）</strong>：接收方仅在检测到数据缺失时发送 NAK 帧，请求重传指定范围的数据。在数据中心环境（丢包率通常 &lt; 0.01%）下，NAK 的发送频率极低，接近于零，从而将确认流量的开销降低至接近零。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">ACK 模式（TCP）：</span><br><span class="line"></span><br><span class="line">发送端: [1]  [2]  [3]  [4]  [5]</span><br><span class="line">接收端:  ↑    ↑    ↑    ↑    ↑</span><br><span class="line">        ACK ACK ACK ACK ACK   ← 5 条确认，100% 额外流量</span><br><span class="line"></span><br><span class="line">─────────────────────────────────────────────────</span><br><span class="line"></span><br><span class="line">NAK 模式（Aeron）：</span><br><span class="line"></span><br><span class="line">发送端: [1]  [2]  [X]  [4]  [5]</span><br><span class="line">接收端:  ✓    ✓        ✓    ✓</span><br><span class="line">                  ↑</span><br><span class="line">              NAK(3)           ← 仅 1 条 NAK，丢包才触发</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+  subgraph ACK["ACK 模式(TCP)"]
+    direction LR
+    AS1["发送端 包1"]
+    AS2["发送端 包2"]
+    AS3["发送端 包3"]
+    AS4["发送端 包4"]
+    AS5["发送端 包5"]
+    AR1["接收端 ACK"]
+    AR2["接收端 ACK"]
+    AR3["接收端 ACK"]
+    AR4["接收端 ACK"]
+    AR5["接收端 ACK"]
+    AS1 --> AR1
+    AS2 --> AR2
+    AS3 --> AR3
+    AS4 --> AR4
+    AS5 --> AR5
+    ANOTE["5 条确认,100% 额外流量"]
+    AR3 -.-> ANOTE
+  end
+  subgraph NAK["NAK 模式(Aeron)"]
+    direction LR
+    NS1["发送端 包1"]
+    NS2["发送端 包2"]
+    NS3["发送端 包3(X 丢失)"]
+    NS4["发送端 包4"]
+    NS5["发送端 包5"]
+    NR1["接收端 收到(对勾)"]
+    NR2["接收端 收到(对勾)"]
+    NR4["接收端 收到(对勾)"]
+    NR5["接收端 收到(对勾)"]
+    NNAK["NAK(3)"]
+    NS1 --> NR1
+    NS2 --> NR2
+    NS4 --> NR4
+    NS5 --> NR5
+    NS3 -. 缺失 .-> NNAK
+    NNOTE["仅 1 条 NAK,丢包才触发"]
+    NNAK -.-> NNOTE
+  end
+</div>
 
 <p><strong>适用前提</strong>：NAK 模式假设网络丢包率低（&lt; 0.1%）。在高丢包率网络中，大量 NAK 请求可能引发 NAK 风暴（NAK Implosion），导致发送端被重传请求淹没，此时应考虑引入 NAK 抑制（NAK Suppression）或切换为基于 ACK 的可靠传输。</p>
-<h3 id="6-2-NAK-完整工作流程"><a href="#6-2-NAK-完整工作流程" class="headerlink" title="6.2 NAK 完整工作流程"></a>6.2 NAK 完整工作流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">时间轴 ──────────────────────────────────────────────────────────────→</span><br><span class="line"></span><br><span class="line">阶段 1：正常传输</span><br><span class="line">  Sender:   ──[1]──[2]──[3]──[4]──[5]──────────────────────────────→</span><br><span class="line">  Receiver:   ✓    ✓    ✓    ✓    ✓</span><br><span class="line"></span><br><span class="line">阶段 2：丢包发生</span><br><span class="line">  Sender:   ──[1]──[2]──[X]──[4]──[5]──────────────────────────────→</span><br><span class="line">  Receiver:   ✓    ✓         ✓    ✓</span><br><span class="line">                        ↑</span><br><span class="line">              Receiver 检测到 seq gap（term offset 不连续）</span><br><span class="line"></span><br><span class="line">阶段 3：NAK 延迟等待（默认 20 μs）</span><br><span class="line">  目的：等待乱序帧可能在延迟后到达，避免对乱序帧误发 NAK</span><br><span class="line"></span><br><span class="line">阶段 4：NAK 发送</span><br><span class="line">  Receiver: ───────────────────────────── NAK(termId=X, offset=Y) →</span><br><span class="line">  Sender:   ← 接收 NAK</span><br><span class="line"></span><br><span class="line">阶段 5：重传</span><br><span class="line">  Sender:   ──────────────────────────────────[3]重传──────────────→</span><br><span class="line">  Receiver:   ✓  gap 填充，恢复连续性</span><br><span class="line"></span><br><span class="line">阶段 6：正常传输继续</span><br><span class="line">  Sender:   ─────────────────────────────────────────[6]──[7]──────→</span><br><span class="line">  Receiver:   ✓    ✓</span><br></pre></td></tr></table></figure>
+<h3 id="6-2-NAK-完整工作流程"><a href="#6-2-NAK-完整工作流程" class="headerlink" title="6.2 NAK 完整工作流程"></a>6.2 NAK 完整工作流程</h3><div class="mermaid">
+graph TD
+  P1["阶段1 正常传输: Sender 发送 [1][2][3][4][5], Receiver 全部确认"]
+  P2["阶段2 丢包发生: [3]丢失(X), Receiver 检测到 seq gap(term offset 不连续)"]
+  P3["阶段3 NAK 延迟等待(默认 20 μs): 等待乱序帧可能延迟到达, 避免对乱序帧误发 NAK"]
+  P4["阶段4 NAK 发送: Receiver 发出 NAK(termId=X, offset=Y), Sender 接收 NAK"]
+  P5["阶段5 重传: Sender 重传 [3], Receiver gap 填充, 恢复连续性"]
+  P6["阶段6 正常传输继续: Sender 发送 [6][7], Receiver 确认"]
+  P1 --> P2
+  P2 --> P3
+  P3 --> P4
+  P4 --> P5
+  P5 --> P6
+</div>
 
 <h3 id="6-3-NAK-帧结构"><a href="#6-3-NAK-帧结构" class="headerlink" title="6.3 NAK 帧结构"></a>6.3 NAK 帧结构</h3><p>Aeron 的 NAK 帧是标准的 Aeron 数据帧，帧类型字段为 <code>NAK</code>（<code>0x08</code>），携带以下关键字段：</p>
 <table>
@@ -515,7 +647,20 @@
 <li><strong>Sender 批量重传</strong>：Sender 在收到第一个 NAK 后等待 <code>retransmitMulticastDelay</code> 时间（默认 0），合并同一 gap 的多个 NAK 请求后执行单次重传</li>
 </ol>
 <h2 id="七、流控窗口与位置追踪"><a href="#七、流控窗口与位置追踪" class="headerlink" title="七、流控窗口与位置追踪"></a>七、流控窗口与位置追踪</h2><h3 id="7-1-位置计数器体系"><a href="#7-1-位置计数器体系" class="headerlink" title="7.1 位置计数器体系"></a>7.1 位置计数器体系</h3><p>Aeron 的流控建立在一组共享内存中的 64 位原子位置计数器之上，记录数据流在各环节的处理进度：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">Publication 写入位置</span><br><span class="line">         │</span><br><span class="line">         ▼</span><br><span class="line">┌────────────────────────────────────────────────────────────┐</span><br><span class="line">│                       Log Buffer                           │</span><br><span class="line">│                                                            │</span><br><span class="line">│  [已消费] ─── consumerPosition                            │</span><br><span class="line">│  [已处理] ─── subscriberPosition（每个 Subscriber 独立）  │</span><br><span class="line">│  [已接收] ─── receiverHwm（High Water Mark）               │</span><br><span class="line">│  [已发送] ─── senderPosition                              │</span><br><span class="line">│  [可写上限]── publisherLimit（由 Conductor 更新）          │</span><br><span class="line">│                                                            │</span><br><span class="line">└────────────────────────────────────────────────────────────┘</span><br><span class="line">         │</span><br><span class="line">         ▼</span><br><span class="line">      Network</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+  P["Publication 写入位置"]
+  N["Network"]
+  subgraph LB["Log Buffer"]
+    C["已消费 — consumerPosition"]
+    S["已处理 — subscriberPosition(每个 Subscriber 独立)"]
+    R["已接收 — receiverHwm(High Water Mark)"]
+    SP["已发送 — senderPosition"]
+    PL["可写上限 — publisherLimit(由 Conductor 更新)"]
+  end
+  P --> LB
+  LB --> N
+</div>
 
 <p>各位置计数器的语义：</p>
 <table>
@@ -563,7 +708,16 @@
 <p><strong>Term Buffer 大小的经验选择</strong>：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">recommendedTermLength ≈ 2 × BDP</span><br><span class="line">BDP（带宽时延积）= 带宽（bytes/s）× RTT（s）</span><br><span class="line"></span><br><span class="line">示例：</span><br><span class="line">  10 Gbps 网络，RTT = 100 μs</span><br><span class="line">  BDP = (10 × 10^9 / 8) bytes/s × 100 × 10^-6 s = 125 KB</span><br><span class="line">  → Term Buffer = 256 KB ~ 1 MB 即可满足需求</span><br><span class="line"></span><br><span class="line">  100 Gbps 网络，RTT = 500 μs（跨数据中心）</span><br><span class="line">  BDP = (100 × 10^9 / 8) × 500 × 10^-6 = 6.25 MB</span><br><span class="line">  → Term Buffer = 16 MB ~ 32 MB</span><br></pre></td></tr></table></figure>
 
-<h2 id="八、传输方式选型"><a href="#八、传输方式选型" class="headerlink" title="八、传输方式选型"></a>八、传输方式选型</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">   ┌─────────────────────────┐</span><br><span class="line">   │      开始选择传输方式     │</span><br><span class="line">   └────────────┬────────────┘</span><br><span class="line">                │</span><br><span class="line">                ▼</span><br><span class="line">   ┌─────────────────────────┐</span><br><span class="line">   │  通信双方是否在同一主机？  │</span><br><span class="line">   └──────┬──────────┬────────┘</span><br><span class="line">          │ 是        │ 否</span><br><span class="line">          ▼           ▼</span><br><span class="line">┌──────────────┐  ┌──────────────────────┐</span><br><span class="line">│  使用 IPC    │  │ 订阅方是否 &gt; 1 个？   │</span><br><span class="line">│（最低延迟）   │  └────┬───────────┬──────┘</span><br><span class="line">└──────────────┘       │ 是         │ 否</span><br><span class="line">                       ▼            ▼</span><br><span class="line">          ┌────────────────┐  ┌───────────────┐</span><br><span class="line">          │ 网络是否支持   │  │  UDP 单播      │</span><br><span class="line">          │  IP 组播？     │  └───────────────┘</span><br><span class="line">          └──────┬─────┬──┘</span><br><span class="line">                 │ 是  │ 否</span><br><span class="line">                 ▼     ▼</span><br><span class="line">        ┌──────────┐ ┌──────────────────┐</span><br><span class="line">        │ UDP 多播  │ │ UDP 单播（多份）  │</span><br><span class="line">        │（推荐）   │ │ 或代理广播        │</span><br><span class="line">        └──────────┘ └──────────────────┘</span><br></pre></td></tr></table></figure>
+<h2 id="八、传输方式选型"><a href="#八、传输方式选型" class="headerlink" title="八、传输方式选型"></a>八、传输方式选型</h2><div class="mermaid">
+flowchart TD
+A([开始选择传输方式]) --> B{通信双方是否在同一主机?}
+B -->|是| C["使用 IPC(最低延迟)"]
+B -->|否| D{订阅方是否大于 1 个?}
+D -->|是| E{网络是否支持 IP 组播?}
+D -->|否| F[UDP 单播]
+E -->|是| G["UDP 多播(推荐)"]
+E -->|否| H["UDP 单播(多份) 或代理广播"]
+</div>
 
 <h2 id="九、性能参考数据"><a href="#九、性能参考数据" class="headerlink" title="九、性能参考数据"></a>九、性能参考数据</h2><p>以下数据来自基准测试环境（Intel Xeon E5-2680 v4，10 Gbps 以太网，Jumbo Frame MTU 9000，<code>DEDICATED</code> 线程模式，<code>BusySpinIdleStrategy</code>）：</p>
 <table>
@@ -617,6 +771,16 @@
 <p><strong>NAK 重传放大</strong>：若同一 term 区间内多个数据帧丢失，接收端会为每个丢失的帧发送独立的 NAK。在丢包率 1% 的场景下，每 100 条消息触发 1 次 NAK + 重传，重传流量占总流量的比例与丢包率线性相关，额外开销仍可接受。</p>
 <p><strong>重传链式触发</strong>：若重传的数据帧本身也丢失（即重传数据包丢包），接收端将再次发送 NAK。NAK 最大重试次数无硬性上限，但若 <code>imageLivenessTimeoutNs</code> 内仍无法填补 gap，Image 将被主动关闭（<code>onUnavailableImage</code> 回调触发）。</p>
 <p><strong>建议</strong>：若网络环境丢包率持续 &gt; 0.1%，应首先排查网络层问题（Socket 缓冲区溢出、NIC 队列满等），而非调整 Aeron 参数。Aeron 本身不是为高丢包率链路设计的传输框架。</p>
+<hr>
+<h2 id="Aeron-系列"><a href="#Aeron-系列" class="headerlink" title="Aeron 系列"></a>Aeron 系列</h2><ul>
+<li><a href="/posts/fdcdfbb5/">Aeron 概述</a></li>
+<li><a href="/posts/43d5f152/">Channel、Stream、Session 深度解析</a></li>
+<li><a href="/posts/bc5589ca/">Media Driver 深度解析</a></li>
+<li><strong>传输模式与 NAK 流控深度解析</strong>（本文）</li>
+<li><a href="/posts/406b47f8/">编程模型深度解析</a></li>
+<li><a href="/posts/987bb85b/">Aeron Archive 深度解析</a></li>
+<li><a href="/posts/fed0dafe/">Aeron Cluster 与运维工具</a></li>
+</ul>
 
                     
                 </div>
@@ -657,13 +821,13 @@
                                 <a class="prev"
                                    rel="prev"
                                    href="/posts/987bb85b/"
-                                   title="Aeron Archive 技术文档"
+                                   title="Aeron Archive 深度解析"
                                 >
                                     <span class="left arrow-icon flex-center">
                                         <i class="fas fa-chevron-left"></i>
                                     </span>
                                     <span class="title flex-center">
-                                        <span class="post-nav-title-item text-ellipsis">Aeron Archive 技术文档</span>
+                                        <span class="post-nav-title-item text-ellipsis">Aeron Archive 深度解析</span>
                                         <span class="post-nav-item">上一篇</span>
                                     </span>
                                 </a>
@@ -705,7 +869,7 @@
             <div class="pc-post-toc right-toc">
                 <div class="post-toc-wrap border-box">
     <div class="post-toc border-box">
-        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E4%BC%A0%E8%BE%93%E6%A8%A1%E5%BC%8F%E6%A6%82%E8%A7%88"><span class="nav-text">一、传输模式概览</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E4%B8%BA%E4%BD%95%E4%B8%8D%E4%BD%BF%E7%94%A8-TCP"><span class="nav-text">二、为何不使用 TCP</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E9%98%9F%E5%A4%B4%E9%98%BB%E5%A1%9E%EF%BC%88Head-of-Line-Blocking%EF%BC%89"><span class="nav-text">2.1 队头阻塞（Head-of-Line Blocking）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E6%85%A2%E5%90%AF%E5%8A%A8%E4%B8%8E%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6"><span class="nav-text">2.2 慢启动与拥塞控制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%86%85%E6%A0%B8%E5%8D%8F%E8%AE%AE%E6%A0%88%E5%BC%80%E9%94%80"><span class="nav-text">2.3 内核协议栈开销</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81UDP-%E5%8D%95%E6%92%AD"><span class="nav-text">三、UDP 单播</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81UDP-%E5%A4%9A%E6%92%AD"><span class="nav-text">四、UDP 多播</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81IPC-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1"><span class="nav-text">五、IPC 进程间通信</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81NAK-%E5%8D%8F%E8%AE%AE"><span class="nav-text">六、NAK 协议</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-%E8%AE%BE%E8%AE%A1%E5%8A%A8%E6%9C%BA%EF%BC%9ANAK-vs-ACK"><span class="nav-text">6.1 设计动机：NAK vs ACK</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-NAK-%E5%AE%8C%E6%95%B4%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="nav-text">6.2 NAK 完整工作流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-NAK-%E5%B8%A7%E7%BB%93%E6%9E%84"><span class="nav-text">6.3 NAK 帧结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-NAK-%E5%BB%B6%E8%BF%9F%EF%BC%88nakDelay%EF%BC%89"><span class="nav-text">6.4 NAK 延迟（nakDelay）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-NAK-%E6%8A%91%E5%88%B6%EF%BC%88Multicast-%E5%9C%BA%E6%99%AF%EF%BC%89"><span class="nav-text">6.5 NAK 抑制（Multicast 场景）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E6%B5%81%E6%8E%A7%E7%AA%97%E5%8F%A3%E4%B8%8E%E4%BD%8D%E7%BD%AE%E8%BF%BD%E8%B8%AA"><span class="nav-text">七、流控窗口与位置追踪</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-%E4%BD%8D%E7%BD%AE%E8%AE%A1%E6%95%B0%E5%99%A8%E4%BD%93%E7%B3%BB"><span class="nav-text">7.1 位置计数器体系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-%E5%8F%91%E9%80%81%E7%AB%AF%E6%BB%91%E5%8A%A8%E7%AA%97%E5%8F%A3"><span class="nav-text">7.2 发送端滑动窗口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-%E6%8E%A5%E6%94%B6%E7%AB%AF%E6%B5%81%E6%8E%A7%E5%8F%8D%E9%A6%88"><span class="nav-text">7.3 接收端流控反馈</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-Term-Buffer-%E5%A4%A7%E5%B0%8F%E5%AF%B9%E6%B5%81%E6%8E%A7%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="nav-text">7.4 Term Buffer 大小对流控的影响</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E4%BC%A0%E8%BE%93%E6%96%B9%E5%BC%8F%E9%80%89%E5%9E%8B"><span class="nav-text">八、传输方式选型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E6%80%A7%E8%83%BD%E5%8F%82%E8%80%83%E6%95%B0%E6%8D%AE"><span class="nav-text">九、性能参考数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%85%B3%E9%94%AE%E9%85%8D%E7%BD%AE%E6%B1%87%E6%80%BB"><span class="nav-text">十、关键配置汇总</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E9%AB%98%E4%B8%A2%E5%8C%85%E7%8E%87%E5%9C%BA%E6%99%AF%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="nav-text">十一、高丢包率场景的局限性</span></a></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E4%BC%A0%E8%BE%93%E6%A8%A1%E5%BC%8F%E6%A6%82%E8%A7%88"><span class="nav-text">一、传输模式概览</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E4%B8%BA%E4%BD%95%E4%B8%8D%E4%BD%BF%E7%94%A8-TCP"><span class="nav-text">二、为何不使用 TCP</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E9%98%9F%E5%A4%B4%E9%98%BB%E5%A1%9E%EF%BC%88Head-of-Line-Blocking%EF%BC%89"><span class="nav-text">2.1 队头阻塞（Head-of-Line Blocking）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E6%85%A2%E5%90%AF%E5%8A%A8%E4%B8%8E%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6"><span class="nav-text">2.2 慢启动与拥塞控制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%86%85%E6%A0%B8%E5%8D%8F%E8%AE%AE%E6%A0%88%E5%BC%80%E9%94%80"><span class="nav-text">2.3 内核协议栈开销</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81UDP-%E5%8D%95%E6%92%AD"><span class="nav-text">三、UDP 单播</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81UDP-%E5%A4%9A%E6%92%AD"><span class="nav-text">四、UDP 多播</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81IPC-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1"><span class="nav-text">五、IPC 进程间通信</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81NAK-%E5%8D%8F%E8%AE%AE"><span class="nav-text">六、NAK 协议</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-%E8%AE%BE%E8%AE%A1%E5%8A%A8%E6%9C%BA%EF%BC%9ANAK-vs-ACK"><span class="nav-text">6.1 设计动机：NAK vs ACK</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-NAK-%E5%AE%8C%E6%95%B4%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="nav-text">6.2 NAK 完整工作流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-NAK-%E5%B8%A7%E7%BB%93%E6%9E%84"><span class="nav-text">6.3 NAK 帧结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-NAK-%E5%BB%B6%E8%BF%9F%EF%BC%88nakDelay%EF%BC%89"><span class="nav-text">6.4 NAK 延迟（nakDelay）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-NAK-%E6%8A%91%E5%88%B6%EF%BC%88Multicast-%E5%9C%BA%E6%99%AF%EF%BC%89"><span class="nav-text">6.5 NAK 抑制（Multicast 场景）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E6%B5%81%E6%8E%A7%E7%AA%97%E5%8F%A3%E4%B8%8E%E4%BD%8D%E7%BD%AE%E8%BF%BD%E8%B8%AA"><span class="nav-text">七、流控窗口与位置追踪</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-%E4%BD%8D%E7%BD%AE%E8%AE%A1%E6%95%B0%E5%99%A8%E4%BD%93%E7%B3%BB"><span class="nav-text">7.1 位置计数器体系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-%E5%8F%91%E9%80%81%E7%AB%AF%E6%BB%91%E5%8A%A8%E7%AA%97%E5%8F%A3"><span class="nav-text">7.2 发送端滑动窗口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-%E6%8E%A5%E6%94%B6%E7%AB%AF%E6%B5%81%E6%8E%A7%E5%8F%8D%E9%A6%88"><span class="nav-text">7.3 接收端流控反馈</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-Term-Buffer-%E5%A4%A7%E5%B0%8F%E5%AF%B9%E6%B5%81%E6%8E%A7%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="nav-text">7.4 Term Buffer 大小对流控的影响</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E4%BC%A0%E8%BE%93%E6%96%B9%E5%BC%8F%E9%80%89%E5%9E%8B"><span class="nav-text">八、传输方式选型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E6%80%A7%E8%83%BD%E5%8F%82%E8%80%83%E6%95%B0%E6%8D%AE"><span class="nav-text">九、性能参考数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%85%B3%E9%94%AE%E9%85%8D%E7%BD%AE%E6%B1%87%E6%80%BB"><span class="nav-text">十、关键配置汇总</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E9%AB%98%E4%B8%A2%E5%8C%85%E7%8E%87%E5%9C%BA%E6%99%AF%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="nav-text">十一、高丢包率场景的局限性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Aeron-%E7%B3%BB%E5%88%97"><span class="nav-text">Aeron 系列</span></a></li></ol>
     </div>
 </div>
 
@@ -874,7 +1038,7 @@
             <div class="tablet-post-toc">
                 <div class="post-toc-wrap border-box">
     <div class="post-toc border-box">
-        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E4%BC%A0%E8%BE%93%E6%A8%A1%E5%BC%8F%E6%A6%82%E8%A7%88"><span class="nav-text">一、传输模式概览</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E4%B8%BA%E4%BD%95%E4%B8%8D%E4%BD%BF%E7%94%A8-TCP"><span class="nav-text">二、为何不使用 TCP</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E9%98%9F%E5%A4%B4%E9%98%BB%E5%A1%9E%EF%BC%88Head-of-Line-Blocking%EF%BC%89"><span class="nav-text">2.1 队头阻塞（Head-of-Line Blocking）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E6%85%A2%E5%90%AF%E5%8A%A8%E4%B8%8E%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6"><span class="nav-text">2.2 慢启动与拥塞控制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%86%85%E6%A0%B8%E5%8D%8F%E8%AE%AE%E6%A0%88%E5%BC%80%E9%94%80"><span class="nav-text">2.3 内核协议栈开销</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81UDP-%E5%8D%95%E6%92%AD"><span class="nav-text">三、UDP 单播</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81UDP-%E5%A4%9A%E6%92%AD"><span class="nav-text">四、UDP 多播</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81IPC-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1"><span class="nav-text">五、IPC 进程间通信</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81NAK-%E5%8D%8F%E8%AE%AE"><span class="nav-text">六、NAK 协议</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-%E8%AE%BE%E8%AE%A1%E5%8A%A8%E6%9C%BA%EF%BC%9ANAK-vs-ACK"><span class="nav-text">6.1 设计动机：NAK vs ACK</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-NAK-%E5%AE%8C%E6%95%B4%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="nav-text">6.2 NAK 完整工作流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-NAK-%E5%B8%A7%E7%BB%93%E6%9E%84"><span class="nav-text">6.3 NAK 帧结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-NAK-%E5%BB%B6%E8%BF%9F%EF%BC%88nakDelay%EF%BC%89"><span class="nav-text">6.4 NAK 延迟（nakDelay）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-NAK-%E6%8A%91%E5%88%B6%EF%BC%88Multicast-%E5%9C%BA%E6%99%AF%EF%BC%89"><span class="nav-text">6.5 NAK 抑制（Multicast 场景）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E6%B5%81%E6%8E%A7%E7%AA%97%E5%8F%A3%E4%B8%8E%E4%BD%8D%E7%BD%AE%E8%BF%BD%E8%B8%AA"><span class="nav-text">七、流控窗口与位置追踪</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-%E4%BD%8D%E7%BD%AE%E8%AE%A1%E6%95%B0%E5%99%A8%E4%BD%93%E7%B3%BB"><span class="nav-text">7.1 位置计数器体系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-%E5%8F%91%E9%80%81%E7%AB%AF%E6%BB%91%E5%8A%A8%E7%AA%97%E5%8F%A3"><span class="nav-text">7.2 发送端滑动窗口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-%E6%8E%A5%E6%94%B6%E7%AB%AF%E6%B5%81%E6%8E%A7%E5%8F%8D%E9%A6%88"><span class="nav-text">7.3 接收端流控反馈</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-Term-Buffer-%E5%A4%A7%E5%B0%8F%E5%AF%B9%E6%B5%81%E6%8E%A7%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="nav-text">7.4 Term Buffer 大小对流控的影响</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E4%BC%A0%E8%BE%93%E6%96%B9%E5%BC%8F%E9%80%89%E5%9E%8B"><span class="nav-text">八、传输方式选型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E6%80%A7%E8%83%BD%E5%8F%82%E8%80%83%E6%95%B0%E6%8D%AE"><span class="nav-text">九、性能参考数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%85%B3%E9%94%AE%E9%85%8D%E7%BD%AE%E6%B1%87%E6%80%BB"><span class="nav-text">十、关键配置汇总</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E9%AB%98%E4%B8%A2%E5%8C%85%E7%8E%87%E5%9C%BA%E6%99%AF%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="nav-text">十一、高丢包率场景的局限性</span></a></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E4%BC%A0%E8%BE%93%E6%A8%A1%E5%BC%8F%E6%A6%82%E8%A7%88"><span class="nav-text">一、传输模式概览</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E4%B8%BA%E4%BD%95%E4%B8%8D%E4%BD%BF%E7%94%A8-TCP"><span class="nav-text">二、为何不使用 TCP</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E9%98%9F%E5%A4%B4%E9%98%BB%E5%A1%9E%EF%BC%88Head-of-Line-Blocking%EF%BC%89"><span class="nav-text">2.1 队头阻塞（Head-of-Line Blocking）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E6%85%A2%E5%90%AF%E5%8A%A8%E4%B8%8E%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6"><span class="nav-text">2.2 慢启动与拥塞控制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%86%85%E6%A0%B8%E5%8D%8F%E8%AE%AE%E6%A0%88%E5%BC%80%E9%94%80"><span class="nav-text">2.3 内核协议栈开销</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81UDP-%E5%8D%95%E6%92%AD"><span class="nav-text">三、UDP 单播</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81UDP-%E5%A4%9A%E6%92%AD"><span class="nav-text">四、UDP 多播</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81IPC-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1"><span class="nav-text">五、IPC 进程间通信</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81NAK-%E5%8D%8F%E8%AE%AE"><span class="nav-text">六、NAK 协议</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-%E8%AE%BE%E8%AE%A1%E5%8A%A8%E6%9C%BA%EF%BC%9ANAK-vs-ACK"><span class="nav-text">6.1 设计动机：NAK vs ACK</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-NAK-%E5%AE%8C%E6%95%B4%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="nav-text">6.2 NAK 完整工作流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-NAK-%E5%B8%A7%E7%BB%93%E6%9E%84"><span class="nav-text">6.3 NAK 帧结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-NAK-%E5%BB%B6%E8%BF%9F%EF%BC%88nakDelay%EF%BC%89"><span class="nav-text">6.4 NAK 延迟（nakDelay）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-NAK-%E6%8A%91%E5%88%B6%EF%BC%88Multicast-%E5%9C%BA%E6%99%AF%EF%BC%89"><span class="nav-text">6.5 NAK 抑制（Multicast 场景）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E6%B5%81%E6%8E%A7%E7%AA%97%E5%8F%A3%E4%B8%8E%E4%BD%8D%E7%BD%AE%E8%BF%BD%E8%B8%AA"><span class="nav-text">七、流控窗口与位置追踪</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-%E4%BD%8D%E7%BD%AE%E8%AE%A1%E6%95%B0%E5%99%A8%E4%BD%93%E7%B3%BB"><span class="nav-text">7.1 位置计数器体系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-%E5%8F%91%E9%80%81%E7%AB%AF%E6%BB%91%E5%8A%A8%E7%AA%97%E5%8F%A3"><span class="nav-text">7.2 发送端滑动窗口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-%E6%8E%A5%E6%94%B6%E7%AB%AF%E6%B5%81%E6%8E%A7%E5%8F%8D%E9%A6%88"><span class="nav-text">7.3 接收端流控反馈</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-Term-Buffer-%E5%A4%A7%E5%B0%8F%E5%AF%B9%E6%B5%81%E6%8E%A7%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="nav-text">7.4 Term Buffer 大小对流控的影响</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E4%BC%A0%E8%BE%93%E6%96%B9%E5%BC%8F%E9%80%89%E5%9E%8B"><span class="nav-text">八、传输方式选型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E6%80%A7%E8%83%BD%E5%8F%82%E8%80%83%E6%95%B0%E6%8D%AE"><span class="nav-text">九、性能参考数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%85%B3%E9%94%AE%E9%85%8D%E7%BD%AE%E6%B1%87%E6%80%BB"><span class="nav-text">十、关键配置汇总</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E9%AB%98%E4%B8%A2%E5%8C%85%E7%8E%87%E5%9C%BA%E6%99%AF%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="nav-text">十一、高丢包率场景的局限性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Aeron-%E7%B3%BB%E5%88%97"><span class="nav-text">Aeron 系列</span></a></li></ol>
     </div>
 </div>
 
@@ -957,6 +1121,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

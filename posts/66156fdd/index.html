@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -880,7 +880,22 @@
 <p><strong>风险提示：</strong> 加密货币市场波动性远高于传统金融市场，建议新手严格控制单笔交易仓位（如不超过总资金的 5%~10%），并始终配合止损使用杠杆。</p>
 </blockquote>
 <hr>
-<h2 id="八、撮合交易完整流程图"><a href="#八、撮合交易完整流程图" class="headerlink" title="八、撮合交易完整流程图"></a>八、撮合交易完整流程图</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">用户提交委托单</span><br><span class="line">      │</span><br><span class="line">      ▼</span><br><span class="line">  是否为市价单？</span><br><span class="line">  ┌──────────────────┐</span><br><span class="line">  │ 是               │ 否（限价单）</span><br><span class="line">  ▼                  ▼</span><br><span class="line">立即匹配对手方    进入订单簿等待</span><br><span class="line">最优价格成交          │</span><br><span class="line">      │          有对手方匹配？</span><br><span class="line">      │         ┌──────────────┐</span><br><span class="line">      │         │ 是           │ 否</span><br><span class="line">      │         ▼              ▼</span><br><span class="line">      │       成交           继续挂单</span><br><span class="line">      │         │              │</span><br><span class="line">      │         ▼         用户主动撤单？</span><br><span class="line">      │     更新账户余额   ┌──────────┐</span><br><span class="line">      │                   │ 是       │ 否</span><br><span class="line">      │                   ▼         ▼</span><br><span class="line">      │               订单取消   等待成交</span><br><span class="line">      │               资金解冻    或到期</span><br><span class="line">      ▼</span><br><span class="line">  交易结束，生成成交记录</span><br></pre></td></tr></table></figure>
+<h2 id="八、撮合交易完整流程图"><a href="#八、撮合交易完整流程图" class="headerlink" title="八、撮合交易完整流程图"></a>八、撮合交易完整流程图</h2><div class="mermaid">
+flowchart TD
+A[用户提交委托单] --> B{是否为市价单?}
+B -->|是| C[立即匹配对手方最优价格成交]
+B -->|"否(限价单)"| D[进入订单簿等待]
+C --> E[更新账户余额]
+D --> F{有对手方匹配?}
+F -->|是| G[成交]
+F -->|否| H[继续挂单]
+G --> E
+H --> I{用户主动撤单?}
+I -->|是| J["订单取消, 资金解冻"]
+I -->|否| K[等待成交或到期]
+E --> L["交易结束, 生成成交记录"]
+J --> L
+</div>
 
 <hr>
 <h2 id="九、总结"><a href="#九、总结" class="headerlink" title="九、总结"></a>九、总结</h2><table>
@@ -1260,6 +1275,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -347,7 +347,7 @@
         
         
             <span class="meta-info-item post-wordcount">
-                <i class="icon fas fa-file-word"></i>&nbsp;<span>2.5k 字</span>
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>2.6k 字</span>
             </span>
         
         
@@ -376,8 +376,58 @@
 <hr>
 <h2 id="一、订单簿是什么？"><a href="#一、订单簿是什么？" class="headerlink" title="一、订单簿是什么？"></a>一、订单簿是什么？</h2><p><strong>订单簿（Order Book）</strong> 是撮合交易系统的核心，它实时记录市场上所有<strong>尚未成交的限价挂单</strong>，是当前市场买卖双方意愿的直接体现。</p>
 <p>订单簿分为两侧：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">      价格</span><br><span class="line">        ↑</span><br><span class="line">卖三  31,500  |  20 BTC   ← 卖方（Ask/Offer）</span><br><span class="line">卖二  31,200  |  15 BTC     价格由低到高排列</span><br><span class="line">卖一  31,000  |  30 BTC   ← 最低卖价（Best Ask）</span><br><span class="line">────────────────────────── 买卖价差（Spread）</span><br><span class="line">买一  30,900  |  50 BTC   ← 最高买价（Best Bid）</span><br><span class="line">买二  30,700  |  40 BTC     价格由高到低排列</span><br><span class="line">买三  30,500  |  25 BTC   ← 买方（Bid）</span><br><span class="line">        ↓</span><br></pre></td></tr></table></figure>
-
+<table>
+<thead>
+<tr>
+<th>档位</th>
+<th>价格</th>
+<th>数量</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>卖三</td>
+<td>31,500</td>
+<td>20 BTC</td>
+<td>卖方（Ask&#x2F;Offer），价格由低到高排列</td>
+</tr>
+<tr>
+<td>卖二</td>
+<td>31,200</td>
+<td>15 BTC</td>
+<td>价格由低到高排列</td>
+</tr>
+<tr>
+<td>卖一</td>
+<td>31,000</td>
+<td>30 BTC</td>
+<td>最低卖价（Best Ask）</td>
+</tr>
+<tr>
+<td>—— 买卖价差（Spread） ——</td>
+<td></td>
+<td></td>
+<td>价格 ↑ 在上为卖方、↓ 在下为买方</td>
+</tr>
+<tr>
+<td>买一</td>
+<td>30,900</td>
+<td>50 BTC</td>
+<td>最高买价（Best Bid）</td>
+</tr>
+<tr>
+<td>买二</td>
+<td>30,700</td>
+<td>40 BTC</td>
+<td>价格由高到低排列</td>
+</tr>
+<tr>
+<td>买三</td>
+<td>30,500</td>
+<td>25 BTC</td>
+<td>买方（Bid），价格由高到低排列</td>
+</tr>
+</tbody></table>
 <ul>
 <li><strong>买单队列（Bids）</strong>：价格从高到低排列，出价越高越优先</li>
 <li><strong>卖单队列（Asks）</strong>：价格从低到高排列，要价越低越优先</li>
@@ -396,7 +446,15 @@
 <li><strong>卖出限价单</strong>：只接受 ≥ 限价的成交价</li>
 </ul>
 <p><strong>流程：</strong></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">新限价订单进入</span><br><span class="line">      ↓</span><br><span class="line">检查对手方订单簿，是否存在满足价格条件的挂单？</span><br><span class="line">      ├── 有 → 按价格优先、时间优先依次撮合</span><br><span class="line">      │         完全成交 → 订单结束</span><br><span class="line">      │         部分成交 → 剩余数量挂入订单簿等待</span><br><span class="line">      └── 无 → 整单挂入订单簿等待</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+flowchart TD
+    A[新限价订单进入] --> B{"检查对手方订单簿,是否存在满足价格条件的挂单?"}
+    B -->|有| C[按价格优先,时间优先依次撮合]
+    C --> D{成交情况}
+    D -->|完全成交| E[订单结束]
+    D -->|部分成交| F[剩余数量挂入订单簿等待]
+    B -->|无| G[整单挂入订单簿等待]
+</div>
 
 <h3 id="3-2-市价单的撮合"><a href="#3-2-市价单的撮合" class="headerlink" title="3.2 市价单的撮合"></a>3.2 市价单的撮合</h3><p>市价单不指定价格，要求以当前市场最优价格<strong>立即成交</strong>：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">新市价订单进入</span><br><span class="line">      ↓</span><br><span class="line">直接从对手方订单簿的最优价格开始撮合</span><br><span class="line">      ↓</span><br><span class="line">一档不够 → 继续消耗下一档</span><br><span class="line">      ↓</span><br><span class="line">直到订单全部成交（或订单簿深度耗尽）</span><br></pre></td></tr></table></figure>
@@ -659,7 +717,22 @@
 </tr>
 </tbody></table>
 <hr>
-<h2 id="九、整体业务流程总结"><a href="#九、整体业务流程总结" class="headerlink" title="九、整体业务流程总结"></a>九、整体业务流程总结</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">用户提交订单</span><br><span class="line">      ↓</span><br><span class="line">┌─────────────────────────────┐</span><br><span class="line">│     自成交保护检测（前置）      │</span><br><span class="line">│  检查是否与自己的挂单即将撮合   │</span><br><span class="line">│  触发 → CancelTaker/Maker/Both│</span><br><span class="line">└─────────────┬───────────────┘</span><br><span class="line">              ↓（无自成交风险）</span><br><span class="line">┌─────────────────────────────┐</span><br><span class="line">│         撮合引擎             │</span><br><span class="line">│  价格优先：买方出价高者先成交   │</span><br><span class="line">│  时间优先：同价格先下单者先成交 │</span><br><span class="line">└─────────────┬───────────────┘</span><br><span class="line">              ↓</span><br><span class="line">      ┌───────┴───────┐</span><br><span class="line">   有匹配的对手方      无匹配的对手方</span><br><span class="line">      ↓                    ↓</span><br><span class="line">  执行撮合              挂入订单簿</span><br><span class="line">  （可能多档位）          等待撮合</span><br><span class="line">      ↓</span><br><span class="line">  生成成交记录</span><br><span class="line">  更新订单簿深度</span><br><span class="line">  推送行情数据</span><br></pre></td></tr></table></figure>
+<h2 id="九、整体业务流程总结"><a href="#九、整体业务流程总结" class="headerlink" title="九、整体业务流程总结"></a>九、整体业务流程总结</h2><div class="mermaid">
+graph TD
+  A[用户提交订单]
+  B["自成交保护检测(前置): 检查是否与自己的挂单即将撮合, 触发则 CancelTaker/Maker/Both"]
+  C["撮合引擎: 价格优先(买方出价高者先成交), 时间优先(同价格先下单者先成交)"]
+  D{是否有匹配的对手方}
+  E["执行撮合(可能多档位)"]
+  F[挂入订单簿等待撮合]
+  G["生成成交记录, 更新订单簿深度, 推送行情数据"]
+  A --> B
+  B -->|无自成交风险| C
+  C --> D
+  D -->|有匹配的对手方| E
+  D -->|无匹配的对手方| F
+  E --> G
+</div>
 
 <p>撮合系统的核心业务逻辑并不复杂，但每一个细节——从价格优先的排序规则，到自成交保护的触发时机——都直接影响着市场的公平性和用户的交易体验。理解这些规则，能够帮助交易者更合理地设计下单策略，避免不必要的损失。</p>
 <hr>
@@ -1004,6 +1077,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

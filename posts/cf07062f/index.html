@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -787,8 +787,54 @@
 <hr>
 <h3 id="十、网格交易（Grid-Trading）"><a href="#十、网格交易（Grid-Trading）" class="headerlink" title="十、网格交易（Grid Trading）"></a>十、网格交易（Grid Trading）</h3><h4 id="核心机制-5"><a href="#核心机制-5" class="headerlink" title="核心机制"></a>核心机制</h4><p>在设定的价格区间内，以固定间隔布置多个买入和卖出限价单，形成”网格”。每当价格下跌触及买单 → 买入；价格回升触及卖单 → 卖出，自动捕获每一次震荡的价差利润。</p>
 <p><strong>示意（BTC 价格区间 58,000 ~ 62,000，网格间距 500 USDT）：</strong></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">62,000 ──── 卖出</span><br><span class="line">61,500 ──── 卖出</span><br><span class="line">61,000 ──── 卖出</span><br><span class="line">60,500 ──── 卖出</span><br><span class="line">─────────── 当前价格 60,200</span><br><span class="line">60,000 ──── 买入</span><br><span class="line">59,500 ──── 买入</span><br><span class="line">59,000 ──── 买入</span><br><span class="line">58,500 ──── 买入</span><br><span class="line">58,000 ──── 买入（底部止损线）</span><br></pre></td></tr></table></figure>
-
+<table>
+<thead>
+<tr>
+<th>价格档位 (USDT)</th>
+<th>挂单方向</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>62,000</td>
+<td>卖出</td>
+</tr>
+<tr>
+<td>61,500</td>
+<td>卖出</td>
+</tr>
+<tr>
+<td>61,000</td>
+<td>卖出</td>
+</tr>
+<tr>
+<td>60,500</td>
+<td>卖出</td>
+</tr>
+<tr>
+<td><strong>当前价格 60,200</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td>60,000</td>
+<td>买入</td>
+</tr>
+<tr>
+<td>59,500</td>
+<td>买入</td>
+</tr>
+<tr>
+<td>59,000</td>
+<td>买入</td>
+</tr>
+<tr>
+<td>58,500</td>
+<td>买入</td>
+</tr>
+<tr>
+<td>58,000</td>
+<td>买入（底部止损线）</td>
+</tr>
+</tbody></table>
 <p>每次价格在网格线间波动，系统自动完成”低买高卖”，积累网格利润。</p>
 <h4 id="参数设计"><a href="#参数设计" class="headerlink" title="参数设计"></a>参数设计</h4><table>
 <thead>
@@ -1405,6 +1451,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -507,7 +507,15 @@
 
 <p><strong>强平价必须高于破产价</strong>，这个价差（54,300 vs 54,000 &#x3D; 300 USDT）是交易所的安全缓冲，确保清算成本有资金覆盖。</p>
 <hr>
-<h3 id="2-7-六大指标联动关系"><a href="#2-7-六大指标联动关系" class="headerlink" title="2.7 六大指标联动关系"></a>2.7 六大指标联动关系</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">开仓时缴纳「初始保证金」（6,000 USDT）</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">价格不利波动 → 「保证金余额」实时减少</span><br><span class="line">            │</span><br><span class="line">   「标记价格」持续更新（防止操纵）</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">标记价格触及「强平价格」（54,300）</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">清算引擎接管，以「破产价格」附近市价平仓</span><br><span class="line">    缓冲区（300 USDT）覆盖清算成本</span><br><span class="line">            │</span><br><span class="line">     ┌──────┴──────┐</span><br><span class="line">     │              │</span><br><span class="line">   正常清算        穿仓</span><br><span class="line">  本金归零      超额亏损由保险基金/ADL处理</span><br></pre></td></tr></table></figure>
+<h3 id="2-7-六大指标联动关系"><a href="#2-7-六大指标联动关系" class="headerlink" title="2.7 六大指标联动关系"></a>2.7 六大指标联动关系</h3><div class="mermaid">
+graph TD
+A["开仓时缴纳「初始保证金」(6,000 USDT)"] --> B["价格不利波动 → 「保证金余额」实时减少"]
+B --> C["「标记价格」持续更新(防止操纵)"]
+C --> D["标记价格触及「强平价格」(54,300)"]
+D --> E["清算引擎接管,以「破产价格」附近市价平仓 / 缓冲区(300 USDT)覆盖清算成本"]
+E --> F["正常清算(本金归零)"]
+E --> G["穿仓(超额亏损由保险基金/ADL处理)"]
+</div>
 
 <hr>
 <h2 id="三、标记价格深度解析"><a href="#三、标记价格深度解析" class="headerlink" title="三、标记价格深度解析"></a>三、标记价格深度解析</h2><h3 id="3-1-标记价格-vs-最新成交价"><a href="#3-1-标记价格-vs-最新成交价" class="headerlink" title="3.1 标记价格 vs 最新成交价"></a>3.1 标记价格 vs 最新成交价</h3><table>
@@ -978,6 +986,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

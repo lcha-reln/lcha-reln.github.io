@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -457,7 +457,11 @@
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">农民的困境：春天种小麦，担心秋天价格暴跌，辛苦一年白费</span><br><span class="line">面包厂的困境：担心秋天原材料价格暴涨，生产成本失控</span><br><span class="line"></span><br><span class="line">解决方案：双方在春天签订期货合约</span><br><span class="line">    → 约定秋天以固定价格交易</span><br><span class="line">    → 农民锁定售价，规避下跌风险（代价：涨价时无法额外获益）</span><br><span class="line">    → 面包厂锁定成本，规避上涨风险（代价：跌价时无法享受低价）</span><br><span class="line">    → 双方把未来不确定的价格风险，转换成当前确定的成本/收益</span><br></pre></td></tr></table></figure>
 
 <p><strong>风险转移的完整链条：</strong></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">套保者（农民/矿商）</span><br><span class="line">    └── 将价格风险&quot;卖&quot;出去</span><br><span class="line">            ↓</span><br><span class="line">投机者</span><br><span class="line">    └── 主动承接风险，博取价格波动的收益</span><br><span class="line">            ↓</span><br><span class="line">市场提供了流动性，套保者可以顺利对冲风险</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+    A["套保者(农民/矿商)"] -->|将价格风险卖出去| B["投机者"]
+    B -->|主动承接风险,博取价格波动的收益| C["市场提供了流动性,套保者可以顺利对冲风险"]
+</div>
 
 <p><strong>② 价格发现（Price Discovery）</strong></p>
 <p>期货市场汇集了生产者、消费者、投机者、套利者的集体判断，形成<strong>公开、透明、连续的未来价格预期</strong>。这个价格对整个社会的生产、消费和投资决策具有重要指导意义——例如石油公司根据原油期货价格决定未来的开采计划。</p>
@@ -568,12 +572,33 @@
 <li>大量套利者买入期货 → 期货价格上涨</li>
 <li>价差同样迅速收窄</li>
 </ul>
-<h3 id="4-4-收敛的完整逻辑"><a href="#4-4-收敛的完整逻辑" class="headerlink" title="4.4 收敛的完整逻辑"></a>4.4 收敛的完整逻辑</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">前提：交割机制保证到期日期货与现货可以等价互换</span><br><span class="line">         ↓</span><br><span class="line">动力：市场存在大量寻求无风险利润的套利者</span><br><span class="line">         ↓</span><br><span class="line">过程：出现价差 → 套利行为瞬间发生 → 买低卖高 → 价差消失</span><br><span class="line">         ↓</span><br><span class="line">结果：到期日期货价格必然收敛于现货价格</span><br><span class="line"></span><br><span class="line">临近到期时：套利窗口越短 → 可利用的价差越小 → &quot;无限接近&quot;</span><br></pre></td></tr></table></figure>
+<h3 id="4-4-收敛的完整逻辑"><a href="#4-4-收敛的完整逻辑" class="headerlink" title="4.4 收敛的完整逻辑"></a>4.4 收敛的完整逻辑</h3><div class="mermaid">
+graph TD
+A["前提：交割机制保证到期日期货与现货可以等价互换"]
+B["动力：市场存在大量寻求无风险利润的套利者"]
+C["过程：出现价差 → 套利行为瞬间发生 → 买低卖高 → 价差消失"]
+D["结果：到期日期货价格必然收敛于现货价格"]
+E["临近到期时：套利窗口越短 → 可利用的价差越小 → “无限接近”"]
+A --> B
+B --> C
+C --> D
+D --> E
+</div>
 
 <p>这也解释了为什么<strong>永续合约需要资金费率</strong>——它没有交割日，必须用人为设计的经济机制来模拟这种”收敛效应”。</p>
 <hr>
 <h2 id="问题五：永续合约如何通过资金费率进行套利？"><a href="#问题五：永续合约如何通过资金费率进行套利？" class="headerlink" title="问题五：永续合约如何通过资金费率进行套利？"></a>问题五：永续合约如何通过资金费率进行套利？</h2><h3 id="5-1-资金费率的锚定原理"><a href="#5-1-资金费率的锚定原理" class="headerlink" title="5.1 资金费率的锚定原理"></a>5.1 资金费率的锚定原理</h3><p>永续合约没有到期交割，价格的锚定依赖<strong>资金费率</strong>——多空双方之间每 8 小时进行的周期性费用支付：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">合约价 &gt; 现货价（市场看多）</span><br><span class="line">    → 资金费率为正</span><br><span class="line">    → 多头向空头支付费用</span><br><span class="line">    → 多头持仓成本上升，开多意愿↓</span><br><span class="line">    → 空头收益增加，开空意愿↑</span><br><span class="line">    → 合约价格承压回落，趋近现货价</span><br><span class="line"></span><br><span class="line">合约价 &lt; 现货价（市场看空）</span><br><span class="line">    → 资金费率为负</span><br><span class="line">    → 空头向多头支付费用</span><br><span class="line">    → 逻辑反向，合约价格被推高，趋近现货价</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+    A["合约价 > 现货价（市场看多）"] --> B["资金费率为正"]
+    B --> C["多头向空头支付费用"]
+    C --> D["多头持仓成本上升，开多意愿↓"]
+    D --> E["空头收益增加，开空意愿↑"]
+    E --> F["合约价格承压回落，趋近现货价"]
+    A2["合约价 &lt; 现货价（市场看空）"] --> B2["资金费率为负"]
+    B2 --> C2["空头向多头支付费用"]
+    C2 --> F2["逻辑反向，合约价格被推高，趋近现货价"]
+</div>
 
 <h3 id="5-2-资金费率套利策略（现货对冲策略）"><a href="#5-2-资金费率套利策略（现货对冲策略）" class="headerlink" title="5.2 资金费率套利策略（现货对冲策略）"></a>5.2 资金费率套利策略（现货对冲策略）</h3><p>这种策略的核心是：<strong>不赌价格方向，只赚取资金费率本身</strong>。</p>
 <p>在市场强烈看多（资金费率持续为正）时最为有效。</p>
@@ -1027,6 +1052,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

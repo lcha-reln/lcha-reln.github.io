@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="blog,技术,生活">
+    <meta name="description" content="Reln 的个人博客，记录学习与生活">
+    <meta name="author" content="Reln Ding">
+    
+    <title>
+        
+            Aeron Cluster 与运维工具箱 |
+        
+        Reln 的小窝
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/favicon.svg">
+    
+    
+<link rel="stylesheet" href="/font/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/font/css/brands.min.css">
+
+    
+        
+            
+        
+            
+                
+<link rel="stylesheet" href="/css/custom.css">
+
+            
+        
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"lcha-reln.github.io","root":"/","language":"zh-CN","path":"content.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#24c6dc","title":"Reln 的小窝","author":"Reln Ding","avatar":"/images/site/avatar.svg","logo":"/images/site/logo.svg","favicon":"/favicon.svg"},"menu":{"home":"/ || fas fa-home","archives":"/archives || fas fa-archive","tags":"/tags || fas fa-tags","categories":"/categories || fas fa-th","about":"/about || fas fa-user"},"first_screen":{"enable":true,"background_img":"/images/hero-bg.svg","background_img_dark":"/images/hero-bg-dark.svg","description":"记录技术与思考的点滴","hitokoto":false},"social_contact":{"enable":true,"links":{"github":"https://github.com/lcha-reln","weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":null}},"scroll":{"progress_bar":true,"percent":false,"hide_header":true},"home":{"announcement":null,"category":true,"tag":true,"post_datetime":"created","post_datetime_format":"YYYY-MM-DD"},"post":{"author_badge":{"enable":false,"level_badge":true,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":true,"min2read":true},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null}},"code_block":{"tools":{"enable":true,"style":"mac"},"highlight_theme":"obsidian"},"toc":{"enable":true,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":true,"preload":false},"comment":{"enable":false,"use":"valine","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":null,"repo_id":null,"category":"Announcements","category_id":null,"reactions_enabled":false},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":true},"lazyload":{"enable":true},"cdn":{"enable":false,"provider":"cdnjs"},"pjax":{"enable":true},"footer":{"since":2026,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]}},"inject":{"enable":true,"css":[null,"/css/custom.css"],"js":[null]},"version":"4.2.5","root":"","source_data":{}}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.1"><link rel="alternate" href="/atom.xml" title="Reln 的小窝" type="application/atom+xml">
+</head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+        <span class="scroll-progress-bar"></span>
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <i class="pjax-progress-icon fas fa-circle-notch fa-spin"></i>
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/site/logo.svg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Reln 的小窝
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-home"></i>
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-archive"></i>
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/tags">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-tags"></i>
+                                
+                                标签
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/categories">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-th"></i>
+                                
+                                分类
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/about">
+                                
+                                    <i class="menu-text-color menu-icon fas fa-user"></i>
+                                
+                                关于
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="menu-text-color fas search fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-home"></i>
+                                </span>
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-archive"></i>
+                                </span>
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/tags">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-tags"></i>
+                                </span>
+                            
+                            标签
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/categories">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-th"></i>
+                                </span>
+                            
+                            分类
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/about">
+                            
+                                <span class="menu-icon-wrap border-box flex-center">
+                                    <i class="drawer-menu-text-color menu-icon fas fa-user"></i>
+                                </span>
+                            
+                            关于
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        Aeron Cluster 与运维工具箱
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/site/avatar.svg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Reln Ding</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-03-12 14:00:00</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
+                </span>
+            
+        
+
+        
+            <span class="meta-info-item post-category border-box"><i class="icon fas fa-folder"></i>&nbsp;
+                <ul class="post-category-ul">
+                    
+                            <li class="category-item"><a href="/categories/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BB%84%E4%BB%B6/">高性能组件</a></li>
+                        
+                    
+                            <li class="category-item">&nbsp;<i class="icon fas fa-angle-right"></i>&nbsp;<a href="/categories/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BB%84%E4%BB%B6/Aeron/">Aeron</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/Aeron/">Aeron</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+            <span class="meta-info-item post-wordcount">
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>2.2k 字</span>
+            </span>
+        
+        
+            <span class="meta-info-item post-min2read">
+                <i class="icon fas fa-clock"></i>&nbsp;<span>9 分钟</span>
+            </span>
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <p>本文覆盖 Aeron 的两块「进阶 + 运维」内容：顶层的 <strong>Aeron Cluster</strong>（RAFT 共识高可用服务），以及生产环境必备的<strong>运维诊断工具箱、背压缓解、性能调优与 Channel URI 速查表</strong>。</p>
+<blockquote>
+<p>集群底层依赖见 <a href="/posts/987bb85b/">Aeron Archive 深度解析</a>；线程模型、Idle Strategy、Java vs C Media Driver 等引擎级调优见 <a href="/posts/bc5589ca/">Media Driver 深度解析</a>。</p>
+</blockquote>
+<span id="more"></span>
+
+<h2 id="一、Aeron-Cluster：RAFT-共识与高可用服务"><a href="#一、Aeron-Cluster：RAFT-共识与高可用服务" class="headerlink" title="一、Aeron Cluster：RAFT 共识与高可用服务"></a>一、Aeron Cluster：RAFT 共识与高可用服务</h2><p>Aeron Cluster 在 Aeron Archive 基础上实现了 RAFT 共识协议，用于构建高可用的、确定性的分布式服务。</p>
+<h3 id="1-1-核心能力"><a href="#1-1-核心能力" class="headerlink" title="1.1 核心能力"></a>1.1 核心能力</h3><div class="mermaid">
+graph TD
+  Client[客户端连接]
+  subgraph Cluster[Aeron Cluster]
+    subgraph Raft[RAFT 复制日志]
+      Leader["Node 0 (Leader) 接受客户端写入"]
+      F1["Node 1 (Follower)"]
+      F2["Node 2 (Follower)"]
+      Leader --> F1
+      Leader --> F2
+      N1["多个客户端连接序列化为单一有序日志"]
+      N2["2N+1 节点容忍 N 个节点故障"]
+      N3["快照(Snapshot)加速恢复"]
+      N4["可靠的定时器(Cluster Timers)"]
+    end
+  end
+  Client --> Leader
+</div>
+
+<h3 id="1-2-典型应用场景"><a href="#1-2-典型应用场景" class="headerlink" title="1.2 典型应用场景"></a>1.2 典型应用场景</h3><ul>
+<li><strong>中央限价订单簿（CLOB）</strong>：撮合引擎必须确定性、全序处理所有订单</li>
+<li><strong>RFQ &#x2F; IOI 协商逻辑</strong>：多客户端并发报价，需全局一致性</li>
+<li><strong>消息序列器</strong>：为多来源消息赋予全局唯一序号</li>
+<li><strong>多人游戏状态</strong>：游戏状态需在多服务器间一致</li>
+<li><strong>任何需要：故障容错 + 高性能 + 有序状态的场景</strong></li>
+</ul>
+<h3 id="1-3-与底层组件的依赖关系"><a href="#1-3-与底层组件的依赖关系" class="headerlink" title="1.3 与底层组件的依赖关系"></a>1.3 与底层组件的依赖关系</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Aeron Transport  ← 节点间通信、Client 通信</span><br><span class="line">     ↑</span><br><span class="line">Aeron Archive    ← 日志持久化、Snapshot 读写</span><br><span class="line">     ↑</span><br><span class="line">Aeron Cluster    ← RAFT 共识、Service 接口、定时器</span><br><span class="line">     ↑</span><br><span class="line">Your Service     ← 实现 ClusteredService 接口</span><br></pre></td></tr></table></figure>
+
+<p>业务逻辑通过实现 <code>ClusteredService</code> 接口接入集群：所有客户端请求经 RAFT 复制为单一有序日志后，在每个节点上<strong>确定性地</strong>重放，从而保证多副本状态一致。崩溃恢复时先加载最近一次 Snapshot，再重放其后的日志增量。</p>
+<hr>
+<h2 id="二、运维工具箱"><a href="#二、运维工具箱" class="headerlink" title="二、运维工具箱"></a>二、运维工具箱</h2><p>Aeron 提供一套完整的运维诊断工具，全部通过读取 <code>cnc.dat</code> 或 Log Buffer 文件工作。</p>
+<h3 id="2-1-AeronStat"><a href="#2-1-AeronStat" class="headerlink" title="2.1 AeronStat"></a>2.1 AeronStat</h3><p>实时查看所有 Aeron Counters，是最常用的诊断工具。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">java --add-opens java.base/jdk.internal.misc=ALL-UNNAMED \</span><br><span class="line">     -<span class="built_in">cp</span> aeron-all-*.jar \</span><br><span class="line">     -Daeron.<span class="built_in">dir</span>=/dev/shm/md \</span><br><span class="line">     io.aeron.samples.AeronStat</span><br></pre></td></tr></table></figure>
+
+<p><strong>AeronStat 关键指标速查：</strong></p>
+<table>
+<thead>
+<tr>
+<th>Row</th>
+<th>指标名</th>
+<th>健康值</th>
+<th>异常时含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>Bytes sent</td>
+<td>持续增加</td>
+<td>不增加&#x3D;数据未发出</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Bytes received</td>
+<td>持续增加</td>
+<td>不增加&#x3D;数据未收到</td>
+</tr>
+<tr>
+<td>5</td>
+<td>NAKs sent</td>
+<td>接近 0</td>
+<td>大量 NAK&#x3D;网络丢包严重</td>
+</tr>
+<tr>
+<td>6</td>
+<td>NAKs received</td>
+<td>接近 0</td>
+<td>被要求重传过多</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Retransmits sent</td>
+<td>接近 0</td>
+<td>网络丢包导致重传</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Errors</td>
+<td>0</td>
+<td>&gt;0 需查 ErrorStat</td>
+</tr>
+<tr>
+<td>16</td>
+<td>Short sends</td>
+<td>接近 0</td>
+<td>网络缓冲配置问题</td>
+</tr>
+<tr>
+<td>18</td>
+<td>Back-pressure events</td>
+<td>0</td>
+<td>&gt;0 需排查慢消费者</td>
+</tr>
+<tr>
+<td>19</td>
+<td>Unblocked Publications</td>
+<td>0</td>
+<td>&gt;0 有 Publication 阻塞超时</td>
+</tr>
+<tr>
+<td>26</td>
+<td>Conductor max cycle time (ns)</td>
+<td>&lt;1ms</td>
+<td>&gt;1ms 表示 GC 或调度问题</td>
+</tr>
+<tr>
+<td>28</td>
+<td>Sender max cycle time (ns)</td>
+<td>&lt;1ms</td>
+<td>&gt;1ms 发送性能下降</td>
+</tr>
+<tr>
+<td>30</td>
+<td>Receiver max cycle time (ns)</td>
+<td>&lt;1ms</td>
+<td>&gt;1ms 接收性能下降</td>
+</tr>
+</tbody></table>
+<p><strong>AeronStat 过滤参数：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 只看特定 stream</span></span><br><span class="line">AeronStat stream=101</span><br><span class="line"></span><br><span class="line"><span class="comment"># 只看特定 channel</span></span><br><span class="line">AeronStat channel=localhost:4000</span><br><span class="line"></span><br><span class="line"><span class="comment"># 单次运行（不自动刷新）</span></span><br><span class="line">AeronStat watch=<span class="literal">false</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 每5秒刷新</span></span><br><span class="line">AeronStat delay=5</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-AeronStat-Position-输出解读"><a href="#2-2-AeronStat-Position-输出解读" class="headerlink" title="2.2 AeronStat Position 输出解读"></a>2.2 AeronStat Position 输出解读</h3><p>AeronStat 也会逐行打印每个 Channel&#x2F;Stream&#x2F;Session 的位置计数器，是判断「数据卡在哪一环」的核心手段：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">28:    8,388,896 - pub-pos (sampled): 1 1985493803 1 aeron:udp?endpoint=localhost:2000</span><br><span class="line">       ─────────   ───────────────────  ───────────  ─────────────────────────────────</span><br><span class="line">       当前位置值    计数器类型            stream  session  channel</span><br><span class="line">                                         Id      Id</span><br><span class="line"></span><br><span class="line">发布方关键指标：</span><br><span class="line">  pub-pos: 8,388,896    ← Publication 已写入位置</span><br><span class="line">  pub-lmt: 8,388,896    ← 背压限制（snd-pos + 发送窗口）</span><br><span class="line">  snd-pos:        64    ← Sender 已发送位置（若远小于 pub-pos，说明积压）</span><br><span class="line">  snd-lmt:   131,360    ← Sender 窗口上限</span><br><span class="line">  snd-bpe:         0    ← 背压事件次数（应始终为 0）</span><br><span class="line"></span><br><span class="line">订阅方关键指标：</span><br><span class="line">  rcv-hwm:        64    ← 接收到的最远位置</span><br><span class="line">  rcv-pos:        64    ← 连续接收完成位置</span><br><span class="line">  sub-pos:        64    ← 应用层已消费位置</span><br></pre></td></tr></table></figure>
+
+<p><strong>健康检查口径：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">snd-pos ≈ pub-pos  → 数据及时发出（无发送积压）</span><br><span class="line">rcv-hwm ≈ rcv-pos  → 数据有序到达（无乱序或丢包待重传）</span><br><span class="line">sub-pos ≈ rcv-pos  → 应用层及时消费（无消费积压）</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>Position 的概念定义与计算公式见 <a href="/posts/406b47f8/">编程模型深度解析</a> 的 Position 章节。</p>
+</blockquote>
+<h3 id="2-3-ErrorStat"><a href="#2-3-ErrorStat" class="headerlink" title="2.3 ErrorStat"></a>2.3 ErrorStat</h3><p>查看 Media Driver 内部错误详情：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">java --add-opens java.base/jdk.internal.misc=ALL-UNNAMED \</span><br><span class="line">     -<span class="built_in">cp</span> aeron-all-*.jar \</span><br><span class="line">     -Daeron.<span class="built_in">dir</span>=/dev/shm/md \</span><br><span class="line">     io.aeron.samples.ErrorStat</span><br><span class="line"></span><br><span class="line"><span class="comment"># 正常输出：</span></span><br><span class="line">0 distinct errors observed.</span><br><span class="line"></span><br><span class="line"><span class="comment"># 异常输出示例：</span></span><br><span class="line">1 distinct errors observed.</span><br><span class="line">...</span><br><span class="line">io.aeron.exceptions.RegistrationException: ...</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-BacklogStat"><a href="#2-4-BacklogStat" class="headerlink" title="2.4 BacklogStat"></a>2.4 BacklogStat</h3><p>检测数据积压：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">java -<span class="built_in">cp</span> aeron-all-*.jar -Daeron.<span class="built_in">dir</span>=/dev/shm/md \</span><br><span class="line">     io.aeron.samples.BacklogStat</span><br><span class="line"></span><br><span class="line"><span class="comment"># 示例输出解读：</span></span><br><span class="line">sessionId=1155221173 streamId=8 channel=aeron:udp?endpoint=10.1.1.1:4000 :</span><br><span class="line">┌─publisher 77: 187392 (~0 bytes before back-pressure)   ← 快到背压点了</span><br><span class="line">└─sender 77: 65373 bytes to send (2031779 remaining window)  ← 积压了 64KB</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-5-LossStat"><a href="#2-5-LossStat" class="headerlink" title="2.5 LossStat"></a>2.5 LossStat</h3><p>UDP 丢包统计分析：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">java -<span class="built_in">cp</span> aeron-all-*.jar -Daeron.<span class="built_in">dir</span>=/dev/shm/md \</span><br><span class="line">     io.aeron.samples.LossStat</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出字段：</span></span><br><span class="line"><span class="comment"># OBSERVATION_COUNT,TOTAL_BYTES_LOST,FIRST_OBS,LAST_OBS,SESSION_ID,STREAM_ID,CHANNEL,SOURCE</span></span><br><span class="line">688,4167028,2020-08-16 13:53:39,2020-08-16 13:53:41,1155221173,8,aeron:udp?...</span><br><span class="line"></span><br><span class="line"><span class="comment"># 解读：688 次丢包事件，共丢失 4MB 数据，发生在 13:53:39-41 的 2 秒内</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-6-StreamStat"><a href="#2-6-StreamStat" class="headerlink" title="2.6 StreamStat"></a>2.6 StreamStat</h3><p>按流聚合展示位置信息：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">java -<span class="built_in">cp</span> aeron-all-*.jar -Daeron.<span class="built_in">dir</span>=/dev/shm/md \</span><br><span class="line">     io.aeron.samples.StreamStat</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-7-LogInspector"><a href="#2-7-LogInspector" class="headerlink" title="2.7 LogInspector"></a>2.7 LogInspector</h3><p>直接检查 Log Buffer 文件内容（16 进制 dump）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">java -<span class="built_in">cp</span> aeron-all-*.jar \</span><br><span class="line">     io.aeron.samples.LogInspector /dev/shm/aeron-user/publications/1.logbuffer</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="三、背压缓解方案"><a href="#三、背压缓解方案" class="headerlink" title="三、背压缓解方案"></a>三、背压缓解方案</h2><p>背压（Back Pressure）是分布式系统中常见的问题，Aeron 通过 <code>offer()</code> 返回值提供透明的背压信号。</p>
+<h3 id="3-1-背压传递链"><a href="#3-1-背压传递链" class="headerlink" title="3.1 背压传递链"></a>3.1 背压传递链</h3><div class="mermaid">
+graph TD
+ES[External Source]
+C[Connector]
+R[Router]
+RC[Recipient]
+DB["Database (瓶颈根源)"]
+ES -->|高速写入| C
+C -->|"Aeron Publication(背压向上传递)"| R
+R -->|Aeron Publication| RC
+RC -->|慢速写入| DB
+C -.->|"offer() 返回 -2(BACK_PRESSURED)"| C
+R -.->|订阅端 poll 减慢, Log Buffer 积压| R
+RC -.->|数据库写入慢, 无法及时 poll| RC
+</div>
+
+<blockquote>
+<p>应用层收到 <code>offer()</code> 返回值后的代码处理决策（丢弃 &#x2F; 自旋重试 &#x2F; 切 Archive），见 <a href="/posts/406b47f8/">编程模型深度解析</a> 的背压处理章节。</p>
+</blockquote>
+<h3 id="3-2-缓解方案对比"><a href="#3-2-缓解方案对比" class="headerlink" title="3.2 缓解方案对比"></a>3.2 缓解方案对比</h3><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>适用场景</th>
+<th>代价</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>增大 Term Buffer</td>
+<td>临时性波峰</td>
+<td>内存占用增加（上限 1GB）</td>
+</tr>
+<tr>
+<td>消息压缩&#x2F;精简</td>
+<td>数据量过大</td>
+<td>CPU 开销</td>
+</tr>
+<tr>
+<td>接入 Aeron Archive</td>
+<td>持续慢消费</td>
+<td>磁盘 I&#x2F;O、复杂度</td>
+</tr>
+<tr>
+<td>数据冲减（Conflation）</td>
+<td>允许消息合并</td>
+<td>部分数据丢失</td>
+</tr>
+<tr>
+<td>扩容下游</td>
+<td>根本原因</td>
+<td>硬件&#x2F;成本投入</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="四、性能调优要点"><a href="#四、性能调优要点" class="headerlink" title="四、性能调优要点"></a>四、性能调优要点</h2><blockquote>
+<p>线程模型（DEDICATED&#x2F;SHARED&#x2F;…）、Idle Strategy 选型、Java vs C Media Driver 的详细对比已在 <a href="/posts/bc5589ca/">Media Driver 深度解析</a> 展开，本节聚焦内存、网络与监控等跨切面调优。</p>
+</blockquote>
+<h3 id="4-1-内存模型调优"><a href="#4-1-内存模型调优" class="headerlink" title="4.1 内存模型调优"></a>4.1 内存模型调优</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">/dev/shm 是关键：</span><br><span class="line">  • 必须挂载足够大的 tmpfs</span><br><span class="line">  • 每个 Publication = 3 × termLength + metadata</span><br><span class="line">  • 计算公式：所需空间 = (pub数量 × 3 × termLength) + image数量 × 3 × termLength</span><br><span class="line"></span><br><span class="line">Term Buffer 大小选择：</span><br><span class="line">  消息很小、延迟优先   → 小 Term（64KB-1MB）</span><br><span class="line">  吞吐量优先           → 大 Term（64MB-128MB）</span><br><span class="line">  有背压风险           → 大 Term（给下游更多缓冲时间）</span><br><span class="line">  注意：最大消息 = min(16MB, termLength/8)</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-网络调优"><a href="#4-2-网络调优" class="headerlink" title="4.2 网络调优"></a>4.2 网络调优</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">关键参数对齐（必须一致）：</span><br><span class="line">  Publication MTU == Subscription MTU == Archive MTU</span><br><span class="line">  默认 MTU = 1408 bytes（1500 - IP头 - UDP头 - Aeron头）</span><br><span class="line"></span><br><span class="line">大吞吐场景增大网络缓冲：</span><br><span class="line">  -Daeron.socket.so_rcvbuf=2097152     # 接收缓冲 2MB</span><br><span class="line">  -Daeron.socket.so_sndbuf=2097152     # 发送缓冲 2MB</span><br><span class="line">  -Daeron.rcv.initial.window.length=2097152  # 必须 ≤ so_rcvbuf</span><br><span class="line"></span><br><span class="line">OS 级别网络缓冲：</span><br><span class="line">  sysctl -w net.core.rmem_max=4194304</span><br><span class="line">  sysctl -w net.core.wmem_max=4194304</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-监控指标-SLA"><a href="#4-3-监控指标-SLA" class="headerlink" title="4.3 监控指标 SLA"></a>4.3 监控指标 SLA</h3><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>正常阈值</th>
+<th>告警阈值</th>
+<th>行动</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>snd-bpe</code>（背压事件）</td>
+<td>0</td>
+<td>&gt; 0</td>
+<td>排查下游消费速度</td>
+</tr>
+<tr>
+<td><code>NAKs sent</code></td>
+<td>接近 0</td>
+<td>&gt; 100&#x2F;min</td>
+<td>排查网络丢包</td>
+</tr>
+<tr>
+<td><code>Conductor max cycle</code></td>
+<td>&lt; 1ms</td>
+<td>&gt; 10ms</td>
+<td>排查 GC &#x2F; OS 调度</td>
+</tr>
+<tr>
+<td><code>Unblocked Publications</code></td>
+<td>0</td>
+<td>&gt; 0</td>
+<td>排查 tryClaim 未 commit</td>
+</tr>
+<tr>
+<td><code>rcv-pos</code> vs <code>rcv-hwm</code></td>
+<td>相等</td>
+<td>长期差距</td>
+<td>排查乱序丢包</td>
+</tr>
+<tr>
+<td><code>sub-pos</code> vs <code>rcv-pos</code></td>
+<td>相等</td>
+<td>长期差距</td>
+<td>排查应用消费速度</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="附录：Channel-URI-速查表"><a href="#附录：Channel-URI-速查表" class="headerlink" title="附录：Channel URI 速查表"></a>附录：Channel URI 速查表</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"># IPC（同机进程间）</span><br><span class="line">aeron:ipc</span><br><span class="line"></span><br><span class="line"># UDP 单播</span><br><span class="line">aeron:udp?endpoint=HOST:PORT</span><br><span class="line"></span><br><span class="line"># UDP 单播（含 MTU 和 term 长度设置）</span><br><span class="line">aeron:udp?endpoint=HOST:PORT|mtu=1408|term-length=67108864</span><br><span class="line"></span><br><span class="line"># UDP 多播</span><br><span class="line">aeron:udp?endpoint=224.0.1.1:4000|interface=eth0</span><br><span class="line"></span><br><span class="line"># MDC 动态（Publisher 端）</span><br><span class="line">aeron:udp?control-mode=dynamic|control=HOST:PORT</span><br><span class="line"></span><br><span class="line"># MDC 动态（Subscriber 端）</span><br><span class="line">aeron:udp?endpoint=LOCAL_HOST:0|control=PUB_HOST:PORT|control-mode=dynamic</span><br><span class="line"></span><br><span class="line"># MDC 动态 + 流控</span><br><span class="line">aeron:udp?control-mode=dynamic|control=HOST:PORT|fc=min,g:/3</span><br><span class="line"></span><br><span class="line"># MDC 动态 + Tagged 流控</span><br><span class="line">aeron:udp?control-mode=dynamic|control=HOST:PORT|fc=tagged,g:101/5</span><br><span class="line"></span><br><span class="line"># 稀疏 Term（节省内存）</span><br><span class="line">aeron:udp?endpoint=HOST:PORT|sparse=true</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li><a class="link"   target="_blank" rel="noopener" href="https://aeron.io/docs/" >Aeron 官方文档<i class="fas fa-external-link-alt"></i></a></li>
+<li><a class="link"   target="_blank" rel="noopener" href="https://github.com/aeron-io/aeron" >Aeron GitHub 仓库<i class="fas fa-external-link-alt"></i></a></li>
+<li><a class="link"   target="_blank" rel="noopener" href="https://github.com/aeron-io/aeron/wiki/Channel-Configuration" >Aeron Wiki：Channel Configuration<i class="fas fa-external-link-alt"></i></a></li>
+<li><a class="link"   target="_blank" rel="noopener" href="https://github.com/aeron-io/aeron/wiki/Flow-and-Congestion-Control" >Aeron Wiki：Flow and Congestion Control<i class="fas fa-external-link-alt"></i></a></li>
+<li><a class="link"   target="_blank" rel="noopener" href="https://bad-concurrency.blogspot.com/2020/03/flow-control-in-aeron.html" >Flow Control in Aeron - Michael Barker<i class="fas fa-external-link-alt"></i></a></li>
+</ul>
+<hr>
+<h2 id="Aeron-系列"><a href="#Aeron-系列" class="headerlink" title="Aeron 系列"></a>Aeron 系列</h2><ul>
+<li><a href="/posts/fdcdfbb5/">Aeron 概述</a></li>
+<li><a href="/posts/43d5f152/">Channel、Stream、Session 深度解析</a></li>
+<li><a href="/posts/bc5589ca/">Media Driver 深度解析</a></li>
+<li><a href="/posts/fbf83150/">传输模式与 NAK 流控深度解析</a></li>
+<li><a href="/posts/406b47f8/">编程模型深度解析</a></li>
+<li><a href="/posts/987bb85b/">Aeron Archive 深度解析</a></li>
+<li><strong>Aeron Cluster 与运维工具</strong>（本文）</li>
+</ul>
+
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/Aeron/">Aeron</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                            <div class="prev-post">
+                                <a class="prev"
+                                   rel="prev"
+                                   href="/posts/1595c5ca/"
+                                   title="高可用系统架构解决方案-问题处理篇"
+                                >
+                                    <span class="left arrow-icon flex-center">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </span>
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">高可用系统架构解决方案-问题处理篇</span>
+                                        <span class="post-nav-item">上一篇</span>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/posts/11ad5f70/"
+                                   title="etcd - 安全、监控与维护"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">etcd - 安全、监控与维护</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+            <div class="pc-post-toc right-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81Aeron-Cluster%EF%BC%9ARAFT-%E5%85%B1%E8%AF%86%E4%B8%8E%E9%AB%98%E5%8F%AF%E7%94%A8%E6%9C%8D%E5%8A%A1"><span class="nav-text">一、Aeron Cluster：RAFT 共识与高可用服务</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E6%A0%B8%E5%BF%83%E8%83%BD%E5%8A%9B"><span class="nav-text">1.1 核心能力</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E5%85%B8%E5%9E%8B%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-text">1.2 典型应用场景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E4%B8%8E%E5%BA%95%E5%B1%82%E7%BB%84%E4%BB%B6%E7%9A%84%E4%BE%9D%E8%B5%96%E5%85%B3%E7%B3%BB"><span class="nav-text">1.3 与底层组件的依赖关系</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E8%BF%90%E7%BB%B4%E5%B7%A5%E5%85%B7%E7%AE%B1"><span class="nav-text">二、运维工具箱</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-AeronStat"><span class="nav-text">2.1 AeronStat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-AeronStat-Position-%E8%BE%93%E5%87%BA%E8%A7%A3%E8%AF%BB"><span class="nav-text">2.2 AeronStat Position 输出解读</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-ErrorStat"><span class="nav-text">2.3 ErrorStat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-BacklogStat"><span class="nav-text">2.4 BacklogStat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-LossStat"><span class="nav-text">2.5 LossStat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-6-StreamStat"><span class="nav-text">2.6 StreamStat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-7-LogInspector"><span class="nav-text">2.7 LogInspector</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E8%83%8C%E5%8E%8B%E7%BC%93%E8%A7%A3%E6%96%B9%E6%A1%88"><span class="nav-text">三、背压缓解方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E8%83%8C%E5%8E%8B%E4%BC%A0%E9%80%92%E9%93%BE"><span class="nav-text">3.1 背压传递链</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E7%BC%93%E8%A7%A3%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="nav-text">3.2 缓解方案对比</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98%E8%A6%81%E7%82%B9"><span class="nav-text">四、性能调优要点</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B%E8%B0%83%E4%BC%98"><span class="nav-text">4.1 内存模型调优</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E7%BD%91%E7%BB%9C%E8%B0%83%E4%BC%98"><span class="nav-text">4.2 网络调优</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87-SLA"><span class="nav-text">4.3 监控指标 SLA</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%99%84%E5%BD%95%EF%BC%9AChannel-URI-%E9%80%9F%E6%9F%A5%E8%A1%A8"><span class="nav-text">附录：Channel URI 速查表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-text">参考资料</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Aeron-%E7%B3%BB%E5%88%97"><span class="nav-text">Aeron 系列</span></a></li></ol>
+    </div>
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Reln Ding</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+            <li class="tools-item flex-center toggle-show-toc">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        <!-- PC go comment -->
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+            <li class="tools-item toggle-show-toc-tablet flex-center">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="close-popup-btn">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+    <!-- tablet toc -->
+    
+        <div class="tablet-post-toc-mask">
+            <div class="tablet-post-toc">
+                <div class="post-toc-wrap border-box">
+    <div class="post-toc border-box">
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81Aeron-Cluster%EF%BC%9ARAFT-%E5%85%B1%E8%AF%86%E4%B8%8E%E9%AB%98%E5%8F%AF%E7%94%A8%E6%9C%8D%E5%8A%A1"><span class="nav-text">一、Aeron Cluster：RAFT 共识与高可用服务</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E6%A0%B8%E5%BF%83%E8%83%BD%E5%8A%9B"><span class="nav-text">1.1 核心能力</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E5%85%B8%E5%9E%8B%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-text">1.2 典型应用场景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E4%B8%8E%E5%BA%95%E5%B1%82%E7%BB%84%E4%BB%B6%E7%9A%84%E4%BE%9D%E8%B5%96%E5%85%B3%E7%B3%BB"><span class="nav-text">1.3 与底层组件的依赖关系</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E8%BF%90%E7%BB%B4%E5%B7%A5%E5%85%B7%E7%AE%B1"><span class="nav-text">二、运维工具箱</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-AeronStat"><span class="nav-text">2.1 AeronStat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-AeronStat-Position-%E8%BE%93%E5%87%BA%E8%A7%A3%E8%AF%BB"><span class="nav-text">2.2 AeronStat Position 输出解读</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-ErrorStat"><span class="nav-text">2.3 ErrorStat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-BacklogStat"><span class="nav-text">2.4 BacklogStat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-LossStat"><span class="nav-text">2.5 LossStat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-6-StreamStat"><span class="nav-text">2.6 StreamStat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-7-LogInspector"><span class="nav-text">2.7 LogInspector</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E8%83%8C%E5%8E%8B%E7%BC%93%E8%A7%A3%E6%96%B9%E6%A1%88"><span class="nav-text">三、背压缓解方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E8%83%8C%E5%8E%8B%E4%BC%A0%E9%80%92%E9%93%BE"><span class="nav-text">3.1 背压传递链</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E7%BC%93%E8%A7%A3%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="nav-text">3.2 缓解方案对比</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98%E8%A6%81%E7%82%B9"><span class="nav-text">四、性能调优要点</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B%E8%B0%83%E4%BC%98"><span class="nav-text">4.1 内存模型调优</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E7%BD%91%E7%BB%9C%E8%B0%83%E4%BC%98"><span class="nav-text">4.2 网络调优</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87-SLA"><span class="nav-text">4.3 监控指标 SLA</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%99%84%E5%BD%95%EF%BC%9AChannel-URI-%E9%80%9F%E6%9F%A5%E8%A1%A8"><span class="nav-text">附录：Channel URI 速查表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-text">参考资料</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Aeron-%E7%B3%BB%E5%88%97"><span class="nav-text">Aeron 系列</span></a></li></ol>
+    </div>
+</div>
+
+            </div>
+        </div>
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/toggle-theme.js"></script>
+
+<script src="/js/code-block.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+
+<!-- local search -->
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+<!-- lazyload -->
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="pjax">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        
+<script src="/js/post/post-helper.js"></script>
+
+
+        <!-- toc -->
+        
+            
+<script src="/js/post/toc.js"></script>
+
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
+
+
+<!-- pjax -->
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        window.pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart()
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd()
+            window.pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'))
+            KEEP.initExecute()
+        });
+    });
+</script>
+
+
+
+
+    
+        
+    
+
+</body>
+</html>

@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -347,12 +347,12 @@
         
         
             <span class="meta-info-item post-wordcount">
-                <i class="icon fas fa-file-word"></i>&nbsp;<span>11.8k 字</span>
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>12k 字</span>
             </span>
         
         
             <span class="meta-info-item post-min2read">
-                <i class="icon fas fa-clock"></i>&nbsp;<span>54 分钟</span>
+                <i class="icon fas fa-clock"></i>&nbsp;<span>55 分钟</span>
             </span>
         
         
@@ -424,7 +424,18 @@
 </ul>
 <hr>
 <h2 id="2-技术栈位置"><a href="#2-技术栈位置" class="headerlink" title="2. 技术栈位置"></a>2. 技术栈位置</h2><p>Agrona 是整个 Real Logic 高性能技术栈的<strong>基础层</strong>，所有上层组件都构建于其之上：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────┐</span><br><span class="line">│  Aeron Cluster      │  ← 分布式共识系统（Raft）</span><br><span class="line">└──────────┬──────────┘</span><br><span class="line">           │</span><br><span class="line">┌──────────▼──────────┐</span><br><span class="line">│  Aeron Archive      │  ← 消息持久化</span><br><span class="line">└──────────┬──────────┘</span><br><span class="line">           │</span><br><span class="line">┌──────────┴───────────────────────┐</span><br><span class="line">│  Aeron Transport   │  SBE        │  ← 传输层 + 序列化</span><br><span class="line">└─────────────────────────────────-┘</span><br><span class="line">                   │</span><br><span class="line">        ┌──────────▼──────────┐</span><br><span class="line">        │       Agrona        │  ← 基础工具库（本文重点）</span><br><span class="line">        └──────────┬──────────┘</span><br><span class="line">                   │</span><br><span class="line">        ┌──────────▼──────────┐</span><br><span class="line">        │    Java 虚拟机 JVM  │</span><br><span class="line">        └─────────────────────┘</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+  A["Aeron Cluster (分布式共识系统 Raft)"]
+  B["Aeron Archive (消息持久化)"]
+  C["Aeron Transport + SBE (传输层 + 序列化)"]
+  D["Agrona (基础工具库, 本文重点)"]
+  E["Java 虚拟机 JVM"]
+  A --> B
+  B --> C
+  C --> D
+  D --> E
+</div>
 
 <p><strong>各层职责：</strong></p>
 <ul>
@@ -436,7 +447,46 @@
 </ul>
 <hr>
 <h2 id="3-核心架构组件"><a href="#3-核心架构组件" class="headerlink" title="3. 核心架构组件"></a>3. 核心架构组件</h2><p>Agrona 的核心组件分为六个层次：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">┌────────────── Agrona 核心库 ──────────────────────────────┐</span><br><span class="line">│                                                           │</span><br><span class="line">│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │</span><br><span class="line">│  │  数据结构层  │  │  并发工具层  │  │  缓冲区管理层 │  │</span><br><span class="line">│  ├──────────────┤  ├──────────────┤  ├───────────────┤  │</span><br><span class="line">│  │Int2ObjectMap │  │ 无锁队列     │  │ DirectBuffer  │  │</span><br><span class="line">│  │原始类型集合  │  │ ManyToOne    │  │ UnsafeBuffer  │  │</span><br><span class="line">│  │高效数组队列  │  │ OneToOne     │  │ 堆内/堆外内存 │  │</span><br><span class="line">│  │零GC设计      │  │ Broadcast    │  │ 零拷贝操作    │  │</span><br><span class="line">│  └──────────────┘  └──────────────┘  └───────────────┘  │</span><br><span class="line">│                                                           │</span><br><span class="line">│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │</span><br><span class="line">│  │  Agent 框架  │  │  时钟系统层  │  │  ID生成器层   │  │</span><br><span class="line">│  ├──────────────┤  ├──────────────┤  ├───────────────┤  │</span><br><span class="line">│  │ Agent 接口   │  │ SystemClock  │  │ SnowflakeID   │  │</span><br><span class="line">│  │ DutyCycle    │  │ CachedClock  │  │ 高性能生成    │  │</span><br><span class="line">│  │ IdleStrategy │  │ 纳秒精度时间 │  │ 无锁算法      │  │</span><br><span class="line">│  │ AgentRunner  │  │ 低开销时间源 │  │ 分布式唯一性  │  │</span><br><span class="line">│  └──────────────┘  └──────────────┘  └───────────────┘  │</span><br><span class="line">└───────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+subgraph CORE["Agrona 核心库"]
+  subgraph L1["数据结构层"]
+    A1["Int2ObjectMap / 原始类型集合"]
+    A2["高效数组队列"]
+    A3["零GC设计"]
+  end
+  subgraph L2["并发工具层"]
+    B1["无锁队列"]
+    B2["ManyToOne"]
+    B3["OneToOne"]
+    B4["Broadcast"]
+  end
+  subgraph L3["缓冲区管理层"]
+    C1["DirectBuffer"]
+    C2["UnsafeBuffer"]
+    C3["堆内/堆外内存"]
+    C4["零拷贝操作"]
+  end
+  subgraph L4["Agent 框架"]
+    D1["Agent 接口"]
+    D2["DutyCycle"]
+    D3["IdleStrategy"]
+    D4["AgentRunner"]
+  end
+  subgraph L5["时钟系统层"]
+    E1["SystemClock"]
+    E2["CachedClock"]
+    E3["纳秒精度时间"]
+    E4["低开销时间源"]
+  end
+  subgraph L6["ID生成器层"]
+    F1["SnowflakeID"]
+    F2["高性能生成"]
+    F3["无锁算法"]
+    F4["分布式唯一性"]
+  end
+end
+</div>
 
 <hr>
 <h2 id="4-快速开始"><a href="#4-快速开始" class="headerlink" title="4. 快速开始"></a>4. 快速开始</h2><h3 id="Maven-依赖"><a href="#Maven-依赖" class="headerlink" title="Maven 依赖"></a>Maven 依赖</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.agrona<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>agrona<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.21.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
@@ -651,7 +701,13 @@
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MonitoredAgent</span> <span class="keyword">implements</span> <span class="title class_">Agent</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Agent delegate;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">long</span> <span class="variable">totalCycles</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">long</span> <span class="variable">busyCycles</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">long</span> <span class="variable">totalWork</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">long</span> startTimeNs;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">MonitoredAgent</span><span class="params">(Agent delegate)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.delegate = delegate;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">doWork</span><span class="params">()</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        totalCycles++;</span><br><span class="line">        <span class="type">int</span> <span class="variable">work</span> <span class="operator">=</span> delegate.doWork();</span><br><span class="line">        <span class="keyword">if</span> (work &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            busyCycles++;</span><br><span class="line">            totalWork += work;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> work;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">roleName</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> delegate.roleName() + <span class="string">&quot;-monitored&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onStart</span><span class="params">()</span> &#123;</span><br><span class="line">        startTimeNs = System.nanoTime();</span><br><span class="line">        delegate.onStart();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onClose</span><span class="params">()</span> &#123;</span><br><span class="line">        delegate.onClose();</span><br><span class="line">        <span class="type">long</span> <span class="variable">runTimeMs</span> <span class="operator">=</span> (System.nanoTime() - startTimeNs) / <span class="number">1_000_000</span>;</span><br><span class="line">        <span class="type">double</span> <span class="variable">utilization</span> <span class="operator">=</span> totalCycles &gt; <span class="number">0</span> ? (<span class="type">double</span>) busyCycles / totalCycles * <span class="number">100</span> : <span class="number">0</span>;</span><br><span class="line">        System.out.printf(<span class="string">&quot;=== %s 运行统计 ===%n&quot;</span>, roleName());</span><br><span class="line">        System.out.printf(<span class="string">&quot;运行时间: %d ms%n&quot;</span>, runTimeMs);</span><br><span class="line">        System.out.printf(<span class="string">&quot;总周期数: %d，忙碌率: %.1f%%%n&quot;</span>, totalCycles, utilization);</span><br><span class="line">        System.out.printf(<span class="string">&quot;总工作量: %d，平均每周期: %.2f%n&quot;</span>,</span><br><span class="line">            totalWork, (<span class="type">double</span>) totalWork / totalCycles);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <hr>
-<h2 id="7-线程、Agent-与-Duty-Cycle-的协作"><a href="#7-线程、Agent-与-Duty-Cycle-的协作" class="headerlink" title="7. 线程、Agent 与 Duty Cycle 的协作"></a>7. 线程、Agent 与 Duty Cycle 的协作</h2><h3 id="7-1-三者的关系"><a href="#7-1-三者的关系" class="headerlink" title="7.1 三者的关系"></a>7.1 三者的关系</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Thread（线程）</span><br><span class="line">  └── AgentRunner（运行框架）</span><br><span class="line">        ├── IdleStrategy（空闲策略）</span><br><span class="line">        └── Agent（工作单元）</span><br><span class="line">              └── doWork()（= 一次 Duty Cycle）</span><br></pre></td></tr></table></figure>
+<h2 id="7-线程、Agent-与-Duty-Cycle-的协作"><a href="#7-线程、Agent-与-Duty-Cycle-的协作" class="headerlink" title="7. 线程、Agent 与 Duty Cycle 的协作"></a>7. 线程、Agent 与 Duty Cycle 的协作</h2><h3 id="7-1-三者的关系"><a href="#7-1-三者的关系" class="headerlink" title="7.1 三者的关系"></a>7.1 三者的关系</h3><div class="mermaid">
+graph TD
+  T["Thread(线程)"] --> AR["AgentRunner(运行框架)"]
+  AR --> IS["IdleStrategy(空闲策略)"]
+  AR --> A["Agent(工作单元)"]
+  A --> DW["doWork() (= 一次 Duty Cycle)"]
+</div>
 
 <ul>
 <li><strong>Thread</strong> 提供执行上下文</li>
@@ -679,9 +735,40 @@
 <hr>
 <h1 id="第三部分：核心组件"><a href="#第三部分：核心组件" class="headerlink" title="第三部分：核心组件"></a>第三部分：核心组件</h1><h2 id="8-DirectBuffer-—-直接内存缓冲区"><a href="#8-DirectBuffer-—-直接内存缓冲区" class="headerlink" title="8. DirectBuffer — 直接内存缓冲区"></a>8. DirectBuffer — 直接内存缓冲区</h2><h3 id="8-1-概述"><a href="#8-1-概述" class="headerlink" title="8.1 概述"></a>8.1 概述</h3><p>DirectBuffer 是 Agrona 实现零拷贝、零 GC 的核心机制。它提供了对<strong>堆内（on-heap）和堆外（off-heap）内存</strong>的统一访问接口，支持类型安全的读写操作，同时完全避免中间对象的分配。</p>
 <p><strong>传统方式 vs Agrona 方式：</strong></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">传统对象方式：                    Agrona DirectBuffer 方式：</span><br><span class="line">创建 Message 对象 → GC 分配       分配一次 ByteBuffer → 永久重用</span><br><span class="line">读取字段 → 解引用                 直接按偏移量读取 → 零拷贝</span><br><span class="line">方法调用 → 可能装箱               原始类型 API → 无装箱</span><br><span class="line">GC 回收 → 停顿                   无 GC → 零停顿</span><br></pre></td></tr></table></figure>
-
-<h3 id="8-2-接口层次"><a href="#8-2-接口层次" class="headerlink" title="8.2 接口层次"></a>8.2 接口层次</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">DirectBuffer（只读接口）</span><br><span class="line">  └── MutableDirectBuffer（读写接口）</span><br><span class="line">        ├── UnsafeBuffer（主力实现，使用 Unsafe）</span><br><span class="line">        └── ExpandableArrayBuffer（可自动扩容）</span><br></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr>
+<th>传统对象方式</th>
+<th>Agrona DirectBuffer 方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>创建 Message 对象 → GC 分配</td>
+<td>分配一次 ByteBuffer → 永久重用</td>
+</tr>
+<tr>
+<td>读取字段 → 解引用</td>
+<td>直接按偏移量读取 → 零拷贝</td>
+</tr>
+<tr>
+<td>方法调用 → 可能装箱</td>
+<td>原始类型 API → 无装箱</td>
+</tr>
+<tr>
+<td>GC 回收 → 停顿</td>
+<td>无 GC → 零停顿</td>
+</tr>
+</tbody></table>
+<h3 id="8-2-接口层次"><a href="#8-2-接口层次" class="headerlink" title="8.2 接口层次"></a>8.2 接口层次</h3><div class="mermaid">
+graph TD
+  A["DirectBuffer(只读接口)"]
+  B["MutableDirectBuffer(读写接口)"]
+  C["UnsafeBuffer(主力实现,使用 Unsafe)"]
+  D["ExpandableArrayBuffer(可自动扩容)"]
+  A --> B
+  B --> C
+  B --> D
+</div>
 
 <h3 id="8-3-UnsafeBuffer-使用详解"><a href="#8-3-UnsafeBuffer-使用详解" class="headerlink" title="8.3 UnsafeBuffer 使用详解"></a>8.3 UnsafeBuffer 使用详解</h3><p>UnsafeBuffer 是最常用的实现，底层使用 <code>sun.misc.Unsafe</code> 进行直接内存操作：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.agrona.concurrent.UnsafeBuffer;</span><br><span class="line"><span class="keyword">import</span> java.nio.ByteBuffer;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 三种创建方式</span></span><br><span class="line"><span class="comment">// 方式一：包装字节数组（堆内内存）</span></span><br><span class="line"><span class="type">byte</span>[] byteArray = <span class="keyword">new</span> <span class="title class_">byte</span>[<span class="number">1024</span>];</span><br><span class="line"><span class="type">UnsafeBuffer</span> <span class="variable">heapBuffer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">UnsafeBuffer</span>(byteArray);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 方式二：包装 DirectByteBuffer（堆外内存，推荐）</span></span><br><span class="line"><span class="type">ByteBuffer</span> <span class="variable">directBB</span> <span class="operator">=</span> ByteBuffer.allocateDirect(<span class="number">1024</span>);</span><br><span class="line"><span class="type">UnsafeBuffer</span> <span class="variable">directBuffer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">UnsafeBuffer</span>(directBB);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 方式三：对齐分配（高性能场景）</span></span><br><span class="line"><span class="type">UnsafeBuffer</span> <span class="variable">alignedBuffer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">UnsafeBuffer</span>(</span><br><span class="line">    BufferUtil.allocateDirectAligned(<span class="number">1024</span>, <span class="number">64</span>)  <span class="comment">// 64字节（缓存行）对齐</span></span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 写入各种类型</span></span><br><span class="line">directBuffer.putByte(<span class="number">0</span>, (<span class="type">byte</span>) <span class="number">0xFF</span>);</span><br><span class="line">directBuffer.putShort(<span class="number">1</span>, (<span class="type">short</span>) <span class="number">1234</span>);</span><br><span class="line">directBuffer.putInt(<span class="number">3</span>, <span class="number">567890</span>);</span><br><span class="line">directBuffer.putLong(<span class="number">7</span>, <span class="number">123456789012345L</span>);</span><br><span class="line">directBuffer.putDouble(<span class="number">15</span>, <span class="number">3.14159</span>);</span><br><span class="line">directBuffer.putStringAscii(<span class="number">23</span>, <span class="string">&quot;Hello&quot;</span>);  <span class="comment">// 写入 ASCII 字符串</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 读取各种类型</span></span><br><span class="line"><span class="type">byte</span>  <span class="variable">b</span> <span class="operator">=</span> directBuffer.getByte(<span class="number">0</span>);</span><br><span class="line"><span class="type">short</span> <span class="variable">s</span> <span class="operator">=</span> directBuffer.getShort(<span class="number">1</span>);</span><br><span class="line"><span class="type">int</span>   <span class="variable">i</span> <span class="operator">=</span> directBuffer.getInt(<span class="number">3</span>);</span><br><span class="line"><span class="type">long</span>  <span class="variable">l</span> <span class="operator">=</span> directBuffer.getLong(<span class="number">7</span>);</span><br><span class="line"><span class="type">double</span> <span class="variable">d</span> <span class="operator">=</span> directBuffer.getDouble(<span class="number">15</span>);</span><br><span class="line"><span class="type">String</span> <span class="variable">str</span> <span class="operator">=</span> directBuffer.getStringAscii(<span class="number">23</span>);</span><br></pre></td></tr></table></figure>
@@ -753,13 +840,39 @@
 
 <h4 id="ManyToManyConcurrentArrayQueue-—-多生产者多消费者"><a href="#ManyToManyConcurrentArrayQueue-—-多生产者多消费者" class="headerlink" title="ManyToManyConcurrentArrayQueue — 多生产者多消费者"></a>ManyToManyConcurrentArrayQueue — 多生产者多消费者</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.agrona.concurrent.ManyToManyConcurrentArrayQueue;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 多生产者多消费者，最灵活但性能略低</span></span><br><span class="line">ManyToManyConcurrentArrayQueue&lt;Event&gt; queue =</span><br><span class="line">    <span class="keyword">new</span> <span class="title class_">ManyToManyConcurrentArrayQueue</span>&lt;&gt;(<span class="number">2048</span>);</span><br></pre></td></tr></table></figure>
 
-<h3 id="9-3-如何选择队列类型"><a href="#9-3-如何选择队列类型" class="headerlink" title="9.3 如何选择队列类型"></a>9.3 如何选择队列类型</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">需要使用并发队列？</span><br><span class="line">│</span><br><span class="line">├─ 几个线程写？</span><br><span class="line">│    ├─ 1个 → 几个线程读？</span><br><span class="line">│    │         ├─ 1个 → OneToOneConcurrentArrayQueue（最快）</span><br><span class="line">│    │         └─ 多个 → ManyToManyConcurrentArrayQueue</span><br><span class="line">│    └─ 多个 → 几个线程读？</span><br><span class="line">│              ├─ 1个 → ManyToOneConcurrentArrayQueue（推荐）</span><br><span class="line">│              └─ 多个 → ManyToManyConcurrentArrayQueue</span><br></pre></td></tr></table></figure>
+<h3 id="9-3-如何选择队列类型"><a href="#9-3-如何选择队列类型" class="headerlink" title="9.3 如何选择队列类型"></a>9.3 如何选择队列类型</h3><div class="mermaid">
+graph TD
+    Q["需要使用并发队列？"]
+    Q --> W{"几个线程写？"}
+    W -->|1个| R1{"几个线程读？"}
+    W -->|多个| R2{"几个线程读？"}
+    R1 -->|1个| O1["OneToOneConcurrentArrayQueue（最快）"]
+    R1 -->|多个| O2["ManyToManyConcurrentArrayQueue"]
+    R2 -->|1个| O3["ManyToOneConcurrentArrayQueue（推荐）"]
+    R2 -->|多个| O4["ManyToManyConcurrentArrayQueue"]
+</div>
 
 <h3 id="9-4-广播通信：BroadcastTransmitter-BroadcastReceiver"><a href="#9-4-广播通信：BroadcastTransmitter-BroadcastReceiver" class="headerlink" title="9.4 广播通信：BroadcastTransmitter &amp; BroadcastReceiver"></a>9.4 广播通信：BroadcastTransmitter &amp; BroadcastReceiver</h3><p>广播机制实现”一写多读”，每个接收者独立追踪读取位置：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.agrona.concurrent.broadcast.*;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 分配广播缓冲区</span></span><br><span class="line"><span class="type">int</span> <span class="variable">capacity</span> <span class="operator">=</span> <span class="number">1024</span>;  <span class="comment">// 必须为 2 的幂</span></span><br><span class="line"><span class="type">MutableDirectBuffer</span> <span class="variable">broadcastBuffer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">UnsafeBuffer</span>(</span><br><span class="line">    ByteBuffer.allocateDirect(</span><br><span class="line">        BroadcastBufferDescriptor.TRAILER_LENGTH + capacity</span><br><span class="line">    )</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 发送端（只能有一个）</span></span><br><span class="line"><span class="type">BroadcastTransmitter</span> <span class="variable">transmitter</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BroadcastTransmitter</span>(broadcastBuffer);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 发送消息</span></span><br><span class="line">transmitter.transmit(</span><br><span class="line">    MSG_TYPE_ORDER,     <span class="comment">// 消息类型 ID</span></span><br><span class="line">    srcBuffer,          <span class="comment">// 源缓冲区</span></span><br><span class="line">    srcOffset,          <span class="comment">// 源偏移量</span></span><br><span class="line">    length              <span class="comment">// 消息长度</span></span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 接收端（可以有任意多个，各自独立）</span></span><br><span class="line"><span class="type">BroadcastReceiver</span> <span class="variable">receiver1</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BroadcastReceiver</span>(broadcastBuffer);</span><br><span class="line"><span class="type">BroadcastReceiver</span> <span class="variable">receiver2</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BroadcastReceiver</span>(broadcastBuffer);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 接收消息</span></span><br><span class="line"><span class="type">MessageHandler</span> <span class="variable">handler</span> <span class="operator">=</span> (msgTypeId, buffer, index, length) -&gt; &#123;</span><br><span class="line">    System.out.println(<span class="string">&quot;收到类型 &quot;</span> + msgTypeId + <span class="string">&quot; 的消息&quot;</span>);</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="variable">received</span> <span class="operator">=</span> receiver1.receive(handler);</span><br></pre></td></tr></table></figure>
 
 <p><strong>广播缓冲区工作原理：</strong></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">单写者                  环形缓冲区</span><br><span class="line">                ┌───┬───┬───┬───┬───┬───┬───┬───┐</span><br><span class="line">Transmitter --&gt; │ M1│ M2│ M3│ M4│   │   │ M7│ M8│</span><br><span class="line">                └───┴───┴───┴───┴───┴───┴───┴───┘</span><br><span class="line">                                        ↑       ↑</span><br><span class="line">                                   Recv1.pos  Recv2.pos（各自独立）</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph LR
+  T["单写者 Transmitter"] --> RB
+  subgraph RB["环形缓冲区"]
+    direction LR
+    M1["M1"]
+    M2["M2"]
+    M3["M3"]
+    M4["M4"]
+    E5["空"]
+    E6["空"]
+    M7["M7"]
+    M8["M8"]
+  end
+  R1["Recv1.pos"] -.-> M7
+  R2["Recv2.pos（各自独立）"] -.-> M8
+</div>
 
 <h3 id="9-5-RingBuffer-—-高性能环形缓冲区"><a href="#9-5-RingBuffer-—-高性能环形缓冲区" class="headerlink" title="9.5 RingBuffer — 高性能环形缓冲区"></a>9.5 RingBuffer — 高性能环形缓冲区</h3><p><code>ManyToOneRingBuffer</code> 在 Agrona 内部广泛使用（例如 Aeron Media Driver 与客户端的通信）：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.agrona.concurrent.ringbuffer.*;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 创建环形缓冲区（容量 + 尾部元数据）</span></span><br><span class="line"><span class="type">int</span> <span class="variable">capacity</span> <span class="operator">=</span> <span class="number">1024</span>;</span><br><span class="line"><span class="type">MutableDirectBuffer</span> <span class="variable">ringMem</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">UnsafeBuffer</span>(</span><br><span class="line">    ByteBuffer.allocateDirect(capacity + RingBufferDescriptor.TRAILER_LENGTH)</span><br><span class="line">);</span><br><span class="line"><span class="type">RingBuffer</span> <span class="variable">ringBuffer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ManyToOneRingBuffer</span>(ringMem);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 写入（支持多个写入线程）</span></span><br><span class="line"><span class="type">boolean</span> <span class="variable">written</span> <span class="operator">=</span> ringBuffer.write(MSG_TYPE, srcBuffer, srcOffset, length);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 读取（单消费者）</span></span><br><span class="line"><span class="type">int</span> <span class="variable">messagesRead</span> <span class="operator">=</span> ringBuffer.read(</span><br><span class="line">    (msgTypeId, buffer, index, length) -&gt; &#123;</span><br><span class="line">        <span class="comment">// 处理消息（在消费者线程中执行）</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="number">10</span>  <span class="comment">// 每次最多处理 10 条</span></span><br><span class="line">);</span><br></pre></td></tr></table></figure>
@@ -895,7 +1008,21 @@
 <hr>
 <h2 id="13-预分配-Map-与调试技巧"><a href="#13-预分配-Map-与调试技巧" class="headerlink" title="13. 预分配 Map 与调试技巧"></a>13. 预分配 Map 与调试技巧</h2><h3 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h3><p>在开发阶段使用调试器查看 <code>Int2ObjectHashMap</code> 内容时，发现无法展开查看元素。</p>
 <h3 id="原因"><a href="#原因" class="headerlink" title="原因"></a>原因</h3><p>Agrona Map 默认会缓存迭代器和 Entry 对象（<code>shouldAvoidAllocation = true</code>）以避免对象分配，这是生产环境下的正确行为。但这会导致调试器无法正确展示内容。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">生产模式（shouldAvoidAllocation = true）：</span><br><span class="line">  迭代器 → 缓存重用 → 高性能，零 GC</span><br><span class="line">  调试器 → 看到缓存对象 → 内容不可见</span><br><span class="line"></span><br><span class="line">调试模式（shouldAvoidAllocation = false）：</span><br><span class="line">  迭代器 → 每次新建 → 轻微 GC 压力</span><br><span class="line">  调试器 → 看到新建对象 → 内容可见</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph LR
+  subgraph PROD["生产模式(shouldAvoidAllocation = true)"]
+    P1["迭代器"] --> P2["缓存重用"]
+    P2 --> P3["高性能,零 GC"]
+    P4["调试器"] --> P5["看到缓存对象"]
+    P5 --> P6["内容不可见"]
+  end
+  subgraph DEBUG["调试模式(shouldAvoidAllocation = false)"]
+    D1["迭代器"] --> D2["每次新建"]
+    D2 --> D3["轻微 GC 压力"]
+    D4["调试器"] --> D5["看到新建对象"]
+    D5 --> D6["内容可见"]
+  end
+</div>
 
 <h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 调试环境（可以在调试器中查看内容）</span></span><br><span class="line">Int2ObjectHashMap&lt;String&gt; debugMap = <span class="keyword">new</span> <span class="title class_">Int2ObjectHashMap</span>&lt;&gt;(<span class="number">100</span>, <span class="number">0.55f</span>, <span class="literal">false</span>);</span><br><span class="line"></span><br><span class="line">debugMap.put(<span class="number">1</span>, <span class="string">&quot;Apple&quot;</span>);</span><br><span class="line">debugMap.put(<span class="number">2</span>, <span class="string">&quot;Banana&quot;</span>);</span><br><span class="line"><span class="comment">// 现在调试器可以正常展示: &#123;1=Apple, 2=Banana&#125;</span></span><br></pre></td></tr></table></figure>
 
@@ -941,7 +1068,28 @@
 <td>+7.5%</td>
 </tr>
 </tbody></table>
-<h3 id="风险评估与决策树"><a href="#风险评估与决策树" class="headerlink" title="风险评估与决策树"></a>风险评估与决策树</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">是否应该禁用边界检查？</span><br><span class="line">│</span><br><span class="line">├─ 性能瓶颈确认在 UnsafeBuffer 操作？</span><br><span class="line">│    否 → ❌ 不要禁用（先优化算法）</span><br><span class="line">│    是 ↓</span><br><span class="line">├─ 代码已经过充分测试（包括边界条件）？</span><br><span class="line">│    否 → ❌ 不要禁用（先完善测试）</span><br><span class="line">│    是 ↓</span><br><span class="line">├─ 系统可以容忍偶尔的 JVM 崩溃？</span><br><span class="line">│    否 → ❌ 不要禁用</span><br><span class="line">│    是 ↓</span><br><span class="line">└─ 已穷尽其他优化手段？</span><br><span class="line">     否 → ❌ 先尝试其他优化</span><br><span class="line">     是 → ✅ 可以考虑禁用</span><br></pre></td></tr></table></figure>
+<h3 id="风险评估与决策树"><a href="#风险评估与决策树" class="headerlink" title="风险评估与决策树"></a>风险评估与决策树</h3><div class="mermaid">
+graph TD
+  Start[是否应该禁用边界检查?]
+  Q1{性能瓶颈确认在 UnsafeBuffer 操作?}
+  Q2{"代码已经过充分测试(包括边界条件)?"}
+  Q3{系统可以容忍偶尔的 JVM 崩溃?}
+  Q4{已穷尽其他优化手段?}
+  N1["不要禁用(先优化算法)"]
+  N2["不要禁用(先完善测试)"]
+  N3[不要禁用]
+  N4[先尝试其他优化]
+  OK[可以考虑禁用]
+  Start --> Q1
+  Q1 -->|否| N1
+  Q1 -->|是| Q2
+  Q2 -->|否| N2
+  Q2 -->|是| Q3
+  Q3 -->|否| N3
+  Q3 -->|是| Q4
+  Q4 -->|否| N4
+  Q4 -->|是| OK
+</div>
 
 <h3 id="安全使用实践"><a href="#安全使用实践" class="headerlink" title="安全使用实践"></a>安全使用实践</h3><p>即使禁用了 Agrona 检查，也可以在应用层添加验证：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">SafeBufferAccess</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> UnsafeBuffer buffer;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">int</span> capacity;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">SafeBufferAccess</span><span class="params">(<span class="type">int</span> size)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.buffer = <span class="keyword">new</span> <span class="title class_">UnsafeBuffer</span>(ByteBuffer.allocateDirect(size));</span><br><span class="line">        <span class="built_in">this</span>.capacity = size;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 在逻辑层校验，而不依赖 Agrona 的运行时检查</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">writeOrder</span><span class="params">(<span class="type">int</span> offset, <span class="type">long</span> orderId, <span class="type">double</span> price)</span> &#123;</span><br><span class="line">        <span class="keyword">assert</span> offset &gt;= <span class="number">0</span> &amp;&amp; offset + <span class="number">16</span> &lt;= capacity</span><br><span class="line">            : <span class="string">&quot;Buffer overflow at offset &quot;</span> + offset;</span><br><span class="line"></span><br><span class="line">        buffer.putLong(offset, orderId);</span><br><span class="line">        buffer.putDouble(offset + <span class="number">8</span>, price);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -1021,7 +1169,24 @@
 <h3 id="解决方案-2"><a href="#解决方案-2" class="headerlink" title="解决方案"></a>解决方案</h3><p>将多个 Agent 包装成 <code>CompositeAgent</code>，然后通过单个 <code>AgentRunner</code> 调度：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">Agent</span> <span class="variable">agent1</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">OrderProcessingAgent</span>();</span><br><span class="line"><span class="type">Agent</span> <span class="variable">agent2</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">HeartbeatAgent</span>();</span><br><span class="line"><span class="type">Agent</span> <span class="variable">agent3</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">MetricsAgent</span>();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 组合为单个 Agent</span></span><br><span class="line"><span class="type">Agent</span> <span class="variable">composite</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">CompositeAgent</span>(agent1, agent2, agent3);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 单个 Runner，单个线程</span></span><br><span class="line"><span class="type">AgentRunner</span> <span class="variable">runner</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AgentRunner</span>(</span><br><span class="line">    <span class="keyword">new</span> <span class="title class_">BackoffIdleStrategy</span>(<span class="number">100</span>, <span class="number">1000</span>, <span class="number">1_000_000</span>, <span class="number">10_000_000</span>),</span><br><span class="line">    Throwable::printStackTrace,</span><br><span class="line">    <span class="literal">null</span>,</span><br><span class="line">    composite</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line">AgentRunner.startOnThread(runner);</span><br></pre></td></tr></table></figure>
 
-<h3 id="CompositeAgent-工作原理"><a href="#CompositeAgent-工作原理" class="headerlink" title="CompositeAgent 工作原理"></a>CompositeAgent 工作原理</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">AgentRunner 线程</span><br><span class="line">  └── CompositeAgent.doWork()</span><br><span class="line">        ├── agent1.doWork() → 返回 3</span><br><span class="line">        ├── agent2.doWork() → 返回 0</span><br><span class="line">        ├── agent3.doWork() → 返回 5</span><br><span class="line">        └── 返回总工作量：3 + 0 + 5 = 8</span><br><span class="line">              ↓</span><br><span class="line">        idleStrategy.idle(8)  → 8 &gt; 0，不休眠，继续下一循环</span><br></pre></td></tr></table></figure>
+<h3 id="CompositeAgent-工作原理"><a href="#CompositeAgent-工作原理" class="headerlink" title="CompositeAgent 工作原理"></a>CompositeAgent 工作原理</h3><div class="mermaid">
+graph TD
+  T[AgentRunner 线程]
+  C["CompositeAgent.doWork()"]
+  A1["agent1.doWork() 返回 3"]
+  A2["agent2.doWork() 返回 0"]
+  A3["agent3.doWork() 返回 5"]
+  S["返回总工作量：3 + 0 + 5 = 8"]
+  I["idleStrategy.idle(8) → 8 > 0，不休眠，继续下一循环"]
+  T --> C
+  C --> A1
+  C --> A2
+  C --> A3
+  A1 --> S
+  A2 --> S
+  A3 --> S
+  S --> I
+</div>
 
 <p><strong>关键特性：</strong></p>
 <ul>
@@ -1032,7 +1197,20 @@
 <h3 id="完整示例"><a href="#完整示例" class="headerlink" title="完整示例"></a>完整示例</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.agrona.concurrent.*;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">CompositeAgentDemo</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Agent 1：处理业务消息</span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">class</span> <span class="title class_">BusinessAgent</span> <span class="keyword">implements</span> <span class="title class_">Agent</span> &#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">final</span> ManyToOneConcurrentArrayQueue&lt;String&gt; queue;</span><br><span class="line"></span><br><span class="line">        BusinessAgent(ManyToOneConcurrentArrayQueue&lt;String&gt; queue) &#123;</span><br><span class="line">            <span class="built_in">this</span>.queue = queue;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">doWork</span><span class="params">()</span> &#123;</span><br><span class="line">            <span class="type">int</span> <span class="variable">work</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">50</span>; i++) &#123;</span><br><span class="line">                <span class="type">String</span> <span class="variable">msg</span> <span class="operator">=</span> queue.poll();</span><br><span class="line">                <span class="keyword">if</span> (msg == <span class="literal">null</span>) <span class="keyword">break</span>;</span><br><span class="line">                System.out.println(<span class="string">&quot;[Business] 处理: &quot;</span> + msg);</span><br><span class="line">                work++;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> work;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> String <span class="title function_">roleName</span><span class="params">()</span> &#123; <span class="keyword">return</span> <span class="string">&quot;business&quot;</span>; &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Agent 2：发送心跳</span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">class</span> <span class="title class_">HeartbeatAgent</span> <span class="keyword">implements</span> <span class="title class_">Agent</span> &#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="type">long</span> <span class="variable">lastHeartbeatNs</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">long</span> <span class="variable">INTERVAL_NS</span> <span class="operator">=</span> <span class="number">1_000_000_000L</span>; <span class="comment">// 1秒</span></span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">doWork</span><span class="params">()</span> &#123;</span><br><span class="line">            <span class="type">long</span> <span class="variable">now</span> <span class="operator">=</span> System.nanoTime();</span><br><span class="line">            <span class="keyword">if</span> (now - lastHeartbeatNs &gt;= INTERVAL_NS) &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;[Heartbeat] 发送心跳 @ &quot;</span> + System.currentTimeMillis());</span><br><span class="line">                lastHeartbeatNs = now;</span><br><span class="line">                <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="keyword">public</span> String <span class="title function_">roleName</span><span class="params">()</span> &#123; <span class="keyword">return</span> <span class="string">&quot;heartbeat&quot;</span>; &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        ManyToOneConcurrentArrayQueue&lt;String&gt; queue =</span><br><span class="line">            <span class="keyword">new</span> <span class="title class_">ManyToOneConcurrentArrayQueue</span>&lt;&gt;(<span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">        <span class="type">Agent</span> <span class="variable">composite</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">CompositeAgent</span>(</span><br><span class="line">            <span class="keyword">new</span> <span class="title class_">BusinessAgent</span>(queue),</span><br><span class="line">            <span class="keyword">new</span> <span class="title class_">HeartbeatAgent</span>()</span><br><span class="line">        );</span><br><span class="line"></span><br><span class="line">        <span class="type">AgentRunner</span> <span class="variable">runner</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AgentRunner</span>(</span><br><span class="line">            <span class="keyword">new</span> <span class="title class_">BackoffIdleStrategy</span>(<span class="number">100</span>, <span class="number">1000</span>, <span class="number">1_000_000</span>, <span class="number">10_000_000</span>),</span><br><span class="line">            Throwable::printStackTrace,</span><br><span class="line">            <span class="literal">null</span>,</span><br><span class="line">            composite</span><br><span class="line">        );</span><br><span class="line"></span><br><span class="line">        AgentRunner.startOnThread(runner).setName(<span class="string">&quot;composite-agent&quot;</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 发送消息</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">5</span>; i++) &#123;</span><br><span class="line">            queue.offer(<span class="string">&quot;Order-&quot;</span> + i);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Thread.sleep(<span class="number">3000</span>);</span><br><span class="line">        runner.close();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <h3 id="Aeron-Media-Driver-中的实际应用"><a href="#Aeron-Media-Driver-中的实际应用" class="headerlink" title="Aeron Media Driver 中的实际应用"></a>Aeron Media Driver 中的实际应用</h3><p><code>CompositeAgent</code> 在 Aeron 中被广泛使用。当 Media Driver 以 <code>SHARED</code> 线程模式运行时：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">SHARED 模式（单线程）：</span><br><span class="line">  CompositeAgent</span><br><span class="line">    ├── ConductorAgent（管理连接和资源）</span><br><span class="line">    ├── SenderAgent（发送网络数据包）</span><br><span class="line">    └── ReceiverAgent（接收网络数据包）</span><br><span class="line"></span><br><span class="line">DEDICATED 模式（三个独立线程）：</span><br><span class="line">  ConductorThread + SenderThread + ReceiverThread</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+  subgraph SHARED["SHARED 模式（单线程）"]
+    CA[CompositeAgent]
+    CA --> COND["ConductorAgent（管理连接和资源）"]
+    CA --> SEND["SenderAgent（发送网络数据包）"]
+    CA --> RECV["ReceiverAgent（接收网络数据包）"]
+  end
+  subgraph DEDICATED["DEDICATED 模式（三个独立线程）"]
+    CT[ConductorThread]
+    ST[SenderThread]
+    RT[ReceiverThread]
+  end
+</div>
 
 <h3 id="自定义线程名称"><a href="#自定义线程名称" class="headerlink" title="自定义线程名称"></a>自定义线程名称</h3><p>默认线程名是所有 Agent <code>roleName()</code> 的组合（如 <code>business+heartbeat</code>），可以通过重写来自定义：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">Agent</span> <span class="variable">composite</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">CompositeAgent</span>(agent1, agent2) &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">roleName</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;order-pipeline&quot;</span>;  <span class="comment">// 自定义线程名</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
@@ -1327,7 +1505,40 @@
 <td>减少系统调用</td>
 </tr>
 </tbody></table>
-<h2 id="学习路径建议"><a href="#学习路径建议" class="headerlink" title="学习路径建议"></a>学习路径建议</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">Week 1（入门）：</span><br><span class="line">  ├── 了解 Agrona 定位和技术栈</span><br><span class="line">  ├── 理解 Duty Cycle 概念</span><br><span class="line">  ├── 运行第一个 Agent 示例</span><br><span class="line">  └── 尝试不同的 IdleStrategy</span><br><span class="line"></span><br><span class="line">Week 2（核心组件）：</span><br><span class="line">  ├── 掌握 DirectBuffer / UnsafeBuffer</span><br><span class="line">  ├── 使用无锁队列进行线程间通信</span><br><span class="line">  └── 了解 Int2ObjectHashMap 等数据结构</span><br><span class="line"></span><br><span class="line">Week 3（进阶）：</span><br><span class="line">  ├── 构建多 Agent 流水线</span><br><span class="line">  ├── 实现自定义二进制编解码器</span><br><span class="line">  └── 理解线程模型和调度策略</span><br><span class="line"></span><br><span class="line">Week 4（优化）：</span><br><span class="line">  ├── 性能分析与调优</span><br><span class="line">  ├── 尝试 CPU 绑定和自定义 ThreadFactory</span><br><span class="line">  ├── 实现生产级监控</span><br><span class="line">  └── 构建完整的实际项目</span><br></pre></td></tr></table></figure>
+<h2 id="学习路径建议"><a href="#学习路径建议" class="headerlink" title="学习路径建议"></a>学习路径建议</h2><div class="mermaid">
+flowchart TD
+  subgraph W1["Week 1（入门）"]
+    direction TB
+    A1[了解 Agrona 定位和技术栈]
+    A2[理解 Duty Cycle 概念]
+    A3[运行第一个 Agent 示例]
+    A4[尝试不同的 IdleStrategy]
+    A1 --> A2 --> A3 --> A4
+  end
+  subgraph W2["Week 2（核心组件）"]
+    direction TB
+    B1["掌握 DirectBuffer / UnsafeBuffer"]
+    B2[使用无锁队列进行线程间通信]
+    B3[了解 Int2ObjectHashMap 等数据结构]
+    B1 --> B2 --> B3
+  end
+  subgraph W3["Week 3（进阶）"]
+    direction TB
+    C1[构建多 Agent 流水线]
+    C2[实现自定义二进制编解码器]
+    C3[理解线程模型和调度策略]
+    C1 --> C2 --> C3
+  end
+  subgraph W4["Week 4（优化）"]
+    direction TB
+    D1[性能分析与调优]
+    D2[尝试 CPU 绑定和自定义 ThreadFactory]
+    D3[实现生产级监控]
+    D4[构建完整的实际项目]
+    D1 --> D2 --> D3 --> D4
+  end
+  W1 --> W2 --> W3 --> W4
+</div>
 
 <hr>
 <blockquote>
@@ -1675,6 +1886,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

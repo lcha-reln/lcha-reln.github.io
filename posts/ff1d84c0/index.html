@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -331,13 +331,13 @@
             <span class="post-tag meta-info-item border-box">
                 <ul class="post-tag-ul">
                     
-                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E4%BA%A4%E6%98%93%E6%89%80/">交易所</a></li>
-                        
-                    
                             <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%87%91%E8%9E%8D%E4%B8%9A%E5%8A%A1/">金融业务</a></li>
                         
                     
                             <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/CEX/">CEX</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E4%BA%A4%E6%98%93%E6%89%80/">交易所</a></li>
                         
                     
                             <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E5%90%88%E7%BA%A6/">合约</a></li>
@@ -350,12 +350,12 @@
         
         
             <span class="meta-info-item post-wordcount">
-                <i class="icon fas fa-file-word"></i>&nbsp;<span>4.2k 字</span>
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>4.3k 字</span>
             </span>
         
         
             <span class="meta-info-item post-min2read">
-                <i class="icon fas fa-clock"></i>&nbsp;<span>15 分钟</span>
+                <i class="icon fas fa-clock"></i>&nbsp;<span>16 分钟</span>
             </span>
         
         
@@ -378,7 +378,22 @@
 </blockquote>
 <hr>
 <h2 id="一、交易所业务全景"><a href="#一、交易所业务全景" class="headerlink" title="一、交易所业务全景"></a>一、交易所业务全景</h2><p>CEX 的业务可以分为两大类：<strong>现货交易</strong>和<strong>衍生品交易</strong>。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">交易所业务体系</span><br><span class="line">│</span><br><span class="line">├── 现货市场</span><br><span class="line">│   ├── 币币现货交易（Spot）   ─── 直接买卖，拥有真实资产</span><br><span class="line">│   └── 杠杆交易（Margin）     ─── 借币/借 USDT 放大现货仓位</span><br><span class="line">│</span><br><span class="line">└── 衍生品市场（合约）</span><br><span class="line">    ├── 按保证金分类：</span><br><span class="line">    │   ├── U 本位合约（USDT-Margined）  ── 占比 80%+，主流</span><br><span class="line">    │   └── 币本位合约（Coin-Margined）  ── 占比 20%-</span><br><span class="line">    │</span><br><span class="line">    └── 按到期日分类：</span><br><span class="line">        ├── 永续合约（Perpetual）  ── 无到期日，占比 90%+</span><br><span class="line">        └── 交割合约（Delivery）   ── 固定到期日，占比 10%-</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph LR
+ROOT[交易所业务体系]
+SPOT[现货市场]
+DERIV[衍生品市场（合约）]
+ROOT --> SPOT
+ROOT --> DERIV
+SPOT --> S1["币币现货交易（Spot）：直接买卖，拥有真实资产"]
+SPOT --> S2["杠杆交易（Margin）：借币/借 USDT 放大现货仓位"]
+DERIV --> M1[按保证金分类]
+DERIV --> M2[按到期日分类]
+M1 --> M1A["U 本位合约（USDT-Margined）：占比 80%+，主流"]
+M1 --> M1B["币本位合约（Coin-Margined）：占比 20%-"]
+M2 --> M2A["永续合约（Perpetual）：无到期日，占比 90%+"]
+M2 --> M2B["交割合约（Delivery）：固定到期日，占比 10%-"]
+</div>
 
 <p>杠杆交易本质上仍是现货，只是叠加了借贷杠杆；U 本位 &#x2F; 币本位合约才是真正意义上的衍生品——不涉及实物交割，只结算价差盈亏。</p>
 <hr>
@@ -408,7 +423,19 @@
 <td>不涉及借贷，无持仓利息</td>
 </tr>
 </tbody></table>
-<h3 id="2-2-完整交易流程"><a href="#2-2-完整交易流程" class="headerlink" title="2.2 完整交易流程"></a>2.2 完整交易流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">用户A（买方）             交易所系统                用户B（卖方）</span><br><span class="line">    │                        │                         │</span><br><span class="line">    ├─[1. 充值 1000 USDT]──►│                         │</span><br><span class="line">    │                        │                         │</span><br><span class="line">    ├─[2. 挂买单            ]►│◄─[挂卖单: 0.02 BTC]────┤</span><br><span class="line">    │  50000 USDT/BTC        │   50000 USDT/BTC        │</span><br><span class="line">    │                        │                         │</span><br><span class="line">    │               [3. 撮合引擎匹配]                   │</span><br><span class="line">    │               价格匹配 ✓                          │</span><br><span class="line">    │               数量匹配 ✓                          │</span><br><span class="line">    │                        │                         │</span><br><span class="line">    │◄─[4. 成交结算]─────────┤──[成交结算]────────────►│</span><br><span class="line">    │  -1000 USDT            │                         │</span><br><span class="line">    │  +0.02 BTC             │                         │</span><br><span class="line">    │                        │                         │</span><br><span class="line">    ├─[5. 提现 BTC 到钱包]──►│                         │</span><br></pre></td></tr></table></figure>
+<h3 id="2-2-完整交易流程"><a href="#2-2-完整交易流程" class="headerlink" title="2.2 完整交易流程"></a>2.2 完整交易流程</h3><div class="mermaid">
+sequenceDiagram
+    participant A as 用户A(买方)
+    participant S as 交易所系统
+    participant B as 用户B(卖方)
+    A->>S: 1. 充值 1000 USDT
+    A->>S: 2. 挂买单 50000 USDT/BTC
+    B->>S: 挂卖单 0.02 BTC @50000 USDT/BTC
+    Note over S: 3. 撮合引擎匹配(价格匹配/数量匹配)
+    S->>A: 4. 成交结算(-1000 USDT, +0.02 BTC)
+    S->>B: 成交结算
+    A->>S: 5. 提现 BTC 到钱包
+</div>
 
 <hr>
 <h2 id="三、杠杆交易"><a href="#三、杠杆交易" class="headerlink" title="三、杠杆交易"></a>三、杠杆交易</h2><h3 id="3-1-本质"><a href="#3-1-本质" class="headerlink" title="3.1 本质"></a>3.1 本质</h3><p>杠杆交易是<strong>现货交易的资金增强版</strong>：用户向交易所借入资金，以更大的名义仓位参与现货市场，收益和亏损同步放大。</p>
@@ -668,7 +695,28 @@
 </tbody></table>
 <hr>
 <h2 id="六、一笔交易背后的系统架构"><a href="#六、一笔交易背后的系统架构" class="headerlink" title="六、一笔交易背后的系统架构"></a>六、一笔交易背后的系统架构</h2><p>以一笔完整的现货交易为例：<strong>用 4000 USDT 限价买入 0.1 ETH，然后提现到硬件钱包</strong>，追踪八大系统的协作过程。</p>
-<h3 id="6-1-系统架构总览"><a href="#6-1-系统架构总览" class="headerlink" title="6.1 系统架构总览"></a>6.1 系统架构总览</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">                     [用户 APP]</span><br><span class="line">                         │</span><br><span class="line">                         ▼</span><br><span class="line">               ┌─────────────────┐</span><br><span class="line">               │  1. 交易网关     │  ← API 限流、参数校验、负载均衡</span><br><span class="line">               └────────┬────────┘</span><br><span class="line">                         │</span><br><span class="line">      ┌──────────────────┼──────────────────┐</span><br><span class="line">      ▼                  ▼                  ▼</span><br><span class="line">┌──────────┐      ┌──────────┐       ┌──────────┐</span><br><span class="line">│2. 用户   │      │3. 资金   │       │4. 风控   │</span><br><span class="line">│  权限中心 │      │  中心    │       │  系统    │</span><br><span class="line">└──────────┘      └──────────┘       └──────────┘</span><br><span class="line">      │                  │                  │</span><br><span class="line">      └──────────────────┼──────────────────┘</span><br><span class="line">                         │</span><br><span class="line">                ┌────────▼────────┐</span><br><span class="line">                │  5. 柜台系统    │  ← 订单管理</span><br><span class="line">                └────────┬────────┘</span><br><span class="line">                          │ Kafka</span><br><span class="line">                ┌────────▼────────┐</span><br><span class="line">                │  6. 撮合引擎    │  ← 内存订单簿，毫秒级撮合</span><br><span class="line">                └────────┬────────┘</span><br><span class="line">                          │</span><br><span class="line">                ┌────────▼────────┐</span><br><span class="line">                │  7. 清算系统    │  ← 原子事务，多账户余额更新</span><br><span class="line">                └────────┬────────┘</span><br><span class="line">                          │</span><br><span class="line">                ┌────────▼────────┐</span><br><span class="line">                │  8. 行情推送    │  ← WebSocket 实时广播</span><br><span class="line">                └─────────────────┘</span><br></pre></td></tr></table></figure>
+<h3 id="6-1-系统架构总览"><a href="#6-1-系统架构总览" class="headerlink" title="6.1 系统架构总览"></a>6.1 系统架构总览</h3><div class="mermaid">
+graph TD
+  APP[用户 APP]
+  G[1. 交易网关 ← API 限流、参数校验、负载均衡]
+  U[2. 用户权限中心]
+  F[3. 资金中心]
+  R[4. 风控系统]
+  C[5. 柜台系统 ← 订单管理]
+  M[6. 撮合引擎 ← 内存订单簿，毫秒级撮合]
+  S[7. 清算系统 ← 原子事务，多账户余额更新]
+  P[8. 行情推送 ← WebSocket 实时广播]
+  APP --> G
+  G --> U
+  G --> F
+  G --> R
+  U --> C
+  F --> C
+  R --> C
+  C -->|Kafka| M
+  M --> S
+  S --> P
+</div>
 
 <h3 id="6-2-阶段一：登录认证（约-1-秒）"><a href="#6-2-阶段一：登录认证（约-1-秒）" class="headerlink" title="6.2 阶段一：登录认证（约 1 秒）"></a>6.2 阶段一：登录认证（约 1 秒）</h3><p><strong>交易网关层：</strong></p>
 <ul>
@@ -696,7 +744,31 @@
 
 <p><strong>资金账户 → 交易账户划转：</strong></p>
 <p>充值后资金在”资金账户”，需划转至”交易账户”才能下单。两个账户在同一数据库内，通过原子事务实现，要么同时成功，要么整体回滚，不存在资金”凭空消失”的情况。</p>
-<h3 id="6-4-阶段三：下单与风控（约-100-毫秒）"><a href="#6-4-阶段三：下单与风控（约-100-毫秒）" class="headerlink" title="6.4 阶段三：下单与风控（约 100 毫秒）"></a>6.4 阶段三：下单与风控（约 100 毫秒）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">交易网关（10ms）</span><br><span class="line">  ├─ 验证 JWT Token</span><br><span class="line">  ├─ 参数校验：价格精度 ≤ 2 位小数，数量 ≥ 最小下单量 0.001 ETH</span><br><span class="line">  └─ 请求去重（防止网络重试导致重复下单）</span><br><span class="line"></span><br><span class="line">风控系统（20ms）</span><br><span class="line">  ├─ 用户限额检查：本次 4000 USDT &lt; 单日限额 ✓</span><br><span class="line">  ├─ 异常行为检测：非高频刷单、无自成交模式 ✓</span><br><span class="line">  └─ 风控通过</span><br><span class="line"></span><br><span class="line">资金中心（30ms）</span><br><span class="line">  ├─ 计算所需资金：0.1 ETH × 40000 = 4000 USDT</span><br><span class="line">  ├─ 检查可用余额：4000 USDT ✓</span><br><span class="line">  └─ 冻结资金（从 available 移至 frozen，防止被其他订单占用）</span><br><span class="line"></span><br><span class="line">柜台系统（40ms）</span><br><span class="line">  ├─ 生成订单 ID（如 ORD_20241201_000001）</span><br><span class="line">  ├─ 订单写入数据库，状态 PENDING</span><br><span class="line">  ├─ 写入 Redis 索引（用户订单列表、交易对订单列表）</span><br><span class="line">  └─ 发送消息到 Kafka（Topic: order.ethusdt）</span><br></pre></td></tr></table></figure>
+<h3 id="6-4-阶段三：下单与风控（约-100-毫秒）"><a href="#6-4-阶段三：下单与风控（约-100-毫秒）" class="headerlink" title="6.4 阶段三：下单与风控（约 100 毫秒）"></a>6.4 阶段三：下单与风控（约 100 毫秒）</h3><div class="mermaid">
+flowchart TD
+  subgraph S1["交易网关(10ms)"]
+    A1["验证 JWT Token"]
+    A2["参数校验:价格精度小于等于2位小数,数量大于等于最小下单量0.001 ETH"]
+    A3["请求去重(防止网络重试导致重复下单)"]
+  end
+  subgraph S2["风控系统(20ms)"]
+    B1["用户限额检查:本次4000 USDT 小于单日限额 通过"]
+    B2["异常行为检测:非高频刷单,无自成交模式 通过"]
+    B3["风控通过"]
+  end
+  subgraph S3["资金中心(30ms)"]
+    C1["计算所需资金:0.1 ETH × 40000 = 4000 USDT"]
+    C2["检查可用余额:4000 USDT 通过"]
+    C3["冻结资金(从 available 移至 frozen,防止被其他订单占用)"]
+  end
+  subgraph S4["柜台系统(40ms)"]
+    D1["生成订单 ID(如 ORD_20241201_000001)"]
+    D2["订单写入数据库,状态 PENDING"]
+    D3["写入 Redis 索引(用户订单列表,交易对订单列表)"]
+    D4["发送消息到 Kafka(Topic: order.ethusdt)"]
+  end
+  S1 --> S2 --> S3 --> S4
+</div>
 
 <p>柜台系统通过 Kafka 与撮合引擎解耦：即使撮合引擎短暂重启，消息不会丢失，订单不会遗漏。</p>
 <h3 id="6-5-阶段四：撮合成交（约-10-毫秒）"><a href="#6-5-阶段四：撮合成交（约-10-毫秒）" class="headerlink" title="6.5 阶段四：撮合成交（约 10 毫秒）"></a>6.5 阶段四：撮合成交（约 10 毫秒）</h3><p>撮合引擎从 Kafka 消费订单消息，在<strong>全内存订单簿</strong>中进行匹配：</p>
@@ -848,15 +920,15 @@
                             <ul class="post-tags-box border-box">
                                 
                                     <li class="tag-item border-box">
-                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E4%BA%A4%E6%98%93%E6%89%80/">交易所</a>
-                                    </li>
-                                
-                                    <li class="tag-item border-box">
                                         <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%87%91%E8%9E%8D%E4%B8%9A%E5%8A%A1/">金融业务</a>
                                     </li>
                                 
                                     <li class="tag-item border-box">
                                         <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/CEX/">CEX</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E4%BA%A4%E6%98%93%E6%89%80/">交易所</a>
                                     </li>
                                 
                                     <li class="tag-item border-box">
@@ -1180,6 +1252,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

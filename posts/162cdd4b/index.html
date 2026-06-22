@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -347,12 +347,12 @@
         
         
             <span class="meta-info-item post-wordcount">
-                <i class="icon fas fa-file-word"></i>&nbsp;<span>3.3k 字</span>
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>3.4k 字</span>
             </span>
         
         
             <span class="meta-info-item post-min2read">
-                <i class="icon fas fa-clock"></i>&nbsp;<span>13 分钟</span>
+                <i class="icon fas fa-clock"></i>&nbsp;<span>14 分钟</span>
             </span>
         
         
@@ -386,7 +386,20 @@
 
 <p>序列号从 1 开始（或从持久化恢复的值开始），严格单调递增，不允许跳跃或回退。发送端的实现复杂度极低，关键约束在于：<strong>序列号必须在消息发出之前确定性地递增</strong>，不得在重试路径上重新生成序列号（重传使用原序列号）。</p>
 <h3 id="2-2-接收端"><a href="#2-2-接收端" class="headerlink" title="2.2 接收端"></a>2.2 接收端</h3><p>接收端维护 <code>lastSequence</code>，记录已成功处理的最新序列号，对每条到达的消息执行三路判断：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────┐</span><br><span class="line">│                receive(message, sequence)                │</span><br><span class="line">└─────────────────────────┬────────────────────────────────┘</span><br><span class="line">                          │</span><br><span class="line">                          ▼</span><br><span class="line">             ┌────────────────────────┐</span><br><span class="line">             │  sequence &lt;= lastSeq?  │</span><br><span class="line">             └───────┬────────────────┘</span><br><span class="line">                     │</span><br><span class="line">          ┌──────────┴──────────┐</span><br><span class="line">         Yes                    No</span><br><span class="line">          │                     │</span><br><span class="line">          ▼                     ▼</span><br><span class="line">  ┌───────────────┐   ┌─────────────────────────┐</span><br><span class="line">  │ 重复 / 乱序   │   │ sequence == lastSeq + 1? │</span><br><span class="line">  │ handleUnexpected│  └────────┬────────────────┘</span><br><span class="line">  └───────────────┘            │</span><br><span class="line">                      ┌────────┴─────────┐</span><br><span class="line">                     Yes                 No</span><br><span class="line">                      │                  │</span><br><span class="line">                      ▼                  ▼</span><br><span class="line">             ┌─────────────┐    ┌──────────────────┐</span><br><span class="line">             │  正常处理    │    │  消息缺失检测     │</span><br><span class="line">             │ process(msg) │    │ handleMissing    │</span><br><span class="line">             │ lastSeq = seq│    │ (lastSeq, seq)   │</span><br><span class="line">             └─────────────┘    └──────────────────┘</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+  R["receive(message, sequence)"]
+  C1{"sequence 小于等于 lastSeq?"}
+  DUP["重复 / 乱序 handleUnexpected"]
+  C2{"sequence == lastSeq + 1?"}
+  OK["正常处理 process(msg) lastSeq = seq"]
+  MISS["消息缺失检测 handleMissing(lastSeq, seq)"]
+  R --> C1
+  C1 -->|Yes| DUP
+  C1 -->|No| C2
+  C2 -->|Yes| OK
+  C2 -->|No| MISS
+</div>
 
 <p>对应的 Java 实现骨架：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> <span class="title function_">receive</span><span class="params">(<span class="type">byte</span>[] message, <span class="type">long</span> sequence)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (sequence &lt;= lastSequence) &#123;</span><br><span class="line">        <span class="comment">// Case 1: 重复消息或乱序消息</span></span><br><span class="line">        handleUnexpectedMessageAt(sequence);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (lastSequence + <span class="number">1</span> == sequence) &#123;</span><br><span class="line">        <span class="comment">// Case 2: 序列连续，正常处理</span></span><br><span class="line">        process(message);</span><br><span class="line">        lastSequence = sequence;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// Case 3: 存在消息缺失 (Gap)</span></span><br><span class="line">        handleMissingMessagesSince(lastSequence);</span><br><span class="line">        <span class="comment">// 取决于策略：可选择直接处理当前消息并跳过缺口</span></span><br><span class="line">        process(message);</span><br><span class="line">        lastSequence = sequence;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -394,7 +407,28 @@
 <p><strong>注意</strong>：Case 3 中是否直接推进 <code>lastSequence</code> 并处理当前消息，取决于业务语义。对于不可跳过缺口的场景（如需要幂等重放的金融交易），应暂停处理并触发缺失消息的恢复流程；对于允许跳过的场景（如行情快照），可直接推进并记录缺口。</p>
 <h2 id="三、三类异常的完整场景分析"><a href="#三、三类异常的完整场景分析" class="headerlink" title="三、三类异常的完整场景分析"></a>三、三类异常的完整场景分析</h2><h3 id="3-1-正常消息流"><a href="#3-1-正常消息流" class="headerlink" title="3.1 正常消息流"></a>3.1 正常消息流</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">发送端：  seq=1 → seq=2 → seq=3 → seq=4 → seq=5</span><br><span class="line">接收端：  seq=1 → seq=2 → seq=3 → seq=4 → seq=5</span><br><span class="line"></span><br><span class="line">逐步状态：</span><br><span class="line">  收到 seq=1, lastSeq=0 → 1 == 0+1  ✓ 正常，lastSeq=1</span><br><span class="line">  收到 seq=2, lastSeq=1 → 2 == 1+1  ✓ 正常，lastSeq=2</span><br><span class="line">  收到 seq=3, lastSeq=2 → 3 == 2+1  ✓ 正常，lastSeq=3</span><br><span class="line">  收到 seq=4, lastSeq=3 → 4 == 3+1  ✓ 正常，lastSeq=4</span><br><span class="line">  收到 seq=5, lastSeq=4 → 5 == 4+1  ✓ 正常，lastSeq=5</span><br></pre></td></tr></table></figure>
 
-<h3 id="3-2-消息缺失检测（Gap-Detection）"><a href="#3-2-消息缺失检测（Gap-Detection）" class="headerlink" title="3.2 消息缺失检测（Gap Detection）"></a>3.2 消息缺失检测（Gap Detection）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">发送端：  seq=1 → seq=2 → seq=3 → seq=4 → seq=5</span><br><span class="line">网络层：  seq=1 → seq=2     [丢失]  → seq=4 → seq=5</span><br><span class="line">接收端：  seq=1 → seq=2             → seq=4 → seq=5</span><br><span class="line"></span><br><span class="line">逐步状态：</span><br><span class="line">  收到 seq=1, lastSeq=0 → 1 == 0+1  ✓ 正常，lastSeq=1</span><br><span class="line">  收到 seq=2, lastSeq=1 → 2 == 1+1  ✓ 正常，lastSeq=2</span><br><span class="line">  收到 seq=4, lastSeq=2 → 4 &gt; 2+1   ✗ Gap！handleMissingMessagesSince(2)</span><br><span class="line">                                       → 检测到 seq=3 缺失</span><br><span class="line">  （恢复 seq=3 后）lastSeq=4</span><br><span class="line">  收到 seq=5, lastSeq=4 → 5 == 4+1  ✓ 正常，lastSeq=5</span><br></pre></td></tr></table></figure>
+<h3 id="3-2-消息缺失检测（Gap-Detection）"><a href="#3-2-消息缺失检测（Gap-Detection）" class="headerlink" title="3.2 消息缺失检测（Gap Detection）"></a>3.2 消息缺失检测（Gap Detection）</h3><div class="mermaid">
+graph TD
+  subgraph SEND["发送端"]
+    S1["seq=1"] --> S2["seq=2"] --> S3["seq=3"] --> S4["seq=4"] --> S5["seq=5"]
+  end
+  subgraph NET["网络层"]
+    N1["seq=1"] --> N2["seq=2"] --> NL["seq=3 丢失"] --> N4["seq=4"] --> N5["seq=5"]
+  end
+  subgraph RECV["接收端"]
+    R1["seq=1"] --> R2["seq=2"] --> R4["seq=4"] --> R5["seq=5"]
+  end
+  SEND --> NET --> RECV
+  RECV --> T
+  subgraph TRACE["逐步状态"]
+    T["收到 seq=1, lastSeq=0 : 1 == 0+1 正常, lastSeq=1"]
+    T --> U["收到 seq=2, lastSeq=1 : 2 == 1+1 正常, lastSeq=2"]
+    U --> V["收到 seq=4, lastSeq=2 : 4 大于 2+1 Gap! handleMissingMessagesSince(2)"]
+    V --> W["检测到 seq=3 缺失"]
+    W --> X["(恢复 seq=3 后) lastSeq=4"]
+    X --> Y["收到 seq=5, lastSeq=4 : 5 == 4+1 正常, lastSeq=5"]
+  end
+</div>
 
 <p>Gap 的大小为 <code>sequence - lastSequence - 1</code>，可精确计算缺失的消息数量及其序列号范围 <code>[lastSequence+1, sequence-1]</code>。</p>
 <h3 id="3-3-乱序消息检测（Out-of-Order-Detection）"><a href="#3-3-乱序消息检测（Out-of-Order-Detection）" class="headerlink" title="3.3 乱序消息检测（Out-of-Order Detection）"></a>3.3 乱序消息检测（Out-of-Order Detection）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">发送顺序：seq=1 → seq=2 → seq=3 → seq=4</span><br><span class="line">网络路径：seq=3 因多路径延迟，晚于 seq=4 到达</span><br><span class="line"></span><br><span class="line">接收顺序：seq=1 → seq=2 → seq=4 → seq=3</span><br><span class="line"></span><br><span class="line">逐步状态：</span><br><span class="line">  收到 seq=1, lastSeq=0 → ✓ 正常，lastSeq=1</span><br><span class="line">  收到 seq=2, lastSeq=1 → ✓ 正常，lastSeq=2</span><br><span class="line">  收到 seq=4, lastSeq=2 → 4 &gt; 2+1  ✗ 先触发 Gap 检测（期望 seq=3）</span><br><span class="line">  收到 seq=3, lastSeq=4 → 3 &lt;= 4   ✗ 乱序，handleUnexpectedMessageAt(3)</span><br></pre></td></tr></table></figure>
@@ -430,7 +464,26 @@
 </tr>
 </tbody></table>
 <p><strong>Aeron 团队的明确建议</strong>：在 Aeron channel 和 stream 内使用<strong>应用层自定义的序列号和 Gap 检测机制</strong>，而非仅依赖流位置。原因是应用层序列号可跨进程重启持久化，提供更完整的故障恢复语义。</p>
-<h3 id="4-2-Aeron-中的序列号分层架构"><a href="#4-2-Aeron-中的序列号分层架构" class="headerlink" title="4.2 Aeron 中的序列号分层架构"></a>4.2 Aeron 中的序列号分层架构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    Aeron Transport Layer                    │</span><br><span class="line">│                                                             │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │              Aeron Stream (Channel + StreamID)      │   │</span><br><span class="line">│  │                                                     │   │</span><br><span class="line">│  │  Stream Position:  100    200    300    400    500  │   │</span><br><span class="line">│  │                   ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌───┐│   │</span><br><span class="line">│  │                   │ M1 │ │ M2 │ │ M3 │ │ M4 │ │M5 ││   │</span><br><span class="line">│  │                   └────┘ └────┘ └────┘ └────┘ └───┘│   │</span><br><span class="line">│  └──────────┬──────────┬──────┬──────┬──────┬──────────┘   │</span><br><span class="line">└─────────────┼──────────┼──────┼──────┼──────┼──────────────┘</span><br><span class="line">              │          │      │      │      │</span><br><span class="line">  App Seq:    1          2      3      4      5</span><br><span class="line">              │          │      │      │      │</span><br><span class="line">              ▼          ▼      ▼      ▼      ▼</span><br><span class="line">    ┌──────────────────────────────────────────────────┐</span><br><span class="line">    │            应用层序列号验证                        │</span><br><span class="line">    │  - 重复检测：sequence &lt;= lastSequence             │</span><br><span class="line">    │  - Gap 检测：sequence &gt; lastSequence + 1         │</span><br><span class="line">    │  - 乱序检测：sequence &lt;= lastSequence（延迟帧）   │</span><br><span class="line">    │  - 持久化：跨进程重启保持连续性                   │</span><br><span class="line">    └──────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+<h3 id="4-2-Aeron-中的序列号分层架构"><a href="#4-2-Aeron-中的序列号分层架构" class="headerlink" title="4.2 Aeron 中的序列号分层架构"></a>4.2 Aeron 中的序列号分层架构</h3><div class="mermaid">
+graph TD
+  subgraph TL["Aeron Transport Layer"]
+    subgraph ST["Aeron Stream (Channel + StreamID)"]
+      M1["M1 (Stream Position 100)"]
+      M2["M2 (Stream Position 200)"]
+      M3["M3 (Stream Position 300)"]
+      M4["M4 (Stream Position 400)"]
+      M5["M5 (Stream Position 500)"]
+    end
+  end
+  M1 -->|"App Seq 1"| APP
+  M2 -->|"App Seq 2"| APP
+  M3 -->|"App Seq 3"| APP
+  M4 -->|"App Seq 4"| APP
+  M5 -->|"App Seq 5"| APP
+  subgraph APPG["应用层序列号验证"]
+    APP["重复检测: sequence 小于等于 lastSequence ；Gap 检测: sequence 大于 lastSequence + 1 ；乱序检测: sequence 小于等于 lastSequence(延迟帧) ；持久化: 跨进程重启保持连续性"]
+  end
+</div>
 
 <p>应用层序列号嵌入消息 payload 的头部，与 Aeron 的帧头（Frame Header）相互独立，两层机制各司其职：Aeron 负责传输层的可靠投递，应用层序列号负责业务语义的完整性验证。</p>
 <h3 id="4-3-流位置-vs-应用层序列号"><a href="#4-3-流位置-vs-应用层序列号" class="headerlink" title="4.3 流位置 vs 应用层序列号"></a>4.3 流位置 vs 应用层序列号</h3><table>
@@ -867,6 +920,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

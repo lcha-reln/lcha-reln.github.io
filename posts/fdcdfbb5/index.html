@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -337,6 +337,9 @@
                             <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a></li>
                         
                     
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a></li>
+                        
+                    
                             <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8/">高可用</a></li>
                         
                     
@@ -350,12 +353,12 @@
         
         
             <span class="meta-info-item post-wordcount">
-                <i class="icon fas fa-file-word"></i>&nbsp;<span>860 字</span>
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>1.5k 字</span>
             </span>
         
         
             <span class="meta-info-item post-min2read">
-                <i class="icon fas fa-clock"></i>&nbsp;<span>3 分钟</span>
+                <i class="icon fas fa-clock"></i>&nbsp;<span>5 分钟</span>
             </span>
         
         
@@ -373,7 +376,13 @@
                     
 
                     
-                         <h1 id="1-性能特征"><a href="#1-性能特征" class="headerlink" title="1. 性能特征"></a>1. 性能特征</h1><ul>
+                         <blockquote>
+<p><strong>Aeron</strong> 是由 Real Logic 开发、Adaptive Financial Consulting 维护的高性能消息传输框架，专为金融交易、游戏服务器、低延迟分布式系统等对延迟极度敏感的场景设计。其核心目标：<strong>可预测的超低延迟 + 极高吞吐</strong>。</p>
+<p>本文是 Aeron 系列的总览与导航，先建立整体心智模型，再按主题分篇深入。文末附<strong>阅读路线</strong>。</p>
+</blockquote>
+<span id="more"></span>
+
+<h1 id="1-性能特征"><a href="#1-性能特征" class="headerlink" title="1. 性能特征"></a>1. 性能特征</h1><ul>
 <li><strong>超低延迟</strong>：单机环境下可达微秒级延迟</li>
 <li><strong>高吞吐量</strong>：在微秒级延迟下依然能处理 100W+&#x2F;秒的消息</li>
 <li><strong>延迟可预测</strong>：提供个位数微秒的可预测延迟，确保系统行为稳定</li>
@@ -383,19 +392,87 @@
 <li><strong>可扩展性</strong>：支持水平扩展，满足现代分布式系统的增长需求</li>
 <li><strong>多语言支持</strong>：原生支持 Java 和 C++，并提供对应的客户端库</li>
 </ul>
-<h1 id="3-架构设计"><a href="#3-架构设计" class="headerlink" title="3. 架构设计"></a>3. 架构设计</h1><h2 id="3-1-三层架构概述"><a href="#3-1-三层架构概述" class="headerlink" title="3.1 三层架构概述"></a>3.1 三层架构概述</h2><p>Aeron 采用三层架构设计，各层职责清晰：</p>
+<blockquote>
+<p>与 Kafka、RabbitMQ 等传统消息中间件不同，Aeron <strong>不是一个消息 Broker</strong>，而是一个传输层框架——它的设计思路是「将 ordered log buffer 跨进程&#x2F;跨网络高效复制，并提供可预测的延迟」。</p>
+</blockquote>
+<h1 id="3-三大顶层组件"><a href="#3-三大顶层组件" class="headerlink" title="3. 三大顶层组件"></a>3. 三大顶层组件</h1><p>Aeron 生态自底向上分为三层，上层依赖下层：</p>
+<div class="mermaid">
+graph TD
+  subgraph L3["Aeron Cluster (RAFT容错集群)"]
+    C1["多节点复制"]
+    C2["故障自恢复"]
+    C3["有序日志"]
+    C4["注: RAFT 共识、定时器"]
+  end
+  subgraph L2["Aeron Archive (持久化录制/回放)"]
+    B1["流录制到磁盘"]
+    B2["任意位置回放"]
+    B3["流复制"]
+    B4["注: 日志持久化、Snapshot"]
+  end
+  subgraph L1["Aeron Transport (核心传输层)"]
+    A1["UDP / IPC"]
+    A2["发布/订阅模型"]
+    A3["零拷贝传输"]
+    A4["注: 节点/客户端通信"]
+  end
+  L3 -->|"上层依赖下层"| L2
+  L2 -->|"上层依赖下层"| L1
+</div>
+
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>定位</th>
+<th>何时需要</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Aeron Transport</strong></td>
+<td>核心传输层，提供发布&#x2F;订阅、零拷贝、可靠 UDP&#x2F;IPC</td>
+<td>任何 Aeron 应用都直接或间接用它</td>
+</tr>
+<tr>
+<td><strong>Aeron Archive</strong></td>
+<td>在 Transport 之上增加流的录制与回放（持久化）</td>
+<td>需要历史回放、A&#x2F;B 测试、断线追赶、磁盘缓冲</td>
+</tr>
+<tr>
+<td><strong>Aeron Cluster</strong></td>
+<td>在 Archive 之上实现 RAFT 共识，构建确定性高可用服务</td>
+<td>需要「故障容错 + 高性能 + 有序状态」的有状态服务（如撮合引擎）</td>
+</tr>
+</tbody></table>
+<h1 id="4-架构设计"><a href="#4-架构设计" class="headerlink" title="4. 架构设计"></a>4. 架构设计</h1><h2 id="4-1-三层架构概述"><a href="#4-1-三层架构概述" class="headerlink" title="4.1 三层架构概述"></a>4.1 三层架构概述</h2><p>Aeron 采用三层架构设计，各层职责清晰：</p>
 <ul>
 <li><strong>Client API</strong>：应用程序与 Aeron 交互的入口，提供统一的编程接口，屏蔽底层传输细节</li>
 <li><strong>Media Driver</strong>：核心引擎，负责管理所有网络和 IPC 通信，处理消息的发送、接收、路由与缓冲；支持嵌入式（与应用同进程）和独立进程两种部署模式</li>
 <li><strong>Transport Layer</strong>：底层传输层，支持 UDP 单播、UDP 组播、IPC 等多种传输方式</li>
 </ul>
-<p><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/Aeron/Aeron%E6%9E%B6%E6%9E%84.png"
-                        alt="[Aeron架构.png]"
-                 ></p>
-<h2 id="3-2-Channel、Stream、Session"><a href="#3-2-Channel、Stream、Session" class="headerlink" title="3.2 Channel、Stream、Session"></a>3.2 Channel、Stream、Session</h2><p>这三个概念构成了 Aeron 消息寻址的层次体系：</p>
+<div class="mermaid">
+graph LR
+  subgraph C["客户端 api (Client api)"]
+    C1["publication"]
+    C2["subscription"]
+  end
+  subgraph M["通信媒体驱动器 (media driver)"]
+    M1["media driver 节点1"]
+    M2["media driver 节点2"]
+    M3["media driver 节点3"]
+    M4["media driver 节点4"]
+  end
+  subgraph T["传输层 (transport layer)"]
+    T1["transport 节点1"]
+    T2["transport 节点2"]
+  end
+  C1 -->|"publication的offer"| M1
+  M2 -->|"subscription的poll"| C2
+  M3 -->|"网络传输 ipc"| T1
+  M4 -->|"udp 广播 multicast"| T2
+</div>
+
+<h2 id="4-2-Channel、Stream、Session"><a href="#4-2-Channel、Stream、Session" class="headerlink" title="4.2 Channel、Stream、Session"></a>4.2 Channel、Stream、Session</h2><p>这三个概念构成了 Aeron 消息寻址的层次体系：</p>
 <table>
 <thead>
 <tr>
@@ -420,65 +497,83 @@
 <td>区分同一 Stream 上的不同 Publisher，每个 Publisher 拥有唯一的 sessionId</td>
 </tr>
 </tbody></table>
-<p><strong>如何理解 Session：</strong></p>
+<p>因此 <code>Channel + StreamId + SessionId</code> 是标识一条消息流的最小粒度。Aeron 仅保证<strong>同一 Session 内</strong>的消息顺序，跨 Session 无全局顺序保证。</p>
+<blockquote>
+<p>详见：<a href="/posts/43d5f152/">Aeron Channel、Stream 和 Session 深度解析</a></p>
+</blockquote>
+<h2 id="4-3-Publisher、Media-Driver、Subscriber"><a href="#4-3-Publisher、Media-Driver、Subscriber" class="headerlink" title="4.3 Publisher、Media Driver、Subscriber"></a>4.3 Publisher、Media Driver、Subscriber</h2><div class="mermaid">
+sequenceDiagram
+    participant P as publication
+    participant M as media driver
+    participant S as subscription
+    P->>M: offer (buffer)
+    M->>S: 处理 路由
+    S->>M: poll (fragmenthandler)
+    M->>P: 状态反馈
+</div>
+
+<p>数据流向的三大角色：</p>
 <ul>
-<li>每个 sessionId 唯一对应一个 Publisher 实例</li>
-<li>多个 Publisher 可以向同一个 Stream 发布消息，通过 sessionId 加以区分</li>
-<li>因此 <code>Channel + StreamId + SessionId</code> 是标识一条消息流的最小粒度</li>
+<li><strong>Publication（发布端）</strong>：应用通过 <code>publication.offer(buffer, offset, length)</code> 发送消息，数据写入 <strong>Term Buffer</strong>（环形缓冲区），整个过程非阻塞。<code>offer()</code> 返回值区分发送成功（<code>&gt; 0</code>）、背压（<code>BACK_PRESSURED</code>）、无订阅者（<code>NOT_CONNECTED</code>）、管理操作（<code>ADMIN_ACTION</code>）、已关闭（<code>CLOSED</code>）等状态。</li>
+<li><strong>Media Driver（核心引擎）</strong>：后台运行 Sender &#x2F; Receiver &#x2F; Conductor 线程，负责从 Term Buffer 读数据封帧发送、消息路由、流量控制、基于 NAK 的选择性重传。</li>
+<li><strong>Subscription（订阅端）</strong>：应用通过 <code>subscription.poll(fragmentHandler, fragmentLimit)</code> 主动轮询接收，Media Driver 负责分片重组、保序、回调交付，并通过 Position 反向上报实现端到端背压。</li>
 </ul>
-<h2 id="3-3-Publisher、Media-Driver、Subscriber"><a href="#3-3-Publisher、Media-Driver、Subscriber" class="headerlink" title="3.3 Publisher、Media Driver、Subscriber"></a>3.3 Publisher、Media Driver、Subscriber</h2><p><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/Aeron/%E4%B8%89%E5%A4%A7%E5%B0%86.png"
-                        alt="三大将"
-                 ></p>
-<h3 id="Publication"><a href="#Publication" class="headerlink" title="Publication"></a>Publication</h3><p>应用通过 <code>publication.offer(buffer, offset, length)</code> 发送消息。数据写入 <strong>Term Buffer</strong>（环形缓冲区），整个过程非阻塞。<br><code>offer()</code> 的返回值含义如下：</p>
+<blockquote>
+<p>编程细节详见：<a href="/posts/406b47f8/">Aeron 编程模型深度解析</a>；引擎内部详见：<a href="/posts/bc5589ca/">Aeron Media Driver 深度解析</a></p>
+</blockquote>
+<hr>
+<h1 id="5-阅读路线"><a href="#5-阅读路线" class="headerlink" title="5. 阅读路线"></a>5. 阅读路线</h1><p>本系列按「概念 → 引擎 → 传输 → 编程 → 持久化 → 集群&#x2F;运维」的顺序组织，建议依次阅读，也可按需跳转：</p>
 <table>
 <thead>
 <tr>
-<th>返回值</th>
-<th>含义</th>
+<th>#</th>
+<th>主题</th>
+<th>内容速览</th>
 </tr>
 </thead>
 <tbody><tr>
-<td><code>&gt; 0</code></td>
-<td>发送成功，返回新的流位置值</td>
+<td>0</td>
+<td><strong>Aeron 概述</strong>（本文）</td>
+<td>整体心智模型、三大顶层组件、阅读导航</td>
 </tr>
 <tr>
-<td><code>BACK_PRESSURED</code></td>
-<td>背压状态，下游处理不过来，需稍后重试</td>
+<td>1</td>
+<td><a href="/posts/43d5f152/">Channel、Stream、Session 深度解析</a></td>
+<td>三级寻址模型、推模式地址方向、顺序性保证范围、Session 生命周期</td>
 </tr>
 <tr>
-<td><code>NOT_CONNECTED</code></td>
-<td>当前没有任何 Subscriber 连接</td>
+<td>2</td>
+<td><a href="/posts/bc5589ca/">Media Driver 深度解析</a></td>
+<td>Conductor&#x2F;Sender&#x2F;Receiver 三 Agent、线程模型、部署模式、Java vs C 实现</td>
 </tr>
 <tr>
-<td><code>ADMIN_ACTION</code></td>
-<td>正在执行管理操作（如日志轮转），需稍后重试</td>
+<td>3</td>
+<td><a href="/posts/fbf83150/">传输模式与 NAK 流控深度解析</a></td>
+<td>UDP 单播&#x2F;多播&#x2F;IPC、为何不用 TCP、NAK 重传协议、滑动窗口流控</td>
 </tr>
 <tr>
-<td><code>CLOSED</code></td>
-<td>Publication 已关闭</td>
+<td>4</td>
+<td><a href="/posts/406b47f8/">编程模型深度解析</a></td>
+<td>Publication（offer&#x2F;tryClaim&#x2F;分片）、Subscription（poll&#x2F;FragmentAssembler）、Log Buffer&#x2F;Image、Position、MDC、快速入门</td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="/posts/987bb85b/">Aeron Archive 深度解析</a></td>
+<td>录制&#x2F;回放、Catalog&#x2F;Segment、Spy 订阅、扩展&#x2F;截断&#x2F;复制、ReplaySession 内部</td>
+</tr>
+<tr>
+<td>6</td>
+<td><a href="/posts/fed0dafe/">Aeron Cluster 与运维工具</a></td>
+<td>RAFT 共识、运维工具箱（AeronStat 等）、背压缓解、性能调优、URI 速查表</td>
 </tr>
 </tbody></table>
-<h3 id="Media-Driver"><a href="#Media-Driver" class="headerlink" title="Media Driver"></a>Media Driver</h3><p>Media Driver 在后台运行多个职责线程：</p>
-<ul>
-<li><strong>Sender 线程</strong>：从 Term Buffer 读取数据，封装 Aeron 协议头，发往网络或 IPC</li>
-<li><strong>消息路由</strong>：根据 <code>Channel + StreamId</code> 确定目标地址</li>
-<li><strong>流量控制</strong>：持续监控网络状态，在检测到拥塞时向 Publisher 施加背压</li>
-<li><strong>消息重传</strong>：基于 NAK（否定确认）机制，对 Subscriber 报告丢失的消息进行选择性重传（详见：Aeron 通信模式及 NAK 机制与流控）</li>
+<hr>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li><a class="link"   target="_blank" rel="noopener" href="https://aeron.io/docs/" >Aeron 官方文档<i class="fas fa-external-link-alt"></i></a></li>
+<li><a class="link"   target="_blank" rel="noopener" href="https://github.com/aeron-io/aeron" >Aeron GitHub 仓库<i class="fas fa-external-link-alt"></i></a></li>
+<li><a class="link"   target="_blank" rel="noopener" href="https://github.com/aeron-io/aeron-cookbook-code" >Aeron Cookbook 示例代码<i class="fas fa-external-link-alt"></i></a></li>
 </ul>
-<h3 id="Subscription"><a href="#Subscription" class="headerlink" title="Subscription"></a>Subscription</h3><p>应用通过 <code>subscription.poll(fragmentHandler, fragmentLimit)</code> 接收消息，返回值为本次轮询处理的消息片段数量。<br>核心处理过程：</p>
-<ul>
-<li><strong>重组</strong>：将网络层分片的数据包重新拼装为完整消息</li>
-<li><strong>保序</strong>：确保消息按发布顺序交付给应用</li>
-<li><strong>回调</strong>：通过 <code>FragmentHandler</code> 回调将消息传递给业务层</li>
-</ul>
-<p><strong>状态反馈机制：</strong></p>
-<ul>
-<li><strong>Position 更新</strong>：Subscriber 持续向 Media Driver 上报消费位置，Driver 再转发给 Publisher，用于流量控制</li>
-<li><strong>背压信号</strong>：当 Subscriber 消费速度跟不上发布速度时，背压信号沿链路反向传播，Publisher 的 <code>offer()</code> 将返回 <code>BACK_PRESSURED</code>，以此实现端到端的流量自适应</li>
-</ul>
+<p><em>Aeron® 是 Adaptive Financial Consulting Ltd 的注册商标。</em></p>
 
                     
                 </div>
@@ -492,6 +587,10 @@
                                 
                                     <li class="tag-item border-box">
                                         <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BD/">高性能</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
                                     </li>
                                 
                                     <li class="tag-item border-box">
@@ -567,7 +666,7 @@
             <div class="pc-post-toc right-toc">
                 <div class="post-toc-wrap border-box">
     <div class="post-toc border-box">
-        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-%E6%80%A7%E8%83%BD%E7%89%B9%E5%BE%81"><span class="nav-text">1. 性能特征</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-%E6%A0%B8%E5%BF%83%E8%83%BD%E5%8A%9B"><span class="nav-text">2. 核心能力</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="nav-text">3. 架构设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1-%E4%B8%89%E5%B1%82%E6%9E%B6%E6%9E%84%E6%A6%82%E8%BF%B0"><span class="nav-text">3.1 三层架构概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-Channel%E3%80%81Stream%E3%80%81Session"><span class="nav-text">3.2 Channel、Stream、Session</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-3-Publisher%E3%80%81Media-Driver%E3%80%81Subscriber"><span class="nav-text">3.3 Publisher、Media Driver、Subscriber</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Publication"><span class="nav-text">Publication</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Media-Driver"><span class="nav-text">Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Subscription"><span class="nav-text">Subscription</span></a></li></ol></li></ol></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-%E6%80%A7%E8%83%BD%E7%89%B9%E5%BE%81"><span class="nav-text">1. 性能特征</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-%E6%A0%B8%E5%BF%83%E8%83%BD%E5%8A%9B"><span class="nav-text">2. 核心能力</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-%E4%B8%89%E5%A4%A7%E9%A1%B6%E5%B1%82%E7%BB%84%E4%BB%B6"><span class="nav-text">3. 三大顶层组件</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="nav-text">4. 架构设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#4-1-%E4%B8%89%E5%B1%82%E6%9E%B6%E6%9E%84%E6%A6%82%E8%BF%B0"><span class="nav-text">4.1 三层架构概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-2-Channel%E3%80%81Stream%E3%80%81Session"><span class="nav-text">4.2 Channel、Stream、Session</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-3-Publisher%E3%80%81Media-Driver%E3%80%81Subscriber"><span class="nav-text">4.3 Publisher、Media Driver、Subscriber</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#5-%E9%98%85%E8%AF%BB%E8%B7%AF%E7%BA%BF"><span class="nav-text">5. 阅读路线</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-text">参考资料</span></a></li></ol></li></ol>
     </div>
 </div>
 
@@ -736,7 +835,7 @@
             <div class="tablet-post-toc">
                 <div class="post-toc-wrap border-box">
     <div class="post-toc border-box">
-        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-%E6%80%A7%E8%83%BD%E7%89%B9%E5%BE%81"><span class="nav-text">1. 性能特征</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-%E6%A0%B8%E5%BF%83%E8%83%BD%E5%8A%9B"><span class="nav-text">2. 核心能力</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="nav-text">3. 架构设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1-%E4%B8%89%E5%B1%82%E6%9E%B6%E6%9E%84%E6%A6%82%E8%BF%B0"><span class="nav-text">3.1 三层架构概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-Channel%E3%80%81Stream%E3%80%81Session"><span class="nav-text">3.2 Channel、Stream、Session</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-3-Publisher%E3%80%81Media-Driver%E3%80%81Subscriber"><span class="nav-text">3.3 Publisher、Media Driver、Subscriber</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Publication"><span class="nav-text">Publication</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Media-Driver"><span class="nav-text">Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Subscription"><span class="nav-text">Subscription</span></a></li></ol></li></ol></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-%E6%80%A7%E8%83%BD%E7%89%B9%E5%BE%81"><span class="nav-text">1. 性能特征</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-%E6%A0%B8%E5%BF%83%E8%83%BD%E5%8A%9B"><span class="nav-text">2. 核心能力</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-%E4%B8%89%E5%A4%A7%E9%A1%B6%E5%B1%82%E7%BB%84%E4%BB%B6"><span class="nav-text">3. 三大顶层组件</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="nav-text">4. 架构设计</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#4-1-%E4%B8%89%E5%B1%82%E6%9E%B6%E6%9E%84%E6%A6%82%E8%BF%B0"><span class="nav-text">4.1 三层架构概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-2-Channel%E3%80%81Stream%E3%80%81Session"><span class="nav-text">4.2 Channel、Stream、Session</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-3-Publisher%E3%80%81Media-Driver%E3%80%81Subscriber"><span class="nav-text">4.3 Publisher、Media Driver、Subscriber</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#5-%E9%98%85%E8%AF%BB%E8%B7%AF%E7%BA%BF"><span class="nav-text">5. 阅读路线</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-text">参考资料</span></a></li></ol></li></ol>
     </div>
 </div>
 
@@ -819,6 +918,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

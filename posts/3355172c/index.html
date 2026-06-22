@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -347,7 +347,7 @@
         
         
             <span class="meta-info-item post-wordcount">
-                <i class="icon fas fa-file-word"></i>&nbsp;<span>2.3k 字</span>
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>2.4k 字</span>
             </span>
         
         
@@ -380,7 +380,27 @@
 <p>类比：<strong>轮船的水密隔舱</strong>。一个舱室进水，其他舱室正常运行，船不会沉。</p>
 </blockquote>
 <h3 id="风险哲学"><a href="#风险哲学" class="headerlink" title="风险哲学"></a>风险哲学</h3><p>逐仓的核心是<strong>风险限定</strong>——在开仓前，你就已经确定了这笔交易最多能亏多少。它通过制度设计，将单笔交易的最大亏损预设为一个固定值（即分配的保证金），是高杠杆、高波动交易场景下的首选模式。</p>
-<h3 id="运作机制"><a href="#运作机制" class="headerlink" title="运作机制"></a>运作机制</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">开仓时：</span><br><span class="line">账户余额  ───── 分配保证金 A ──── 仓位 A（BTC 多头）</span><br><span class="line">         └──── 分配保证金 B ──── 仓位 B（ETH 空头）</span><br><span class="line"></span><br><span class="line">强平时：</span><br><span class="line">仓位 A 触发强平 ──── 损失限于保证金 A</span><br><span class="line">                     保证金 B 和仓位 B 不受任何影响</span><br></pre></td></tr></table></figure>
+<h3 id="运作机制"><a href="#运作机制" class="headerlink" title="运作机制"></a>运作机制</h3><div class="mermaid">
+graph TD
+  subgraph OPEN["开仓时"]
+    BAL["账户余额"]
+    MA["分配保证金 A"]
+    MB["分配保证金 B"]
+    PA["仓位 A(BTC 多头)"]
+    PB["仓位 B(ETH 空头)"]
+    BAL --> MA
+    BAL --> MB
+    MA --> PA
+    MB --> PB
+  end
+  subgraph LIQ["强平时"]
+    TRIG["仓位 A 触发强平"]
+    LOSS["损失限于保证金 A"]
+    SAFE["保证金 B 和仓位 B 不受任何影响"]
+    TRIG --> LOSS
+    TRIG -.->|隔离| SAFE
+  end
+</div>
 
 <h3 id="关键参数"><a href="#关键参数" class="headerlink" title="关键参数"></a>关键参数</h3><p><strong>逐仓强平价格（简化公式）：</strong></p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">多头强平价 ≈ 开仓价 × (1 - 1/杠杆 + 维持保证金率)</span><br><span class="line">空头强平价 ≈ 开仓价 × (1 + 1/杠杆 - 维持保证金率)</span><br></pre></td></tr></table></figure>
@@ -395,7 +415,19 @@
 <p>类比：<strong>一个没有隔舱的大船舱</strong>。任何一处漏水，整船都受影响。</p>
 </blockquote>
 <h3 id="风险哲学-1"><a href="#风险哲学-1" class="headerlink" title="风险哲学"></a>风险哲学</h3><p>全仓的核心是<strong>资金效率最大化</strong>与<strong>风险共享</strong>。合并保证金池提升了资金的整体利用效率——一个仓位的盈利可以立即增强另一个仓位的安全垫。但这也意味着，局部风险会传导至全局，一荣俱荣，一损俱损。</p>
-<h3 id="运作机制-1"><a href="#运作机制-1" class="headerlink" title="运作机制"></a>运作机制</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">账户余额（保证金池）</span><br><span class="line">        │</span><br><span class="line">        ├──── 仓位 A（BTC 多头）</span><br><span class="line">        │         ↕ 盈亏实时影响池子总量</span><br><span class="line">        └──── 仓位 B（ETH 空头）</span><br><span class="line"></span><br><span class="line">强平触发条件：</span><br><span class="line">整体账户保证金率 &lt; 维持保证金率</span><br><span class="line">                ↓</span><br><span class="line">          所有仓位同时强平</span><br></pre></td></tr></table></figure>
+<h3 id="运作机制-1"><a href="#运作机制-1" class="headerlink" title="运作机制"></a>运作机制</h3><div class="mermaid">
+graph TD
+  Pool["账户余额(保证金池)"]
+  A["仓位 A(BTC 多头)"]
+  B["仓位 B(ETH 空头)"]
+  Pool --> A
+  Pool --> B
+  A -. 盈亏实时影响池子总量 .-> Pool
+  B -. 盈亏实时影响池子总量 .-> Pool
+  Cond["强平触发条件：整体账户保证金率 小于 维持保证金率"]
+  Liq["所有仓位同时强平"]
+  Cond --> Liq
+</div>
 
 <hr>
 <h2 id="三、深度实例对比"><a href="#三、深度实例对比" class="headerlink" title="三、深度实例对比"></a>三、深度实例对比</h2><p><strong>基础设定：</strong></p>
@@ -469,7 +501,22 @@
 </ul>
 <p><strong>市场冲击：</strong> BTC 价格跌至 <strong>56,000 USDT</strong>（注意：这里价格仍高于逐仓模式的强平价 54,300，但全仓模式下已足以引发危机）。</p>
 <p><strong>连锁反应：</strong></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">BTC 价格 60,000 → 56,000</span><br><span class="line">      ↓</span><br><span class="line">BTC 多头未实现亏损 = (56,000 - 60,000) × 25 BTC / 10（杠杆）</span><br><span class="line">                  = -10,000 USDT ≈ -0.17 BTC</span><br><span class="line">      ↓</span><br><span class="line">共享保证金池：5 BTC → 约 4.83 BTC</span><br><span class="line">      ↓</span><br><span class="line">账户整体保证金率下降</span><br><span class="line">      ↓</span><br><span class="line">ETH 价格若上涨至 3,100（对空头不利）</span><br><span class="line">      ↓</span><br><span class="line">整体账户保证金率跌破维持要求</span><br><span class="line">      ↓</span><br><span class="line">系统强平「所有仓位」</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+A["BTC 价格 60,000 → 56,000"]
+B["BTC 多头未实现亏损 = (56,000 - 60,000) × 25 BTC / 10（杠杆） = -10,000 USDT ≈ -0.17 BTC"]
+C["共享保证金池：5 BTC → 约 4.83 BTC"]
+D["账户整体保证金率下降"]
+E["ETH 价格若上涨至 3,100（对空头不利）"]
+F["整体账户保证金率跌破维持要求"]
+G["系统强平「所有仓位」"]
+A --> B
+B --> C
+C --> D
+D --> E
+E --> F
+F --> G
+</div>
 
 <p><strong>结果：</strong></p>
 <table>
@@ -959,6 +1006,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

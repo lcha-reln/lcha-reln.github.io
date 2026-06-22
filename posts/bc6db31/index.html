@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -344,12 +344,12 @@
         
         
             <span class="meta-info-item post-wordcount">
-                <i class="icon fas fa-file-word"></i>&nbsp;<span>4.3k 字</span>
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>5k 字</span>
             </span>
         
         
             <span class="meta-info-item post-min2read">
-                <i class="icon fas fa-clock"></i>&nbsp;<span>16 分钟</span>
+                <i class="icon fas fa-clock"></i>&nbsp;<span>20 分钟</span>
             </span>
         
         
@@ -379,12 +379,19 @@
 <li><strong>事件驱动系统</strong>：通过系统队列驱动状态变更</li>
 <li><strong>金融级一致性要求</strong>：不能接受主从不一致的任何时间窗口</li>
 </ul>
-<h2 id="1-3-整体分层"><a href="#1-3-整体分层" class="headerlink" title="1.3.整体分层"></a>1.3.整体分层</h2><p><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/HA/%E6%95%B4%E4%BD%93%E5%88%86%E5%B1%82.png"
-                        alt="整体分层"
-                 ></p>
+<h2 id="1-3-整体分层"><a href="#1-3-整体分层" class="headerlink" title="1.3.整体分层"></a>1.3.整体分层</h2><div class="mermaid">
+graph TD
+A["接入层/API层(HTTP/WebSocket/gRPC)"]
+B["消息总线层(Kafka、Pulsar) acks=all,手动 offset,幂等生产者"]
+C["主节点(leader) - Disruptor 管道(单线程无锁) - 全量内存状态"]
+D["从节点(leader) - Disruptor 管道(单线程无锁) - 全量内存状态"]
+E["分布式协调层 Zookeeper(选主) + Redis(版本广播/心跳)"]
+F["持久化层 Kafka -> Store 服务 -> MySQL/MariaDB"]
+A --> B
+B --> C
+B --> D
+</div>
+
 <h1 id="2-主从架构设计"><a href="#2-主从架构设计" class="headerlink" title="2.主从架构设计"></a>2.主从架构设计</h1><h2 id="2-1-架构模型选择"><a href="#2-1-架构模型选择" class="headerlink" title="2.1.架构模型选择"></a>2.1.架构模型选择</h2><p>本方案采用 <strong>Active-Active 双节点主从模型</strong>，而非 Active-Passive</p>
 <table>
 <thead>
@@ -438,8 +445,34 @@
 <p><strong>选举流程</strong></p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">节点启动</span><br><span class="line">    ↓</span><br><span class="line">向 ZK /app/&#123;group&#125;/leader/ 创建临时顺序节点</span><br><span class="line">    ↓</span><br><span class="line">检查自己是否序号最小的节点</span><br><span class="line">    |—— 是 → 成为 leader，回调 isLeader()</span><br><span class="line">    |__ 否 → 监听前一个节点，回调 notLeader()</span><br><span class="line">                    ↓</span><br><span class="line">            前序节点删除（宕机或者主动释放）</span><br><span class="line">                    ↓</span><br><span class="line">            当前节点成为 Leader</span><br></pre></td></tr></table></figure>
 <p>举个例子，为什么是序号最小，如果选最大会发生什么？</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">场景：3个节点同时参与选举</span><br><span class="line"></span><br><span class="line">节点A 启动 → 创建 /app/leader/node-0000000001  </span><br><span class="line">节点B 启动 → 创建 /app/leader/node-0000000002    </span><br><span class="line">节点C 启动 → 创建 /app/leader/node-0000000003</span><br><span class="line"></span><br><span class="line">ZK 目录结构：  </span><br><span class="line">/app/leader/  </span><br><span class="line">    ├── node-0000000001  ← 节点A  </span><br><span class="line">    ├── node-0000000002  ← 节点B  </span><br><span class="line">    └── node-0000000003  ← 节点C（序号最大） </span><br><span class="line"></span><br><span class="line">节点A 创建了 node-001  </span><br><span class="line">节点B 创建了 node-002  </span><br><span class="line">  </span><br><span class="line">此时 节点B 是最大 → B 成为 Leader ✓  </span><br><span class="line">  </span><br><span class="line">但是！节点C 突然加入创建了 node-003  </span><br><span class="line">→ C 变成最大 → C 也认为自己是 Leader ✗  </span><br><span class="line">  </span><br><span class="line">出现两个 Leader！！（脑裂）  </span><br></pre></td></tr></table></figure>
-<p><strong>为什么选最小最安全：序号是 ZK 单调递增分配的，node-001 一旦创建，永远是最小，除非 node-001 被删除，否则不会变化。</strong></p>
+<div class="mermaid">
+flowchart TD
+    T["场景：3个节点同时参与选举（假设选序号最大者为 Leader）"]
+    A["节点A 启动 → 创建 /app/leader/node-0000000001"]
+    B["节点B 启动 → 创建 /app/leader/node-0000000002"]
+    C["节点C 启动 → 创建 /app/leader/node-0000000003（序号最大）"]
+    T --> A
+    A --> B
+    B --> C
+    subgraph ZK["ZK 目录结构 /app/leader/"]
+        Z1["node-0000000001 ← 节点A"]
+        Z2["node-0000000002 ← 节点B"]
+        Z3["node-0000000003 ← 节点C（序号最大）"]
+    end
+    C --> ZK
+    S1["节点A 创建了 node-001，节点B 创建了 node-002"]
+    S2["此时 节点B 是最大 → B 成为 Leader（正确）"]
+    S3["但是！节点C 突然加入创建了 node-003"]
+    S4["C 变成最大 → C 也认为自己是 Leader（错误）"]
+    S5["出现两个 Leader！！（脑裂）"]
+    ZK --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S4 --> S5
+</div>
+**为什么选最小最安全：序号是 ZK 单调递增分配的，node-001 一旦创建，永远是最小，除非 node-001 被删除，否则不会变化。**
+
 <p>其次，这种”监听前一个节点”而不是”所有节点都监听最小节点”的设计，还能避免”羊群效应”（Herd Effect），如果所有节点都监听 node-001，node-001 删除时会触发大量通知，造成 ZK 压力激增。</p>
 <h2 id="3-2-ClusterService-设计"><a href="#3-2-ClusterService-设计" class="headerlink" title="3.2.ClusterService 设计"></a>3.2.ClusterService 设计</h2><p>所有模块通过统一的 <code>ClusterService</code> 获取当前节点角色，避免直接依赖 ZK</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 集群节点角色服务，全局单例</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ClusterService</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// volatile 保证多线程可见性，ZK 回调线程写，业务线程读</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="type">boolean</span> <span class="variable">leader</span> <span class="operator">=</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isLeader</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> leader;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setLeader</span><span class="params">(<span class="type">boolean</span> leader)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.leader = leader;</span><br><span class="line">        <span class="comment">// 发布角色变更事件，通知下游模块（快照策略、补偿任务等）</span></span><br><span class="line">        applicationEventPublisher.publishEvent(<span class="keyword">new</span> <span class="title class_">LeaderChangeEvent</span>(leader));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -455,7 +488,26 @@
 <li>主动将流量切到从节点所在机器</li>
 <li>灰度发布时的滚动升级</li>
 </ul>
-<h1 id="4-主从一致性保证"><a href="#4-主从一致性保证" class="headerlink" title="4.主从一致性保证"></a>4.主从一致性保证</h1><h2 id="4-1-核心思路：Kafka-数据对齐-版本锚点-指纹校验"><a href="#4-1-核心思路：Kafka-数据对齐-版本锚点-指纹校验" class="headerlink" title="4.1.核心思路：Kafka 数据对齐 + 版本锚点 + 指纹校验"></a>4.1.核心思路：Kafka 数据对齐 + 版本锚点 + 指纹校验</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">主节点处理消息 offset=1000</span><br><span class="line">    ↓</span><br><span class="line">计算本批次所有输出消息的 MD5 fingerprint</span><br><span class="line">    ↓</span><br><span class="line">写入 Redis: KEY=master_version_&#123;group&#125;, VALUE=&#123;offset:1000, fingerprint:&quot;abc123&quot;&#125;</span><br><span class="line">    ↓</span><br><span class="line">从节点后台任务每 10ms 拉取 Redis 版本到内存</span><br><span class="line">    ↓</span><br><span class="line">从节点处理消息时：</span><br><span class="line">    if (myOffset &gt; masterVersion) → 等待 500ms 重试（不超前主节点）</span><br><span class="line">    if (myOffset == masterVersion) → 计算自己的 fingerprint 并与 Redis 中比较</span><br><span class="line">        ├── 相等 → 状态一致，继续处理</span><br><span class="line">        └── 不等 → 状态已发散，立即停机并告警</span><br></pre></td></tr></table></figure>
+<h1 id="4-主从一致性保证"><a href="#4-主从一致性保证" class="headerlink" title="4.主从一致性保证"></a>4.主从一致性保证</h1><h2 id="4-1-核心思路：Kafka-数据对齐-版本锚点-指纹校验"><a href="#4-1-核心思路：Kafka-数据对齐-版本锚点-指纹校验" class="headerlink" title="4.1.核心思路：Kafka 数据对齐 + 版本锚点 + 指纹校验"></a>4.1.核心思路：Kafka 数据对齐 + 版本锚点 + 指纹校验</h2><div class="mermaid">
+flowchart TD
+    A["主节点处理消息 offset=1000"]
+    B["计算本批次所有输出消息的 MD5 fingerprint"]
+    C["写入 Redis: KEY=master_version_{group}, VALUE={offset:1000, fingerprint:abc123}"]
+    D["从节点后台任务每 10ms 拉取 Redis 版本到内存"]
+    E["从节点处理消息时"]
+    F["myOffset 大于 masterVersion: 等待 500ms 重试(不超前主节点)"]
+    G["myOffset == masterVersion: 计算自己的 fingerprint 并与 Redis 中比较"]
+    H["相等: 状态一致, 继续处理"]
+    I["不等: 状态已发散, 立即停机并告警"]
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    E --> G
+    G --> H
+    G --> I
+</div>
 
 <h2 id="4-2-版本号设计"><a href="#4-2-版本号设计" class="headerlink" title="4.2.版本号设计"></a>4.2.版本号设计</h2><p>版本号直接使用 <strong>Kafka Offset</strong>，天然具备单调递增性，无需额外维护序列。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 主节点版本变更监听器，在每批消息处理完后触发</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> Reln Ding</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MasterVersionChangeListener</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onChange</span><span class="params">(<span class="type">long</span> kafkaOffset, List&lt;OutputMessage&gt; outputMessages)</span> &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">fingerprint</span> <span class="operator">=</span> fingerprintFactory.buildFingerprint(outputMessages);</span><br><span class="line">        masterVersionRedisClient.set(group, kafkaOffset, fingerprint);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -467,24 +519,63 @@
 </ul>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> String <span class="title function_">buildFingerprint</span><span class="params">(List&lt;OutputMessage&gt; messages)</span> &#123;  </span><br><span class="line">    <span class="comment">// 对所有输出消息按固定顺序排序后做 MD5  </span></span><br><span class="line">    <span class="keyword">return</span> DigestUtils.md5Hex(  </span><br><span class="line">        messages.stream()  </span><br><span class="line">            .sorted(Comparator.comparing(OutputMessage::getKey))  </span><br><span class="line">            .map(OutputMessage::toBytes)  </span><br><span class="line">            .collect(joining())  </span><br><span class="line">    );  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<h2 id="4-4-从节点“追赶”流程"><a href="#4-4-从节点“追赶”流程" class="headerlink" title="4.4.从节点“追赶”流程"></a>4.4.从节点“追赶”流程</h2><p><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/HA/%E4%BB%8E%E8%8A%82%E7%82%B9%E8%BF%BD%E8%B5%B6%E6%B5%81%E7%A8%8B.png"
-                        alt="从节点追赶流程"
-                 ></p>
-<h1 id="5-故障检测与自动切换"><a href="#5-故障检测与自动切换" class="headerlink" title="5.故障检测与自动切换"></a>5.故障检测与自动切换</h1><h2 id="5-1-从节点存活检测"><a href="#5-1-从节点存活检测" class="headerlink" title="5.1.从节点存活检测"></a>5.1.从节点存活检测</h2><p><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/HA/%E4%BB%8E%E8%8A%82%E7%82%B9%E5%AD%98%E6%B4%BB%E6%A3%80%E6%B5%8B.png"
-                        alt="从节点存活检测"
-                 ><br>**TTL 设计建议：**TTL 应该设置为心跳间隔的 <strong>20-24</strong> 倍，留足网络抖动个 GC 暂停的容忍空间</p>
-<h2 id="5-2-主节点故障处理"><a href="#5-2-主节点故障处理" class="headerlink" title="5.2.主节点故障处理"></a>5.2.主节点故障处理</h2><p><img  
-                       lazyload
-                       alt="image"
-                       data-src="/images/HA/%E4%B8%BB%E8%8A%82%E7%82%B9%E6%95%85%E9%9A%9C%E5%A4%84%E7%90%86.png"
-                        alt="主节点故障处理"
-                 ></p>
+<h2 id="4-4-从节点“追赶”流程"><a href="#4-4-从节点“追赶”流程" class="headerlink" title="4.4.从节点“追赶”流程"></a>4.4.从节点“追赶”流程</h2><div class="mermaid">
+sequenceDiagram
+    participant F as Follower Node
+    participant R as Redis
+    participant L as Leader Node
+    L->>L: 处理 offset=1000
+    L->>R: 写版本1000 + 指纹 (KEY=master_version_{group}, VALUE={offset:1000, fingerprint:"abc"})
+    F->>R: 拉取主节点版本 (每10ms)
+    R-->>F: 返回 version=1000, fp="abc"
+    F->>F: 自身 offset=999, 处理下一条消息
+    F->>F: offset=1000, 计算指纹=abc 一致
+    F->>F: 继续处理...
+    F->>F: 自身 offset=1001
+    F->>F: masterVersion=1000
+    F->>F: myOffset > masterVersion (超前!)
+    F->>F: 等待 500ms
+    F->>R: 重新拉取版本
+    R-->>F: 返回 version=1001 (或最新版本)
+    F->>F: 继续处理...
+</div>
+
+<h1 id="5-故障检测与自动切换"><a href="#5-故障检测与自动切换" class="headerlink" title="5.故障检测与自动切换"></a>5.故障检测与自动切换</h1><h2 id="5-1-从节点存活检测"><a href="#5-1-从节点存活检测" class="headerlink" title="5.1.从节点存活检测"></a>5.1.从节点存活检测</h2><div class="mermaid">
+sequenceDiagram
+    participant F as Follower Node
+    participant R as Redis
+    participant L as Leader Node
+    participant A as 告警系统
+    participant K as Kafka
+    loop 每5s
+        F->>R: 写心跳 (SET KEY: follower_alive_{group}, VALUE: ALIVE, TTL: 120s)
+    end
+    loop 每120s
+        L->>R: 读取 Redis 心跳 (GET KEY: follower_alive_{group})
+        alt 心跳存在
+            R-->>L: VALUE: ALIVE
+            L->>L: 从节点健康, 倾向从节点负责
+        else 心跳不存在
+            R-->>L: (null)
+            L->>L: 从节点已宕机
+            L->>L: 主节点接管复制职责
+            L->>A: 发送告警 (DingTalk / PagerDuty)
+            L->>K: 主节点直接发送 Kafka 消息 (不等从节点确认L1)
+        end
+    end
+</div>
+**TTL 设计建议：**TTL 应该设置为心跳间隔的 **20-24** 倍，留足网络抖动个 GC 暂停的容忍空间
+
+<h2 id="5-2-主节点故障处理"><a href="#5-2-主节点故障处理" class="headerlink" title="5.2.主节点故障处理"></a>5.2.主节点故障处理</h2><div class="mermaid">
+flowchart TD
+    A["主节点宕机 或 ZK Session 超时"] --> B["ZK 删除主节点的临时顺序节点"]
+    B --> C["从节点监听的 Watcher 触发"]
+    C --> D{"从节点检查自己是否序号最小?"}
+    D -->|否| E["继续等待或者监听前一个节点"]
+    D -->|是| F["ClusterService.setLeader true"]
+    F --> G["从节点成为新主节点开始处理消息, 无需等待恢复, 因为从节点已持有完整且一致的内存状态"]
+</div>
+
 <p><strong>RTO 分析</strong></p>
 <ul>
 <li>ZK session 超时：30s（可调低到 10s，但需平衡网络抖动的风险）</li>
@@ -528,7 +619,22 @@
 <h2 id="6-2-快照创建流程"><a href="#6-2-快照创建流程" class="headerlink" title="6.2.快照创建流程"></a>6.2.快照创建流程</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">触发快照（定时 or 手动触发）</span><br><span class="line">        ↓</span><br><span class="line">暂停 Disruptor 消费（或者使用 Copy-on-Write 快照）</span><br><span class="line">        ↓</span><br><span class="line">遍历所有内存数据类型（用户账户、订单列表、配置等）</span><br><span class="line">        ↓</span><br><span class="line">序列化为字节流（推肩 ProtoBuf、SBE、Kryo，避免 Java 序列原生化）</span><br><span class="line">        ↓</span><br><span class="line">计算 CRC32 校验和</span><br><span class="line">        ↓</span><br><span class="line">写入本地文件系统（异步写，通过 Disruptor）</span><br><span class="line">        ↓</span><br><span class="line">写入 DB 记录快照元数据（版本、路径、状态、CRC32）</span><br></pre></td></tr></table></figure>
 
 <h3 id="6-2-1-暂停-Disruptor-消费-vs-Copy-on-Write"><a href="#6-2-1-暂停-Disruptor-消费-vs-Copy-on-Write" class="headerlink" title="6.2.1.暂停 Disruptor 消费 vs Copy-on-Write"></a>6.2.1.暂停 Disruptor 消费 vs Copy-on-Write</h3><p>暂停 Disruptor 消费</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">正常状态：  </span><br><span class="line">Kafka → Disruptor → 处理消息 → 修改内存数据  </span><br><span class="line">  </span><br><span class="line">快照时：  </span><br><span class="line">Kafka → Disruptor → ⏸️ 暂停消费  </span><br><span class="line">                         ↓  </span><br><span class="line">                    此时内存数据静止不变  </span><br><span class="line">                         ↓  </span><br><span class="line">                    安全地做快照  </span><br><span class="line">                         ↓  </span><br><span class="line">                    快照完成 → ▶️ 恢复消费  </span><br><span class="line">  </span><br><span class="line">问题：快照期间系统停止处理，有延迟！ </span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+flowchart TD
+  subgraph NORMAL["正常状态"]
+    N1[Kafka] --> N2[Disruptor]
+    N2 --> N3[处理消息]
+    N3 --> N4[修改内存数据]
+  end
+  subgraph SNAP["快照时"]
+    S1[Kafka] --> S2[Disruptor]
+    S2 --> S3["暂停消费(⏸️)"]
+    S3 --> S4[此时内存数据静止不变]
+    S4 --> S5[安全地做快照]
+    S5 --> S6["快照完成，恢复消费(▶️)"]
+  end
+  SNAP --> P["问题：快照期间系统停止处理，有延迟！"]
+</div>
 
 <p>Copy-on-Write</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">快照触发时：  </span><br><span class="line">内存数据 → 复制一份副本（Copy）  </span><br><span class="line">              ↓           ↓  </span><br><span class="line">         副本做快照    原数据继续处理新消息  </span><br><span class="line">         （慢慢写）    （不受影响）  </span><br><span class="line">  </span><br><span class="line">优点：系统不停机，边快照边处理  </span><br><span class="line">缺点：需要额外内存存储副本 </span><br></pre></td></tr></table></figure>
@@ -613,10 +719,41 @@
 <li>主节点专注于核心消息处理，降低主节点压力</li>
 <li>即使从节点宕机，主节点也能通过 <code>isLeader()</code> 判断后自行接管补偿任务</li>
 </ul>
-<h1 id="8-存储层设计"><a href="#8-存储层设计" class="headerlink" title="8.存储层设计"></a>8.存储层设计</h1><h2 id="8-1-分层存储设计"><a href="#8-1-分层存储设计" class="headerlink" title="8.1.分层存储设计"></a>8.1.分层存储设计</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">内存层（实时）</span><br><span class="line">  └── 主/从节点全量内存状态（HashMap、有序集合等）</span><br><span class="line">      响应时间：微秒级</span><br><span class="line"></span><br><span class="line">快照层（准实时）</span><br><span class="line">  └── 本地文件系统的状态快照（每 5-30 分钟）</span><br><span class="line">      用途：快速故障恢复</span><br><span class="line"></span><br><span class="line">持久化层（最终一致）</span><br><span class="line">  └── Kafka → Store 服务 → MySQL/MariaDB</span><br><span class="line">      用途：数据查询、审计、报表</span><br></pre></td></tr></table></figure>
+<h1 id="8-存储层设计"><a href="#8-存储层设计" class="headerlink" title="8.存储层设计"></a>8.存储层设计</h1><h2 id="8-1-分层存储设计"><a href="#8-1-分层存储设计" class="headerlink" title="8.1.分层存储设计"></a>8.1.分层存储设计</h2><div class="mermaid">
+graph TD
+  subgraph L1["内存层（实时）"]
+    A["主/从节点全量内存状态(HashMap、有序集合等)"]
+    A1["响应时间：微秒级"]
+    A --> A1
+  end
+  subgraph L2["快照层（准实时）"]
+    B["本地文件系统的状态快照(每 5-30 分钟)"]
+    B1["用途：快速故障恢复"]
+    B --> B1
+  end
+  subgraph L3["持久化层（最终一致）"]
+    C["Kafka"]
+    D["Store 服务"]
+    E["MySQL/MariaDB"]
+    C --> D
+    D --> E
+    F["用途：数据查询、审计、报表"]
+  end
+  L1 --> L2
+  L2 --> L3
+</div>
 
 <h2 id="8-2-数据库分组隔离"><a href="#8-2-数据库分组隔离" class="headerlink" title="8.2.数据库分组隔离"></a>8.2.数据库分组隔离</h2><p>每个业务 Group 使用独立数据库，防止相互影响：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">数据库: app_&#123;group_id&#125;</span><br><span class="line">  ├── snapshot_meta          -- 快照元数据</span><br><span class="line">  ├── kafka_send_failed_data -- Kafka 发送失败补偿</span><br><span class="line">  └── &#123;business_tables&#125;      -- 业务数据表</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+  DB["数据库: app_{group_id}"]
+  T1["snapshot_meta (快照元数据)"]
+  T2["kafka_send_failed_data (Kafka 发送失败补偿)"]
+  T3["{business_tables} (业务数据表)"]
+  DB --> T1
+  DB --> T2
+  DB --> T3
+</div>
 
 <h2 id="8-3-连接池配置建议"><a href="#8-3-连接池配置建议" class="headerlink" title="8.3.连接池配置建议"></a>8.3.连接池配置建议</h2><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">datasource:</span></span><br><span class="line">  <span class="attr">hikari:</span></span><br><span class="line">    <span class="attr">connection-timeout:</span> <span class="number">2000</span>      <span class="comment"># 2s 获取连接超时</span></span><br><span class="line">    <span class="attr">maximum-pool-size:</span> <span class="number">50</span>         <span class="comment"># 最大连接数（根据 DB 服务器配置调整）</span></span><br><span class="line">    <span class="attr">minimum-idle:</span> <span class="number">10</span>              <span class="comment"># 最小空闲连接</span></span><br><span class="line">    <span class="attr">transaction-isolation:</span> <span class="string">TRANSACTION_READ_COMMITTED</span>  <span class="comment"># 读已提交，避免幻读影响性能</span></span><br><span class="line">    <span class="attr">keepalive-time:</span> <span class="number">30000</span>         <span class="comment"># 防止连接被防火墙断开</span></span><br></pre></td></tr></table></figure>
 
@@ -649,7 +786,44 @@
 <li>不可变字段：user_id、order_id 比 status 更合适</li>
 <li>高基数字段：值尽量多，避免集中在某几个分片</li>
 </ul>
-<h1 id="9-架构全景图"><a href="#9-架构全景图" class="headerlink" title="9. 架构全景图"></a>9. 架构全景图</h1><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                           运维管控层                                          │</span><br><span class="line">│   Apollo (动态配置)   │   Prometheus + Grafana (监控)   │  告警系统 (PagerDuty) │</span><br><span class="line">└──────────────────────────────────────┬──────────────────────────────────────┘</span><br><span class="line">                                       │ 配置推送 / 指标采集</span><br><span class="line">┌──────────────────────────────────────▼──────────────────────────────────────┐</span><br><span class="line">│                           注册与协调层                                        │</span><br><span class="line">│                                                                             │</span><br><span class="line">│  ┌──────────────────┐    ┌──────────────────────┐    ┌───────────────────┐  │</span><br><span class="line">│  │  Eureka (服务发现) │    │ ZooKeeper (Leader选举) │    │  Redis (版本/心跳) │  │</span><br><span class="line">│  └──────────────────┘    │  + ElasticJob 调度    │    └───────────────────┘  │</span><br><span class="line">│                          └──────────────────────┘                           │</span><br><span class="line">└──────────────────────────────────────────────────────────────────────────────┘</span><br><span class="line">                                       │</span><br><span class="line">            ┌──────────────────────────┴──────────────────────┐</span><br><span class="line">            │                                                  │</span><br><span class="line">┌───────────▼───────────────────┐            ┌────────────────▼───────────────┐</span><br><span class="line">│        主节点 (Leader)          │            │       从节点 (Follower)          │</span><br><span class="line">│                               │            │                                │</span><br><span class="line">│  [Kafka Consumer]             │            │  [Kafka Consumer]              │</span><br><span class="line">│       ↓                       │            │       ↓                        │</span><br><span class="line">│  [Disruptor 单线程管道]         │            │  [等待主节点版本确认]             │</span><br><span class="line">│    BusySpinWaitStrategy       │            │  [Disruptor 单线程管道]          │</span><br><span class="line">│       ↓                       │            │       ↓                        │</span><br><span class="line">│  [全量内存状态]                 │◄──版本+指纹──►│  [全量内存状态]                 │</span><br><span class="line">│  Map/Set/OrderBook...         │   Redis     │  Map/Set/OrderBook...         │</span><br><span class="line">│       ↓                       │            │       ↓                        │</span><br><span class="line">│  [Kafka Producer]             │            │  [快照写入]                     │</span><br><span class="line">│    acks=all, 幂等               │            │  [Kafka补偿重发]                │</span><br><span class="line">└───────────────────────────────┘            └────────────────────────────────┘</span><br><span class="line">            │                                                  │</span><br><span class="line">            └──────────────────────┬──────────────────────────┘</span><br><span class="line">                                   │ 消费同一 Kafka Partition</span><br><span class="line">┌──────────────────────────────────▼──────────────────────────────────────────┐</span><br><span class="line">│                    Apache Kafka（消息总线）                                    │</span><br><span class="line">│          acks=all │ 手动offset │ 幂等生产 │ lz4压缩 │ 7节点高可用集群           │</span><br><span class="line">└──────────────────────────────────┬──────────────────────────────────────────┘</span><br><span class="line">                                   │</span><br><span class="line">┌──────────────────────────────────▼──────────────────────────────────────────┐</span><br><span class="line">│                       Store 持久化服务                                        │</span><br><span class="line">│              Kafka Consumer → 业务处理 → MySQL/MariaDB                       │</span><br><span class="line">│         (ShardingSphere 分库分表，HikariCP 连接池，只写不读)                    │</span><br><span class="line">└──────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+<h1 id="9-架构全景图"><a href="#9-架构全景图" class="headerlink" title="9. 架构全景图"></a>9. 架构全景图</h1><div class="mermaid">
+graph TD
+  subgraph OPS["运维管控层"]
+    OPS1["Apollo (动态配置)"]
+    OPS2["Prometheus + Grafana (监控)"]
+    OPS3["告警系统 (PagerDuty)"]
+  end
+  subgraph REG["注册与协调层"]
+    R1["Eureka (服务发现)"]
+    R2["ZooKeeper (Leader选举) + ElasticJob 调度"]
+    R3["Redis (版本/心跳)"]
+  end
+  subgraph LEADER["主节点 (Leader)"]
+    L1["Kafka Consumer"]
+    L2["Disruptor 单线程管道 BusySpinWaitStrategy"]
+    L3["全量内存状态 Map/Set/OrderBook..."]
+    L4["Kafka Producer (acks=all, 幂等)"]
+    L1 --> L2 --> L3 --> L4
+  end
+  subgraph FOLLOWER["从节点 (Follower)"]
+    F1["Kafka Consumer"]
+    F2["等待主节点版本确认"]
+    F3["Disruptor 单线程管道"]
+    F4["全量内存状态 Map/Set/OrderBook..."]
+    F5["快照写入"]
+    F6["Kafka补偿重发"]
+    F1 --> F2 --> F3 --> F4 --> F5 --> F6
+  end
+  KAFKA["Apache Kafka（消息总线） acks=all | 手动offset | 幂等生产 | lz4压缩 | 7节点高可用集群"]
+  STORE["Store 持久化服务 Kafka Consumer 到 业务处理 到 MySQL/MariaDB (ShardingSphere 分库分表, HikariCP 连接池, 只写不读)"]
+  OPS -->|"配置推送 / 指标采集"| REG
+  REG --> LEADER
+  REG --> FOLLOWER
+  L3 &lt;-->|"版本+指纹 (Redis)"| F4
+  LEADER -->|"消费同一 Kafka Partition"| KAFKA
+  FOLLOWER -->|"消费同一 Kafka Partition"| KAFKA
+  KAFKA --> STORE
+</div>
                     
                 </div>
 
@@ -985,6 +1159,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->

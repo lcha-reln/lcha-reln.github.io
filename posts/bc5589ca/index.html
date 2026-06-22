@@ -311,7 +311,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Jun 11 2026 09:31:06 GMT+0000">2026-06-11 17:31:06</span>
+                    <span class="datetime" data-updated="Mon Jun 22 2026 04:04:32 GMT+0000">2026-06-22 12:04:32</span>
                 </span>
             
         
@@ -350,12 +350,12 @@
         
         
             <span class="meta-info-item post-wordcount">
-                <i class="icon fas fa-file-word"></i>&nbsp;<span>3.7k 字</span>
+                <i class="icon fas fa-file-word"></i>&nbsp;<span>3.9k 字</span>
             </span>
         
         
             <span class="meta-info-item post-min2read">
-                <i class="icon fas fa-clock"></i>&nbsp;<span>15 分钟</span>
+                <i class="icon fas fa-clock"></i>&nbsp;<span>16 分钟</span>
             </span>
         
         
@@ -385,7 +385,20 @@
 </ul>
 <p>从架构层次看，Media Driver 位于 Aeron Client API 与操作系统网络栈之间，是 Aeron 高性能的核心支撑层。</p>
 <h2 id="二、核心架构"><a href="#二、核心架构" class="headerlink" title="二、核心架构"></a>二、核心架构</h2><p>Media Driver 内部由三个核心 Agent 构成：<strong>Driver Conductor</strong>、<strong>Sender</strong>、<strong>Receiver</strong>。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">   Aeron Client</span><br><span class="line">        │</span><br><span class="line">        │  Command / Response (共享内存)</span><br><span class="line">        │</span><br><span class="line">        v</span><br><span class="line">┌───────────────────────────────────────────┐</span><br><span class="line">│              Media Driver                │</span><br><span class="line">│                                          │</span><br><span class="line">│  ┌──────────────────┐                   │</span><br><span class="line">│  │  Driver Conductor│                   │</span><br><span class="line">│  │  - 命令解析       │                   │</span><br><span class="line">│  │  - 资源生命周期   │                   │</span><br><span class="line">│  │  - 名称解析       │                   │</span><br><span class="line">│  └────────┬─────────┘                   │</span><br><span class="line">│           │ 协调                         │</span><br><span class="line">│    ┌──────┴──────────────┐              │</span><br><span class="line">│    │                     │              │</span><br><span class="line">│  ┌─┴──────┐        ┌─────┴─────┐       │</span><br><span class="line">│  │ Sender │        │ Receiver  │       │</span><br><span class="line">│  │- Log   │        │- Image    │       │</span><br><span class="line">│  │  Buffer│        │  处理     │       │</span><br><span class="line">│  │- 流控   │        │- NAK 重传 │       │</span><br><span class="line">│  └────┬───┘        └─────┬─────┘       │</span><br><span class="line">└───────┼─────────────────┼─────────────┘</span><br><span class="line">        │                 │</span><br><span class="line">        v                 ^</span><br><span class="line">    网络/IPC 发送      网络/IPC 接收</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+  Client[Aeron Client]
+  Client -->|"Command / Response (共享内存)"| DC
+  subgraph MD[Media Driver]
+    DC["Driver Conductor (命令解析 / 资源生命周期 / 名称解析)"]
+    Sender["Sender (Log Buffer / 流控)"]
+    Receiver["Receiver (Image 处理 / NAK 重传)"]
+    DC -->|协调| Sender
+    DC -->|协调| Receiver
+  end
+  Sender --> Send["网络/IPC 发送"]
+  Recv["网络/IPC 接收"] --> Receiver
+</div>
 
 <h3 id="2-1-Driver-Conductor"><a href="#2-1-Driver-Conductor" class="headerlink" title="2.1 Driver Conductor"></a>2.1 Driver Conductor</h3><p>Driver Conductor 是 Media Driver 的控制面，运行于独立的 Agent 循环中，处理所有控制路径逻辑：</p>
 <ul>
@@ -412,8 +425,30 @@
 <li><strong>Subscription 联结</strong>：将就绪的 Image 通知 Driver Conductor，由 Conductor 向 Aeron Client 发出 <code>ON_IMAGE_READY</code> 回调，完成 Image 到 Subscription 的绑定</li>
 </ul>
 <h2 id="三、线程模型"><a href="#三、线程模型" class="headerlink" title="三、线程模型"></a>三、线程模型</h2><p>Media Driver 提供三种线程调度模式，通过 <code>ThreadingMode</code> 枚举配置，核心区别在于三个 Agent 如何映射到 OS 线程：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">SHARED 模式（1 个 OS 线程）</span><br><span class="line">┌──────────────────────────────────────────────┐</span><br><span class="line">│  Thread-0: [Conductor] → [Sender] → [Receiver]│</span><br><span class="line">│            （轮转调度，共享同一线程）            │</span><br><span class="line">└──────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">SHARED_NETWORK 模式（2 个 OS 线程）</span><br><span class="line">┌──────────────────────────────────────────────┐</span><br><span class="line">│  Thread-0: [Conductor]                       │</span><br><span class="line">│  Thread-1: [Sender] → [Receiver]（轮转调度）  │</span><br><span class="line">└──────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">DEDICATED 模式（3 个 OS 线程）</span><br><span class="line">┌──────────────────────────────────────────────┐</span><br><span class="line">│  Thread-0: [Conductor]                       │</span><br><span class="line">│  Thread-1: [Sender]                          │</span><br><span class="line">│  Thread-2: [Receiver]                        │</span><br><span class="line">└──────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
-
+<table>
+<thead>
+<tr>
+<th>ThreadingMode</th>
+<th>OS 线程数</th>
+<th>线程映射</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SHARED</td>
+<td>1</td>
+<td>Thread-0: Conductor → Sender → Receiver（轮转调度，共享同一线程）</td>
+</tr>
+<tr>
+<td>SHARED_NETWORK</td>
+<td>2</td>
+<td>Thread-0: Conductor；Thread-1: Sender → Receiver（轮转调度）</td>
+</tr>
+<tr>
+<td>DEDICATED</td>
+<td>3</td>
+<td>Thread-0: Conductor；Thread-1: Sender；Thread-2: Receiver</td>
+</tr>
+</tbody></table>
 <h3 id="3-1-模式选型依据"><a href="#3-1-模式选型依据" class="headerlink" title="3.1 模式选型依据"></a>3.1 模式选型依据</h3><p><strong>SHARED 模式</strong>适用于开发调试、单元测试及低吞吐场景。所有 Agent 串行执行，单线程调度简化了并发模型，但三个 Agent 相互竞争 CPU 时间，吞吐上限受限于单核处理能力。</p>
 <p><strong>SHARED_NETWORK 模式</strong>是一种折中方案。Conductor 的控制路径（命令处理、资源管理）与数据路径（收发）分离，避免控制路径的偶发性高延迟（如名称解析）影响数据吞吐，同时保持 Sender 和 Receiver 的资源共享。</p>
 <p><strong>DEDICATED 模式</strong>是生产环境高负载场景的推荐配置。三个 Agent 完全独立，各自运行于专用线程，可分别绑定 CPU 核心（通过 <code>threadFactory</code> 或外部 CPU affinity 工具实现），在高吞吐场景下消除线程竞争，发挥 Aeron 的极限性能。</p>
@@ -460,7 +495,16 @@
 </tbody></table>
 <p>在超低延迟场景（金融交易），Sender 和 Receiver 通常配置 <code>BusySpinIdleStrategy</code> + CPU 独占绑定；Conductor 则可使用 <code>BackoffIdleStrategy</code> 降低 CPU 开销。</p>
 <h2 id="四、通信机制"><a href="#四、通信机制" class="headerlink" title="四、通信机制"></a>四、通信机制</h2><h3 id="4-1-客户端与-Driver-的控制面通信"><a href="#4-1-客户端与-Driver-的控制面通信" class="headerlink" title="4.1 客户端与 Driver 的控制面通信"></a>4.1 客户端与 Driver 的控制面通信</h3><p>Aeron Client 与 Media Driver 之间通过共享内存中的两个单向无锁 ring buffer 进行控制面通信，避免了跨进程 IPC 的系统调用开销：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">Aeron Client                         Media Driver</span><br><span class="line">     │                                     │</span><br><span class="line">     │  ① 写入 Command（控制帧）            │</span><br><span class="line">     ├──────────────────────────────────&gt;  │</span><br><span class="line">     │     [Command Ring Buffer]           │</span><br><span class="line">     │                                     │  ② Conductor 轮询并处理</span><br><span class="line">     │                                     │</span><br><span class="line">     │  ④ 读取 Response（响应帧）           │</span><br><span class="line">     │  &lt;──────────────────────────────────┤</span><br><span class="line">     │     [Response Ring Buffer]          │</span><br><span class="line">     │                              ③ Conductor 写入响应</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+sequenceDiagram
+    participant C as Aeron Client
+    participant D as Media Driver
+    Note over C,D: 共享内存中两个单向无锁 ring buffer
+    C->>D: ① 写入 Command(控制帧) 经 Command Ring Buffer
+    Note over D: ② Conductor 轮询并处理
+    Note over D: ③ Conductor 写入响应
+    D-->>C: ④ 读取 Response(响应帧) 经 Response Ring Buffer
+</div>
 
 <p><strong>Command Buffer</strong> 传递的典型控制帧类型：</p>
 <ul>
@@ -478,7 +522,22 @@
 </ul>
 <p>这两个 Ring Buffer 的底层实现是 <code>ManyToOneRingBuffer</code>（命令方向，多客户端写入）和 <code>BroadcastTransmitter</code>&#x2F;<code>BroadcastReceiver</code>（响应方向，一写多读），均基于 <code>UnsafeBuffer</code> 直接操作堆外内存，无 GC 压力。</p>
 <h3 id="4-2-数据面：Log-Buffer-机制"><a href="#4-2-数据面：Log-Buffer-机制" class="headerlink" title="4.2 数据面：Log Buffer 机制"></a>4.2 数据面：Log Buffer 机制</h3><p>Publication 与 Sender、Receiver 与 Subscription 之间的数据传递通过 <strong>Log Buffer</strong> 实现，这是 Aeron 零拷贝、无锁高吞吐的核心数据结构。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">Publication（写端）</span><br><span class="line">     │</span><br><span class="line">     │  CAS 原子操作写入 term position</span><br><span class="line">     v</span><br><span class="line">┌─────────────────────────────────────────────────────┐</span><br><span class="line">│                    Log Buffer                       │</span><br><span class="line">│                                                     │</span><br><span class="line">│  ┌──────────────┐  ┌──────────────┐  ┌───────────┐ │</span><br><span class="line">│  │   Term 0     │  │   Term 1     │  │  Term 2   │ │</span><br><span class="line">│  │ (Active/Full)│  │ (Active/Full)│  │  (Active) │ │</span><br><span class="line">│  └──────────────┘  └──────────────┘  └───────────┘ │</span><br><span class="line">│                                                     │</span><br><span class="line">│  ┌──────────────────────────────────────────────┐  │</span><br><span class="line">│  │           Log Meta Data                      │  │</span><br><span class="line">│  │  (active term id, position limit, ...)       │  │</span><br><span class="line">│  └──────────────────────────────────────────────┘  │</span><br><span class="line">└─────────────────────────────────────────────────────┘</span><br><span class="line">     │</span><br><span class="line">     │  Sender 轮询读取，写入 Socket</span><br><span class="line">     v</span><br><span class="line">   Network</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+    P["Publication（写端）"]
+    P -->|"CAS 原子操作写入 term position"| LB
+    subgraph LB["Log Buffer"]
+        direction TB
+        T0["Term 0 (Active/Full)"]
+        T1["Term 1 (Active/Full)"]
+        T2["Term 2 (Active)"]
+        META["Log Meta Data (active term id, position limit, ...)"]
+        T0 -.- T1
+        T1 -.- T2
+        T2 -.- META
+    end
+    LB -->|"Sender 轮询读取，写入 Socket"| NET["Network"]
+</div>
 
 <p>Log Buffer 由三个等大小的 Term Buffer 循环使用，每个 Term 是一段连续的内存区域，消息以帧（Frame）为单位追加写入。帧头包含长度、版本、标志位、stream ID、session ID 和 term offset 等字段，接收方可通过 term offset 精确定位任意帧，支持高效重传。</p>
 <p><strong>关键位置计数器（Position Counter）</strong>：</p>
@@ -489,12 +548,35 @@
 <li><code>subscriberPosition</code>：每个 Subscriber 已消费的 position</li>
 </ul>
 <p>所有位置计数器均存储于共享内存，Sender、Receiver、Publication、Subscription 及 Conductor 可跨进程（或跨线程）无锁读写，是 Aeron 流量控制和背压机制的数学基础。</p>
-<h2 id="五、部署模式"><a href="#五、部署模式" class="headerlink" title="五、部署模式"></a>五、部署模式</h2><h3 id="5-1-嵌入式模式（Embedded-Media-Driver）"><a href="#5-1-嵌入式模式（Embedded-Media-Driver）" class="headerlink" title="5.1 嵌入式模式（Embedded Media Driver）"></a>5.1 嵌入式模式（Embedded Media Driver）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────┐</span><br><span class="line">│                    Application JVM                      │</span><br><span class="line">│                                                         │</span><br><span class="line">│  ┌──────────────────────┐    ┌────────────────────────┐ │</span><br><span class="line">│  │   Application Code   │    │     Aeron Client       │ │</span><br><span class="line">│  └──────────────────────┘    └───────────┬────────────┘ │</span><br><span class="line">│                                          │              │</span><br><span class="line">│                                    共享内存通信           │</span><br><span class="line">│                                          │              │</span><br><span class="line">│                               ┌──────────v───────────┐  │</span><br><span class="line">│                               │  Embedded            │  │</span><br><span class="line">│                               │  Media Driver        │  │</span><br><span class="line">│                               └──────────┬───────────┘  │</span><br><span class="line">└──────────────────────────────────────────┼──────────────┘</span><br><span class="line">                                           │</span><br><span class="line">                                      网络 / IPC</span><br></pre></td></tr></table></figure>
+<h2 id="五、部署模式"><a href="#五、部署模式" class="headerlink" title="五、部署模式"></a>五、部署模式</h2><h3 id="5-1-嵌入式模式（Embedded-Media-Driver）"><a href="#5-1-嵌入式模式（Embedded-Media-Driver）" class="headerlink" title="5.1 嵌入式模式（Embedded Media Driver）"></a>5.1 嵌入式模式（Embedded Media Driver）</h3><div class="mermaid">
+graph TD
+  subgraph JVM["Application JVM"]
+    APP["Application Code"]
+    CLIENT["Aeron Client"]
+    MD["Embedded Media Driver"]
+    CLIENT -->|共享内存通信| MD
+  end
+  MD --> NET["网络 / IPC"]
+</div>
 
 <p>嵌入式模式下，Media Driver 与 Aeron Client 运行于同一 JVM 进程。共享内存通信退化为进程内的内存映射，进一步降低通信开销。</p>
 <p><strong>适用场景</strong>：单进程应用、开发测试、对部署复杂度敏感的场景。</p>
 <p><strong>注意</strong>：应用进程崩溃（如 OOM Kill、未捕获异常）会同时终止 Media Driver，导致所有连接的 remote 端感知到会话失效。</p>
-<h3 id="5-2-独立进程模式（Standalone-Media-Driver）"><a href="#5-2-独立进程模式（Standalone-Media-Driver）" class="headerlink" title="5.2 独立进程模式（Standalone Media Driver）"></a>5.2 独立进程模式（Standalone Media Driver）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────┐      ┌─────────────────────┐</span><br><span class="line">│   Application       │      │   Application       │</span><br><span class="line">│   Process 1         │      │   Process 2         │</span><br><span class="line">│  ┌───────────────┐  │      │  ┌───────────────┐  │</span><br><span class="line">│  │ Aeron Client  │  │      │  │ Aeron Client  │  │</span><br><span class="line">│  └───────┬───────┘  │      │  └───────┬───────┘  │</span><br><span class="line">└──────────┼──────────┘      └──────────┼──────────┘</span><br><span class="line">           │                            │</span><br><span class="line">           │        共享内存              │</span><br><span class="line">           └──────────────┬─────────────┘</span><br><span class="line">                          │</span><br><span class="line">               ┌──────────v───────────┐</span><br><span class="line">               │   Media Driver       │</span><br><span class="line">               │   Process            │</span><br><span class="line">               │  (独立 JVM / C 进程)  │</span><br><span class="line">               └──────────┬───────────┘</span><br><span class="line">                          │</span><br><span class="line">                     网络 / IPC</span><br></pre></td></tr></table></figure>
+<h3 id="5-2-独立进程模式（Standalone-Media-Driver）"><a href="#5-2-独立进程模式（Standalone-Media-Driver）" class="headerlink" title="5.2 独立进程模式（Standalone Media Driver）"></a>5.2 独立进程模式（Standalone Media Driver）</h3><div class="mermaid">
+graph TD
+  subgraph P1["Application Process 1"]
+    C1["Aeron Client"]
+  end
+  subgraph P2["Application Process 2"]
+    C2["Aeron Client"]
+  end
+  subgraph MD["Media Driver Process (独立 JVM / C 进程)"]
+    M["Media Driver"]
+  end
+  C1 -->|"共享内存"| M
+  C2 -->|"共享内存"| M
+  M -->|"网络 / IPC"| NET["网络 / IPC"]
+</div>
 
 <p>独立进程模式下，Media Driver 以独立进程运行，多个应用进程通过共享内存与其通信。</p>
 <p><strong>适用场景</strong>：生产环境、多进程共享 Media Driver、需要故障隔离的场景。</p>
@@ -554,7 +636,28 @@
 
 <p><strong>Term Buffer 大小的影响</strong>：Term Buffer 越大，可容纳的飞行中数据（in-flight data）越多，高带宽长延迟链路下吞吐越高，但内存占用和重传代价也随之增大。典型配置：LAN 环境 <code>4MB~16MB</code>，高带宽专线或 RDMA 环境 <code>64MB~256MB</code>。</p>
 <h2 id="八、监控指标体系"><a href="#八、监控指标体系" class="headerlink" title="八、监控指标体系"></a>八、监控指标体系</h2><p>Media Driver 通过 <code>CountersReader</code>（映射共享内存中的 Counters 文件）暴露丰富的运行时指标：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">Media Driver Counters</span><br><span class="line">├── Sender</span><br><span class="line">│   ├── bytes-sent（累计发送字节数）</span><br><span class="line">│   ├── messages-sent（累计发送消息数）</span><br><span class="line">│   ├── send-channel-status（Socket 状态，ACTIVE=1）</span><br><span class="line">│   └── sender-flow-control-limits（流控触发次数）</span><br><span class="line">│</span><br><span class="line">├── Receiver</span><br><span class="line">│   ├── bytes-received（累计接收字节数）</span><br><span class="line">│   ├── messages-received（累计接收消息数）</span><br><span class="line">│   ├── nak-messages-sent（发送的 NAK 帧数）</span><br><span class="line">│   ├── status-messages-sent（发送的 SM 帧数）</span><br><span class="line">│   └── receive-channel-status</span><br><span class="line">│</span><br><span class="line">├── Conductor</span><br><span class="line">│   ├── client-timeouts（客户端超时次数）</span><br><span class="line">│   ├── publication-unblocked（解除阻塞次数）</span><br><span class="line">│   └── conductor-max-cycle-time（最大 duty cycle 耗时 ns）</span><br><span class="line">│</span><br><span class="line">└── System</span><br><span class="line">    ├── error-count（错误计数，关键告警指标）</span><br><span class="line">    └── free-distinct-errors（最近不重复错误条目）</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph LR
+ROOT["Media Driver Counters"]
+ROOT --> S["Sender"]
+ROOT --> R["Receiver"]
+ROOT --> C["Conductor"]
+ROOT --> SY["System"]
+S --> S1["bytes-sent(累计发送字节数)"]
+S --> S2["messages-sent(累计发送消息数)"]
+S --> S3["send-channel-status(Socket 状态, ACTIVE=1)"]
+S --> S4["sender-flow-control-limits(流控触发次数)"]
+R --> R1["bytes-received(累计接收字节数)"]
+R --> R2["messages-received(累计接收消息数)"]
+R --> R3["nak-messages-sent(发送的 NAK 帧数)"]
+R --> R4["status-messages-sent(发送的 SM 帧数)"]
+R --> R5["receive-channel-status"]
+C --> C1["client-timeouts(客户端超时次数)"]
+C --> C2["publication-unblocked(解除阻塞次数)"]
+C --> C3["conductor-max-cycle-time(最大 duty cycle 耗时 ns)"]
+SY --> SY1["error-count(错误计数, 关键告警指标)"]
+SY --> SY2["free-distinct-errors(最近不重复错误条目)"]
+</div>
 
 <p>通过 <code>AeronStat</code> 工具可实时查看所有 Counter：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 Media Driver 实时指标</span></span><br><span class="line">java -<span class="built_in">cp</span> aeron-all.jar io.aeron.samples.AeronStat</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看错误日志</span></span><br><span class="line">java -<span class="built_in">cp</span> aeron-all.jar io.aeron.samples.ErrorStat</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看活跃流信息</span></span><br><span class="line">java -<span class="built_in">cp</span> aeron-all.jar io.aeron.samples.StreamStat</span><br></pre></td></tr></table></figure>
@@ -616,6 +719,16 @@
 <li><p><strong>独立部署场景下，Media Driver 进程应配置为系统服务（systemd）</strong>，并设置合理的重启策略（<code>Restart=on-failure</code>）</p>
 </li>
 </ol>
+<hr>
+<h2 id="Aeron-系列"><a href="#Aeron-系列" class="headerlink" title="Aeron 系列"></a>Aeron 系列</h2><ul>
+<li><a href="/posts/fdcdfbb5/">Aeron 概述</a></li>
+<li><a href="/posts/43d5f152/">Channel、Stream、Session 深度解析</a></li>
+<li><strong>Media Driver 深度解析</strong>（本文）</li>
+<li><a href="/posts/fbf83150/">传输模式与 NAK 流控深度解析</a></li>
+<li><a href="/posts/406b47f8/">编程模型深度解析</a></li>
+<li><a href="/posts/987bb85b/">Aeron Archive 深度解析</a></li>
+<li><a href="/posts/fed0dafe/">Aeron Cluster 与运维工具</a></li>
+</ul>
 
                     
                 </div>
@@ -672,11 +785,11 @@
                             <div class="next-post">
                                 <a class="next"
                                    rel="next"
-                                   href="/posts/3879a72a/"
-                                   title="Aeron 硬核技术深度解析"
+                                   href="/posts/43d5f152/"
+                                   title="Aeron Channel、Stream 和 Session 深度解析"
                                 >
                                     <span class="title flex-center">
-                                        <span class="post-nav-title-item text-ellipsis">Aeron 硬核技术深度解析</span>
+                                        <span class="post-nav-title-item text-ellipsis">Aeron Channel、Stream 和 Session 深度解析</span>
                                         <span class="post-nav-item">下一篇</span>
                                     </span>
                                     <span class="right arrow-icon flex-center">
@@ -704,7 +817,7 @@
             <div class="pc-post-toc right-toc">
                 <div class="post-toc-wrap border-box">
     <div class="post-toc border-box">
-        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81Media-Driver-%E7%9A%84%E5%AE%9A%E4%BD%8D%E4%B8%8E%E8%81%8C%E8%B4%A3"><span class="nav-text">一、Media Driver 的定位与职责</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84"><span class="nav-text">二、核心架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-Driver-Conductor"><span class="nav-text">2.1 Driver Conductor</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-Sender"><span class="nav-text">2.2 Sender</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-Receiver"><span class="nav-text">2.3 Receiver</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B"><span class="nav-text">三、线程模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E6%A8%A1%E5%BC%8F%E9%80%89%E5%9E%8B%E4%BE%9D%E6%8D%AE"><span class="nav-text">3.1 模式选型依据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-Idle-Strategy"><span class="nav-text">3.2 Idle Strategy</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E9%80%9A%E4%BF%A1%E6%9C%BA%E5%88%B6"><span class="nav-text">四、通信机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%B8%8E-Driver-%E7%9A%84%E6%8E%A7%E5%88%B6%E9%9D%A2%E9%80%9A%E4%BF%A1"><span class="nav-text">4.1 客户端与 Driver 的控制面通信</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E6%95%B0%E6%8D%AE%E9%9D%A2%EF%BC%9ALog-Buffer-%E6%9C%BA%E5%88%B6"><span class="nav-text">4.2 数据面：Log Buffer 机制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E9%83%A8%E7%BD%B2%E6%A8%A1%E5%BC%8F"><span class="nav-text">五、部署模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%B5%8C%E5%85%A5%E5%BC%8F%E6%A8%A1%E5%BC%8F%EF%BC%88Embedded-Media-Driver%EF%BC%89"><span class="nav-text">5.1 嵌入式模式（Embedded Media Driver）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E7%8B%AC%E7%AB%8B%E8%BF%9B%E7%A8%8B%E6%A8%A1%E5%BC%8F%EF%BC%88Standalone-Media-Driver%EF%BC%89"><span class="nav-text">5.2 独立进程模式（Standalone Media Driver）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81Java-%E4%B8%8E-C-%E5%AE%9E%E7%8E%B0"><span class="nav-text">六、Java 与 C 实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-Java-Media-Driver"><span class="nav-text">6.1 Java Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-C-Media-Driver"><span class="nav-text">6.2 C Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-%E5%85%B3%E9%94%AE%E8%A1%8C%E4%B8%BA%E5%B7%AE%E5%BC%82"><span class="nav-text">6.3 关键行为差异</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%85%B3%E9%94%AE%E9%85%8D%E7%BD%AE%E5%8F%82%E6%95%B0"><span class="nav-text">七、关键配置参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87%E4%BD%93%E7%B3%BB"><span class="nav-text">八、监控指标体系</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="nav-text">九、常见问题排查</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-Media-Driver-%E5%90%AF%E5%8A%A8%E5%A4%B1%E8%B4%A5"><span class="nav-text">9.1 Media Driver 启动失败</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-Publication-%E8%83%8C%E5%8E%8B%EF%BC%88Back-Pressure%EF%BC%89"><span class="nav-text">9.2 Publication 背压（Back Pressure）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-Image-%E9%A2%91%E7%B9%81%E5%85%B3%E9%97%AD%E9%87%8D%E5%BB%BA"><span class="nav-text">9.3 Image 频繁关闭重建</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-4-%E9%AB%98%E5%B0%BE%E5%BB%B6%E8%BF%9F%EF%BC%88High-Tail-Latency%EF%BC%89"><span class="nav-text">9.4 高尾延迟（High Tail Latency）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E9%83%A8%E7%BD%B2%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="nav-text">十、部署最佳实践</span></a></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81Media-Driver-%E7%9A%84%E5%AE%9A%E4%BD%8D%E4%B8%8E%E8%81%8C%E8%B4%A3"><span class="nav-text">一、Media Driver 的定位与职责</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84"><span class="nav-text">二、核心架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-Driver-Conductor"><span class="nav-text">2.1 Driver Conductor</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-Sender"><span class="nav-text">2.2 Sender</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-Receiver"><span class="nav-text">2.3 Receiver</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B"><span class="nav-text">三、线程模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E6%A8%A1%E5%BC%8F%E9%80%89%E5%9E%8B%E4%BE%9D%E6%8D%AE"><span class="nav-text">3.1 模式选型依据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-Idle-Strategy"><span class="nav-text">3.2 Idle Strategy</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E9%80%9A%E4%BF%A1%E6%9C%BA%E5%88%B6"><span class="nav-text">四、通信机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%B8%8E-Driver-%E7%9A%84%E6%8E%A7%E5%88%B6%E9%9D%A2%E9%80%9A%E4%BF%A1"><span class="nav-text">4.1 客户端与 Driver 的控制面通信</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E6%95%B0%E6%8D%AE%E9%9D%A2%EF%BC%9ALog-Buffer-%E6%9C%BA%E5%88%B6"><span class="nav-text">4.2 数据面：Log Buffer 机制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E9%83%A8%E7%BD%B2%E6%A8%A1%E5%BC%8F"><span class="nav-text">五、部署模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%B5%8C%E5%85%A5%E5%BC%8F%E6%A8%A1%E5%BC%8F%EF%BC%88Embedded-Media-Driver%EF%BC%89"><span class="nav-text">5.1 嵌入式模式（Embedded Media Driver）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E7%8B%AC%E7%AB%8B%E8%BF%9B%E7%A8%8B%E6%A8%A1%E5%BC%8F%EF%BC%88Standalone-Media-Driver%EF%BC%89"><span class="nav-text">5.2 独立进程模式（Standalone Media Driver）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81Java-%E4%B8%8E-C-%E5%AE%9E%E7%8E%B0"><span class="nav-text">六、Java 与 C 实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-Java-Media-Driver"><span class="nav-text">6.1 Java Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-C-Media-Driver"><span class="nav-text">6.2 C Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-%E5%85%B3%E9%94%AE%E8%A1%8C%E4%B8%BA%E5%B7%AE%E5%BC%82"><span class="nav-text">6.3 关键行为差异</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%85%B3%E9%94%AE%E9%85%8D%E7%BD%AE%E5%8F%82%E6%95%B0"><span class="nav-text">七、关键配置参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87%E4%BD%93%E7%B3%BB"><span class="nav-text">八、监控指标体系</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="nav-text">九、常见问题排查</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-Media-Driver-%E5%90%AF%E5%8A%A8%E5%A4%B1%E8%B4%A5"><span class="nav-text">9.1 Media Driver 启动失败</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-Publication-%E8%83%8C%E5%8E%8B%EF%BC%88Back-Pressure%EF%BC%89"><span class="nav-text">9.2 Publication 背压（Back Pressure）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-Image-%E9%A2%91%E7%B9%81%E5%85%B3%E9%97%AD%E9%87%8D%E5%BB%BA"><span class="nav-text">9.3 Image 频繁关闭重建</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-4-%E9%AB%98%E5%B0%BE%E5%BB%B6%E8%BF%9F%EF%BC%88High-Tail-Latency%EF%BC%89"><span class="nav-text">9.4 高尾延迟（High Tail Latency）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E9%83%A8%E7%BD%B2%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="nav-text">十、部署最佳实践</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Aeron-%E7%B3%BB%E5%88%97"><span class="nav-text">Aeron 系列</span></a></li></ol>
     </div>
 </div>
 
@@ -873,7 +986,7 @@
             <div class="tablet-post-toc">
                 <div class="post-toc-wrap border-box">
     <div class="post-toc border-box">
-        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81Media-Driver-%E7%9A%84%E5%AE%9A%E4%BD%8D%E4%B8%8E%E8%81%8C%E8%B4%A3"><span class="nav-text">一、Media Driver 的定位与职责</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84"><span class="nav-text">二、核心架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-Driver-Conductor"><span class="nav-text">2.1 Driver Conductor</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-Sender"><span class="nav-text">2.2 Sender</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-Receiver"><span class="nav-text">2.3 Receiver</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B"><span class="nav-text">三、线程模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E6%A8%A1%E5%BC%8F%E9%80%89%E5%9E%8B%E4%BE%9D%E6%8D%AE"><span class="nav-text">3.1 模式选型依据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-Idle-Strategy"><span class="nav-text">3.2 Idle Strategy</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E9%80%9A%E4%BF%A1%E6%9C%BA%E5%88%B6"><span class="nav-text">四、通信机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%B8%8E-Driver-%E7%9A%84%E6%8E%A7%E5%88%B6%E9%9D%A2%E9%80%9A%E4%BF%A1"><span class="nav-text">4.1 客户端与 Driver 的控制面通信</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E6%95%B0%E6%8D%AE%E9%9D%A2%EF%BC%9ALog-Buffer-%E6%9C%BA%E5%88%B6"><span class="nav-text">4.2 数据面：Log Buffer 机制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E9%83%A8%E7%BD%B2%E6%A8%A1%E5%BC%8F"><span class="nav-text">五、部署模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%B5%8C%E5%85%A5%E5%BC%8F%E6%A8%A1%E5%BC%8F%EF%BC%88Embedded-Media-Driver%EF%BC%89"><span class="nav-text">5.1 嵌入式模式（Embedded Media Driver）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E7%8B%AC%E7%AB%8B%E8%BF%9B%E7%A8%8B%E6%A8%A1%E5%BC%8F%EF%BC%88Standalone-Media-Driver%EF%BC%89"><span class="nav-text">5.2 独立进程模式（Standalone Media Driver）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81Java-%E4%B8%8E-C-%E5%AE%9E%E7%8E%B0"><span class="nav-text">六、Java 与 C 实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-Java-Media-Driver"><span class="nav-text">6.1 Java Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-C-Media-Driver"><span class="nav-text">6.2 C Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-%E5%85%B3%E9%94%AE%E8%A1%8C%E4%B8%BA%E5%B7%AE%E5%BC%82"><span class="nav-text">6.3 关键行为差异</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%85%B3%E9%94%AE%E9%85%8D%E7%BD%AE%E5%8F%82%E6%95%B0"><span class="nav-text">七、关键配置参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87%E4%BD%93%E7%B3%BB"><span class="nav-text">八、监控指标体系</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="nav-text">九、常见问题排查</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-Media-Driver-%E5%90%AF%E5%8A%A8%E5%A4%B1%E8%B4%A5"><span class="nav-text">9.1 Media Driver 启动失败</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-Publication-%E8%83%8C%E5%8E%8B%EF%BC%88Back-Pressure%EF%BC%89"><span class="nav-text">9.2 Publication 背压（Back Pressure）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-Image-%E9%A2%91%E7%B9%81%E5%85%B3%E9%97%AD%E9%87%8D%E5%BB%BA"><span class="nav-text">9.3 Image 频繁关闭重建</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-4-%E9%AB%98%E5%B0%BE%E5%BB%B6%E8%BF%9F%EF%BC%88High-Tail-Latency%EF%BC%89"><span class="nav-text">9.4 高尾延迟（High Tail Latency）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E9%83%A8%E7%BD%B2%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="nav-text">十、部署最佳实践</span></a></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81Media-Driver-%E7%9A%84%E5%AE%9A%E4%BD%8D%E4%B8%8E%E8%81%8C%E8%B4%A3"><span class="nav-text">一、Media Driver 的定位与职责</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84"><span class="nav-text">二、核心架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-Driver-Conductor"><span class="nav-text">2.1 Driver Conductor</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-Sender"><span class="nav-text">2.2 Sender</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-Receiver"><span class="nav-text">2.3 Receiver</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B"><span class="nav-text">三、线程模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E6%A8%A1%E5%BC%8F%E9%80%89%E5%9E%8B%E4%BE%9D%E6%8D%AE"><span class="nav-text">3.1 模式选型依据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-Idle-Strategy"><span class="nav-text">3.2 Idle Strategy</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E9%80%9A%E4%BF%A1%E6%9C%BA%E5%88%B6"><span class="nav-text">四、通信机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%B8%8E-Driver-%E7%9A%84%E6%8E%A7%E5%88%B6%E9%9D%A2%E9%80%9A%E4%BF%A1"><span class="nav-text">4.1 客户端与 Driver 的控制面通信</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E6%95%B0%E6%8D%AE%E9%9D%A2%EF%BC%9ALog-Buffer-%E6%9C%BA%E5%88%B6"><span class="nav-text">4.2 数据面：Log Buffer 机制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E9%83%A8%E7%BD%B2%E6%A8%A1%E5%BC%8F"><span class="nav-text">五、部署模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%B5%8C%E5%85%A5%E5%BC%8F%E6%A8%A1%E5%BC%8F%EF%BC%88Embedded-Media-Driver%EF%BC%89"><span class="nav-text">5.1 嵌入式模式（Embedded Media Driver）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E7%8B%AC%E7%AB%8B%E8%BF%9B%E7%A8%8B%E6%A8%A1%E5%BC%8F%EF%BC%88Standalone-Media-Driver%EF%BC%89"><span class="nav-text">5.2 独立进程模式（Standalone Media Driver）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81Java-%E4%B8%8E-C-%E5%AE%9E%E7%8E%B0"><span class="nav-text">六、Java 与 C 实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-Java-Media-Driver"><span class="nav-text">6.1 Java Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-C-Media-Driver"><span class="nav-text">6.2 C Media Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-%E5%85%B3%E9%94%AE%E8%A1%8C%E4%B8%BA%E5%B7%AE%E5%BC%82"><span class="nav-text">6.3 关键行为差异</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%85%B3%E9%94%AE%E9%85%8D%E7%BD%AE%E5%8F%82%E6%95%B0"><span class="nav-text">七、关键配置参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87%E4%BD%93%E7%B3%BB"><span class="nav-text">八、监控指标体系</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="nav-text">九、常见问题排查</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-Media-Driver-%E5%90%AF%E5%8A%A8%E5%A4%B1%E8%B4%A5"><span class="nav-text">9.1 Media Driver 启动失败</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-Publication-%E8%83%8C%E5%8E%8B%EF%BC%88Back-Pressure%EF%BC%89"><span class="nav-text">9.2 Publication 背压（Back Pressure）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-Image-%E9%A2%91%E7%B9%81%E5%85%B3%E9%97%AD%E9%87%8D%E5%BB%BA"><span class="nav-text">9.3 Image 频繁关闭重建</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-4-%E9%AB%98%E5%B0%BE%E5%BB%B6%E8%BF%9F%EF%BC%88High-Tail-Latency%EF%BC%89"><span class="nav-text">9.4 高尾延迟（High Tail Latency）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E9%83%A8%E7%BD%B2%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="nav-text">十、部署最佳实践</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Aeron-%E7%B3%BB%E5%88%97"><span class="nav-text">Aeron 系列</span></a></li></ol>
     </div>
 </div>
 
@@ -956,6 +1069,19 @@
 </div>
 
 <!-- mermaid -->
+
+    
+<script src="//cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
+    <script data-pjax>
+      if (window.mermaid) {
+        mermaid.init()
+      }
+    </script>
+
+
+
+
 
 
 <!-- pjax -->
