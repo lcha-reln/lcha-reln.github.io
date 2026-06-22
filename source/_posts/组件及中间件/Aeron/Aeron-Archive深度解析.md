@@ -1,5 +1,5 @@
 ---
-title: Aeron Archive 技术文档
+title: Aeron Archive 深度解析
 tags:
   - 高性能
   - 分布式
@@ -31,37 +31,22 @@ Aeron Archive 是一个使用 Aeron Transport 进行通信的应用程序，与�
 
 ## 2. 系统架构
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                      Client Process                       │
-│                                                           │
-│  ┌─────────────┐          ┌──────────────────────────┐   │
-│  │ Application │          │     Archive Client        │   │
-│  │ 1. 业务逻辑  │ ──────── │ 2. 录制/回放请求处理      │   │
-│  └─────────────┘          └──────────────────────────┘   │
-│                                       │                   │
-│                              3. Archive 协议通信           │
-└──────────────────────────────────────┼───────────────────┘
-                                       ▼
-┌──────────────────────────────────────────────────────────┐
-│                  Archive Service Process                   │
-│                                                           │
-│  ┌──────────────────┐     ┌──────────────────────────┐   │
-│  │ Archiving Media  │     │      Archive Agent        │   │
-│  │     Driver       │     │  • 录制管理               │   │
-│  │  4. 媒体传输      │ ─── │  • 回放控制               │   │
-│  └──────────────────┘     │  • 文件操作               │   │
-│                           └──────────────────────────┘   │
-│                                       │ 5. 存储操作        │
-│                                       ▼                   │
-│                    ┌─────────────────────────────────┐   │
-│                    │          持久化存储               │   │
-│                    │  • Catalog（元数据）              │   │
-│                    │  • Segment Files（数据）          │   │
-│                    │  • Mark Files（状态）             │   │
-│                    └─────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────┘
-```
+<div class="mermaid">
+graph TD
+  subgraph CP["Client Process"]
+    APP["Application(1. 业务逻辑)"]
+    AC["Archive Client(2. 录制/回放请求处理)"]
+    APP ---|"协作"| AC
+  end
+  subgraph ASP["Archive Service Process"]
+    AMD["Archiving Media Driver(4. 媒体传输)"]
+    AA["Archive Agent(录制管理 / 回放控制 / 文件操作)"]
+    AMD ---|"协作"| AA
+    PS["持久化存储(Catalog 元数据 / Segment Files 数据 / Mark Files 状态)"]
+    AA -->|"5. 存储操作"| PS
+  end
+  AC -->|"3. Archive 协议通信"| AMD
+</div>
 
 **Archive Agent 支持的命令类型：**
 
@@ -97,20 +82,23 @@ Aeron Archive 是一个使用 Aeron Transport 进行通信的应用程序，与�
 
 ### Archive 内部组件关系
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Aeron Archive                         │
-│                                                          │
-│  ┌────────────┐    ┌──────────────────┐                 │
-│  │  Replayer  │    │  Publications    │                  │
-│  ├────────────┤    ├──────────────────┤   Shared        │
-│  │  Archive   │    │ Client Conductor │ ─ Memory ─ Media │
-│  │ Conductor  │    ├──────────────────┤          Driver │
-│  ├────────────┤    │  Subscriptions   │                  │
-│  │  Recorder  │    └──────────────────┘                 │
-│  └────────────┘    Aeron Transport Client                │
-└─────────────────────────────────────────────────────────┘
-```
+<div class="mermaid">
+graph LR
+  subgraph AA["Aeron Archive"]
+    subgraph CORE[" "]
+      R1[Replayer]
+      AC[Archive Conductor]
+      R2[Recorder]
+    end
+    subgraph ATC["Aeron Transport Client"]
+      P[Publications]
+      CC[Client Conductor]
+      S[Subscriptions]
+    end
+  end
+  MD[Media Driver]
+  ATC -->|Shared Memory| MD
+</div>
 
 ---
 
@@ -264,15 +252,28 @@ Aeron Archive 有四种运行方式：
 
 **典型业务场景（交易系统）：**
 
-```
-Machine 1                              Machine 2
-┌─────────────────┐                 ┌──────────────────────┐
-│ Market Data     │  live market    │  Media Driver        │
-│ Collector  Pub → Pub → Sender  → data channel → Receiver │
-│                 │                 │  Image → Sub         │
-└─────────────────┘                 │  Trading Strategy    │
-                                    └──────────────────────┘
-```
+<div class="mermaid">
+graph LR
+subgraph M1["Machine 1"]
+  MDC["Market Data Collector"]
+  PUB["Pub"]
+  SENDER["Sender"]
+end
+subgraph M2["Machine 2"]
+  MD["Media Driver"]
+  RECV["Receiver"]
+  IMG["Image"]
+  SUB["Sub"]
+  TS["Trading Strategy"]
+end
+MDC --> PUB
+PUB -->|"live market data"| SENDER
+SENDER -->|"data channel"| RECV
+RECV --> MD
+MD --> IMG
+IMG --> SUB
+SUB --> TS
+</div>
 
 - **追赶（catchup）**：如果重启或部署了新的交易策略版本，而市场数据采集器继续运行，可以重放交易策略停机期间错过的实时数据。一旦同步完成，交易策略可重新加入实时流（称为**重放合并**）
 - **开发环境重放**：能够在开发环境中重放实时数据，以重现并逐步分析实时交易策略经历的场景
@@ -301,19 +302,22 @@ Machine 1                              Machine 2
 
 **Spy Subscription 原理图：**
 
-```
-Machine 1
-┌──────────────────────────────────────┐
-│  Market Data                         │
-│  Collector  Pub ──────────→ Pub ──→ Sender (Media Driver)
-│                              │
-│                             Spy
-│                              │
-│  Aeron Archive   Sub ◄───────┘
-│                   │
-│               Recording ──→ Segment Files
-└──────────────────────────────────────┘
-```
+<div class="mermaid">
+graph LR
+  subgraph M1["Machine 1"]
+    MDC["Market Data Collector Pub"]
+    P["Pub"]
+    S["Sender (Media Driver)"]
+    AA["Aeron Archive Sub"]
+    R["Recording"]
+    SEG["Segment Files"]
+    MDC --> P
+    P --> S
+    P -->|Spy| AA
+    AA --> R
+    R --> SEG
+  end
+</div>
 
 当创建 Spy Subscription（图中为"Sub"）并调用 `AvailableImageHandler` 时，Image（在 Aeron 客户端中只是一个指向日志缓冲区的 Java 对象）对应的是 Publication 的日志缓冲区（图中为"Pub"）。Aeron Archive 中的 `RecordingSession` 是专为该 Image 创建的。
 
@@ -494,29 +498,42 @@ Machine 1
 
 ### 状态机
 
-```
-           开始录制              处理消息              停止录制
-              ↓                    ↓                    ↓
-┌──────────┐      ┌──────────────────────┐      ┌────────────┐
-│  START   │─────→│       ACTIVE         │─────→│  STOPPED   │
-│ 创建录制  │      │ • 持续写入消息数据    │      │ • 完成录制  │
-│ 元数据   │      │ • Position 更新       │      │ • 更新状态  │
-└──────────┘      │ • Segment 文件        │      └────────────┘
-     │            │ • 实时状态            │            │
-     │            └──────────────────────┘            │
-     ↓                                                 ↓
- Recording ID                                    Stop Position
- Channel/Stream                                  Stop Timestamp
- Start Position                                  最终元数据
-```
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> START
+    START --> ACTIVE: 开始录制
+    ACTIVE --> STOPPED: 停止录制
+    ACTIVE --> ACTIVE: 处理消息
+    state START {
+        s1: 创建录制元数据
+        s2: 输出 Recording ID
+        s3: 输出 Channel/Stream
+        s4: 输出 Start Position
+    }
+    state ACTIVE {
+        a1: 持续写入消息数据
+        a2: Position 更新
+        a3: Segment 文件
+        a4: 实时状态
+    }
+    state STOPPED {
+        t1: 完成录制
+        t2: 更新状态
+        t3: 输出 Stop Position
+        t4: 输出 Stop Timestamp
+        t5: 输出最终元数据
+    }
+</div>
 
 **扩展录制（重启后继续）：**
 
-```
-STOPPED ─────→ ACTIVE（扩展模式）
-                └── 从 Stop Position 继续
-└── 重新打开现有录制
-```
+<div class="mermaid">
+graph LR
+S[STOPPED]
+A["ACTIVE(扩展模式)"]
+S -->|"重新打开现有录制"| A
+A -->|"从 Stop Position 继续"| A
+</div>
 
 ### RecordingDescriptor 关键字段
 
@@ -599,23 +616,18 @@ Aeron Archive 还包含一个**录制事件通道**（默认情况下禁用）�
 
 ### 流程概览
 
-```
-客户端                    Archive Service              Storage
-   │                           │                          │
-   │  1. startReplay()         │                          │
-   │   (recordingId, position, │                          │
-   │    length, replayChannel) │                          │
-   │──────────────────────────→│                          │
-   │                           │  2. 验证参数              │
-   │                           │──────────────────────────→
-   │                           │  3. 创建 ReplaySession    │
-   │                           │──────────────────────────→
-   │  4. sessionId 返回         │                          │
-   │←──────────────────────────│                          │
-   │  5. 订阅 replayChannel     │                          │
-   │                           │  6. 流式传输数据           │
-   │←──────────────────────────────────────────────────────
-```
+<div class="mermaid">
+sequenceDiagram
+    participant C as 客户端
+    participant A as Archive Service
+    participant S as Storage
+    C->>A: 1. startReplay() (recordingId, position, length, replayChannel)
+    A->>S: 2. 验证参数
+    A->>S: 3. 创建 ReplaySession
+    A-->>C: 4. sessionId 返回
+    C->>C: 5. 订阅 replayChannel
+    S-->>C: 6. 流式传输数据
+</div>
 
 ### 详细步骤
 
@@ -678,12 +690,11 @@ Aeron Archive 最终都会进入 `ArchiveConductor.startReplay()`：
 
 **状态流转：**
 
-```
-INIT ──────────────────────────────────────────────────────→ REPLAY
- │    客户端创建 Sub 并连接了 replayChannel 的 Pub 时
- │
- └── 5 秒内未连接 ──→ INACTIVE（终止态，超时出错）
-```
+<div class="mermaid">
+stateDiagram-v2
+    INIT --> REPLAY: 客户端创建 Sub 并连接了 replayChannel 的 Pub 时
+    INIT --> INACTIVE: 5 秒内未连接(终止态,超时出错)
+</div>
 
 `ReplaySession` 在 INIT 状态，直到回到 `replayChannel` 的 Publication 已创建且客户端已连接到它（创建了 Subscription）。
 
@@ -783,3 +794,15 @@ final long replaySessionId = ((long)(replayId++) << 32) | (replayPublication.ses
 | `ArchiveConductor` | Archive 的核心协调组件，负责处理控制请求和管理会话 |
 | `Recorder` | 负责管理多个 `RecordingSession` 的组件 |
 | `Replayer` | 负责管理多个 `ReplaySession` 的组件 |
+
+---
+
+## Aeron 系列
+
+- [Aeron 概述](/posts/fdcdfbb5/)
+- [Channel、Stream、Session 深度解析](/posts/43d5f152/)
+- [Media Driver 深度解析](/posts/bc5589ca/)
+- [传输模式与 NAK 流控深度解析](/posts/fbf83150/)
+- [编程模型深度解析](/posts/406b47f8/)
+- **Aeron Archive 深度解析**（本文）
+- [Aeron Cluster 与运维工具](/posts/fed0dafe/)

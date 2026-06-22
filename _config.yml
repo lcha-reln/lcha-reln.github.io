@@ -59,6 +59,12 @@ prismjs:
   line_number: true
   tab_replace: ''
 
+# Mermaid 图表渲染（keep 主题读取站点 config.mermaid.enable 注入 mermaid.js，
+# 文章内用 <div class="mermaid"> 原始块书写，由 mermaid.js 客户端渲染）
+mermaid:
+  enable: true
+  version: 10.5.0
+
 # Home page setting
 # path: Root path for your blogs index page. (default = '')
 # per_page: Posts displayed per page. (0 = disable pagination)

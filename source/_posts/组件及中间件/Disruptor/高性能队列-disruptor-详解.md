@@ -12,7 +12,16 @@ date: 2026-03-07 10:43:08
 **本文摘录自：https://tech.meituan.com/2016/11/18/disruptor.html**
 # 1.Java 内置队列
 让我们先看看常用的线程安全的内置队列有什么问题：
-![Java常用的线程安全的内置队列](/images/disruptor/disruptor-queues.png)
+<div class="mermaid">
+graph LR
+H["队列 / 有界性 / 锁 / 数据结构"]
+H --> R1["ArrayBlockingQueue | bounded | 加锁 | arraylist"]
+H --> R2["LinkedBlockingQueue | optionally-bounded | 加锁 | linkedlist"]
+H --> R3["ConcurrentLinkedQueue | unbounded | 无锁 | linkedlist"]
+H --> R4["LinkedTransferQueue | unbounded | 无锁 | linkedlist"]
+H --> R5["PriorityBlockingQueue | unbounded | 加锁 | heap"]
+H --> R6["DelayQueue | unbounded | 加锁 | heap"]
+</div>
 队列的底层一般分成三种：数组、链表和堆。其中，堆一般情况下是为了实现带有优先级特性的队列，暂且不考虑。
 
 我们就从数组和链表两种数据结构来看，基于数组线程安全的队列，比较典型的是ArrayBlockingQueue，它主要通过加锁的方式来保证线程安全；基于链表的线程安全队列分成LinkedBlockingQueue和ConcurrentLinkedQueue两大类，前者也通过锁的方式来实现线程安全，而后者以及上面表格中的LinkedTransferQueue都是通过原子变量compare and swap（以下简称“CAS”）这种不加锁的方式来实现的。
@@ -40,7 +49,17 @@ CAS操作比单线程无锁慢了1个数量级；有锁且多线程并发的情�
 ## 2.2.关于锁和CAS
 保证线程安全一般分成两种方式：锁和原子变量。
 ### 2.2.1 锁
-![锁](/images/disruptor/锁.png)
+<div class="mermaid">
+graph LR
+    T1["Thread 1 (myValue = getValue(); setValue(3);)"]
+    LOCK["锁 (lock)"]
+    T2["Thread 2 (myValue = getValue(); setValue(2);)"]
+    subgraph CS["临界区 (同时只有一个线程进入)"]
+        ENTRY["Entry (+ value: int = 1)"]
+    end
+    T1 -. "X 被锁拦截 无法访问" .-> LOCK
+    T2 -- "加锁后访问" --> ENTRY
+</div>
 采取加锁的方式，默认线程会冲突，访问数据时，先加上锁再访问，访问之后再解锁。通过锁界定一个临界区，同时只有一个线程进入。如上图所示，Thread2访问Entry的时候，加了锁，Thread1就不能再执行访问Entry的代码，从而保证线程安全。
 
 下面是ArrayBlockingQueue通过加锁的方式实现的offer方法，保证线程安全。
@@ -65,7 +84,14 @@ public boolean offer(E e) {
 原子变量能够保证原子性的操作，意思是某个任务在执行过程中，要么全部成功，要么全部失败回滚，恢复到执行之前的初态，不存在初态和成功之间的中间状态。例如CAS操作，要么比较并交换成功，要么比较并交换失败。由CPU保证原子性。
 
 通过原子变量可以实现线程安全。执行某个任务的时候，先假定不会有冲突，若不发生冲突，则直接执行成功；当发生冲突的时候，则执行失败，回滚再重新操作，直到不发生冲突。
-![通过原子变量CAS实现线程安全](/images/disruptor/通过原子变量CAS实现线程安全.png)
+<div class="mermaid">
+graph BT
+ENTRY["Entry --- + value: int = 1"]
+T1["Thread 1 --- myValue = getValue() --- newValue = myValue + 1; --- compareAndSet(myValue, newValue)"]
+T2["Thread 2 --- myValue = getValue() --- newValue = myValue + 1; --- compareAndSet(myValue, newValue)"]
+T1 --> ENTRY
+T2 --> ENTRY
+</div>
 如图所示，Thread1和Thread2都要把Entry加1。若不加锁，也不使用CAS，有可能Thread1取到了myValue=1，Thread2也取到了myValue=1，然后相加，Entry中的value值为2。这与预期不相符，我们预期的是Entry的值经过两次相加后等于3。
 
 CAS会先把Entry现在的value跟线程当初读出的值相比较，若相同，则赋值；若不相同，则赋值执行失败。一般会通过while/for循环来重新执行，直到赋值成功。
@@ -104,13 +130,62 @@ public final boolean compareAndSet(int expect, int update) {
 ## 2.3.伪共享
 ### 2.3.1.共享
 下图是计算的基本结构。L1、L2、L3分别表示一级缓存、二级缓存、三级缓存，越靠近CPU的缓存，速度越快，容量也越小。所以L1缓存很小但很快，并且紧靠着在使用它的CPU内核；L2大一些，也慢一些，并且仍然只能被一个单独的CPU核使用；L3更大、更慢，并且被单个插槽上的所有CPU核共享；最后是主存，由全部插槽上的所有CPU核共享。
-![计算机CPU与缓存示意图](/images/disruptor/计算机CPU与缓存示意图.png)
+<div class="mermaid">
+graph TD
+MEM["Memory"]
+MEM --- L3A["L3"]
+MEM --- L3B["L3"]
+L3A --- L2A["L2"]
+L3A --- L2B["L2"]
+L3B --- L2C["L2"]
+L3B --- L2D["L2"]
+L2A --- L1A["L1"]
+L2B --- L1B["L1"]
+L2C --- L1C["L1"]
+L2D --- L1D["L1"]
+L1A --- C1(("cpu1"))
+L1B --- C2(("cpu2"))
+L1C --- C3(("cpu3"))
+L1D --- C4(("cpu3"))
+</div>
 当CPU执行运算的时候，它先去L1查找所需的数据、再去L2、然后是L3，如果最后这些缓存中都没有，所需的数据就要去主内存拿。走得越远，运算耗费的时间就越长。所以如果你在做一些很频繁的事，你要尽量确保数据在L1缓存中。
 
 另外，线程之间共享一份数据的时候，需要一个线程把数据写回主存，而另一个线程访问主存中相应的数据。
 
 下面是从CPU访问不同层级数据的时间概念:
-![CPU访问](/images/disruptor/CPU访问.png)
+<div class="mermaid">
+graph TD
+  subgraph HDR["从CPU访问不同层级数据耗时"]
+    H1["从CPU到"]
+    H2["大约需要的CPU周期"]
+    H3["大约需要的时间"]
+  end
+  R1A["主存"]
+  R1B["-"]
+  R1C["约60-80ns"]
+  R2A["QPI 总线传输(between sockets, not drawn)"]
+  R2B["-"]
+  R2C["约20ns"]
+  R3A["L3 cache"]
+  R3B["约40-45 cycles"]
+  R3C["约15ns"]
+  R4A["L2 cache"]
+  R4B["约10 cycles"]
+  R4C["约3ns"]
+  R5A["L1 cache"]
+  R5B["约3-4 cycles"]
+  R5C["约1ns"]
+  R6A["寄存器"]
+  R6B["1 cycle"]
+  R6C["-"]
+  H1 --> R1A --> R2A --> R3A --> R4A --> R5A --> R6A
+  R1A --- R1B --- R1C
+  R2A --- R2B --- R2C
+  R3A --- R3B --- R3C
+  R4A --- R4B --- R4C
+  R5A --- R5B --- R5C
+  R6A --- R6B --- R6C
+</div>
 可见CPU读取主存中的数据会比从L1中读取慢了近2个数量级。
 ### 2.3.2.缓存行
 Cache是由很多个cache line组成的。每个cache line通常是64字节，并且它有效地引用主内存中的一块儿地址。一个Java的long类型变量是8字节，因此在一个缓存行中可以存8个long类型的变量。
@@ -160,7 +235,38 @@ Loop times:30ms Loop times:65ms
 ArrayBlockingQueue有三个成员变量： - takeIndex：需要被取走的元素下标 - putIndex：可被元素插入的位置的下标 - count：队列中元素的数量
 
 这三个变量很容易放到一个缓存行中，但是之间修改没有太多的关联。所以每次修改，都会使之前缓存的数据失效，从而不能完全达到共享的效果。
-![伪共享示意图](/images/disruptor/伪共享示意图.png)
+<div class="mermaid">
+graph LR
+  subgraph PROD["Producer Thread"]
+    direction TB
+    PL2["L2"]
+    PL1["L1"]
+    PCPU(("cpu"))
+    PL2 --> PL1
+    PL1 --> PCPU
+  end
+  subgraph CONS["Consumer Thread"]
+    direction TB
+    CL2["L2"]
+    CL1["L1"]
+    CCPU(("cpu"))
+    CL2 --> CL1
+    CL1 --> CCPU
+  end
+  ABQ["ArrayBlockingQueue"]
+  subgraph CACHE["Cache Line"]
+    direction LR
+    PUT["putIndex"]
+    COUNT["count"]
+    TAKE["takeIndex"]
+  end
+  PROD ==> ABQ
+  ABQ ==> CONS
+  PUT --> ABQ
+  TAKE --> ABQ
+  PL1 -.-> PUT
+  TAKE -.-> CL1
+</div>
 如上图所示，当生产者线程put一个元素到ArrayBlockingQueue时，putIndex会修改，从而导致消费者线程的缓存中的缓存行无效，需要从主存中重新读取。
 
 这种无法充分使用缓存行特性的现象，称为伪共享。
@@ -266,7 +372,47 @@ Disruptor通过以下设计来解决队列速度慢的问题：
 申请写入m个元素；
 若是有m个元素可以入，则返回最大的序列号。这儿主要判断是否会覆盖未读的元素；
 若是返回的正确，则生产者开始写入元素。
-![单生产者生产过程](/images/disruptor/单生产者生产过程.png)
+<div class="mermaid">
+flowchart TB
+  subgraph S1["阶段一: 初始状态"]
+    direction LR
+    A1["1..5 (已写入)"]
+    A2["6..12 (空闲)"]
+    A3["cursor 指向 5"]
+    A4["next 指向 5"]
+    A1 --- A2
+    A1 -.-> A3
+    A1 -.-> A4
+  end
+  T1["next(n): 申请可写的序号"]
+  subgraph S2["阶段二: 申请到序号"]
+    direction LR
+    B1["1..5 (已写入)"]
+    B2["6..7 (申请占位)"]
+    B3["8..12 (空闲)"]
+    B4["cursor 指向 5"]
+    B5["next 指向 7"]
+    B1 --- B2
+    B2 --- B3
+    B1 -.-> B4
+    B2 -.-> B5
+  end
+  T2["写入完成"]
+  subgraph S3["阶段三: 写入完成"]
+    direction LR
+    C1["1..7 (已写入)"]
+    C2["8..12 (空闲)"]
+    C3["next 指向 7"]
+    C4["cursor 指向 7"]
+    C1 --- C2
+    C1 -.-> C3
+    C1 -.-> C4
+  end
+  S1 --> T1
+  T1 --> S2
+  S2 --> T2
+  T2 --> S3
+</div>
 ## 3.2.多个生产者
 多个生产者的情况下，会遇到“如何防止多个线程重复写同一个元素”的问题。Disruptor的解决方法是，每个线程获取不同的一段数组空间进行操作。这个通过CAS很容易达到。只需要在分配元素的时候，通过CAS判断一下这段空间是否已经分配出去即可。
 
@@ -284,7 +430,31 @@ Disruptor通过以下设计来解决队列速度慢的问题：
 读线程申请读取到下标从3到11的元素，判断writer cursor>=11。然后开始读取availableBuffer，从3开始，往后读取，发现下标为7的元素没有生产成功，于是WaitFor(11)返回6。
 
 然后，消费者读取下标从3到6共计4个元素。
-![多生产下的消费者](/images/disruptor/多生产下的消费者.png)
+<div class="mermaid">
+flowchart TB
+  subgraph S1["阶段一: 申请读取"]
+    direction LR
+    R1["RingBuffer (next/reader cursor 指向下标2; 下标3到11 已写区域)"]
+    W1["Writer1 写下标7  Writer2 写下标9  Writer3 写下标11 (writer cursor 11)"]
+    A1["availableBuffer (3到6 已置位; 8/10 已置位; 7/9/11/12 为 -1 未就绪)"]
+    R1 --> W1
+    R1 -.对应位置标记.-> A1
+  end
+  S1 -->|"waitFor(12) 申请可读的最大序号"| S2
+  subgraph S2["阶段二: 遍历 availableBuffer"]
+    direction LR
+    R2["RingBuffer (reader cursor 2; next 指向 6; writer cursor 11)"]
+    A2["availableBuffer (从下标3 往后查, 遇到下标7 不可用, 返回最大连续可读 6)"]
+    R2 -.遍历判断就绪.-> A2
+  end
+  S2 -->|"读取完成"| S3
+  subgraph S3["阶段三: 消费者读取完成"]
+    direction LR
+    R3["RingBuffer (reader cursor 与 next 同指向 6; 已消费下标3到6共4个元素; writer cursor 11)"]
+    A3["availableBuffer (状态不变)"]
+    R3 -.对应位置.-> A3
+  end
+</div>
 ### 3.2.2.写数据
 多个生产者写入的时候：
 
@@ -294,7 +464,29 @@ Disruptor通过以下设计来解决队列速度慢的问题：
 如下图所示，Writer1和Writer2两个线程写入数组，都申请可写的数组空间。Writer1被分配了下标3到下表5的空间，Writer2被分配了下标6到下标9的空间。
 
 Writer1写入下标3位置的元素，同时把available Buffer相应位置置位，标记已经写入成功，往后移一位，开始写下标4位置的元素。Writer2同样的方式。最终都写入完成。
-![多生产下的生产者](/images/disruptor/多生产下的生产者.png)
+<div class="mermaid">
+graph TD
+  subgraph S1["阶段一: 申请可写的数组空间 next(n)"]
+    direction LR
+    R1["RingBuffer: 1,2 已写入(绿); 3..12 空闲. cursor / Writer1 / Writer2 同指向下标2"]
+    A1["availableBuffer: 1,2 置位; 3..12 全为 -1"]
+    R1 --- A1
+  end
+  subgraph S2["阶段二: 各生产者分配独享空间, 开始写入"]
+    direction LR
+    R2["RingBuffer: 1,2,3 已写入; cursor 指向下标9. Writer1 分配下标3到5(指向4); Writer2 分配下标6到9(指向7); 下标6已写入"]
+    A2["availableBuffer: 1,2,3 与 6 置位; 4,5 为 -1; 7..12 为 -1"]
+    R2 --- A2
+  end
+  subgraph S3["阶段三: 写入完成"]
+    direction LR
+    R3["RingBuffer: 1..9 全部写入成功(绿); 10,11,12 空闲. cursor / Writer1 / Writer2 同指向下标9"]
+    A3["availableBuffer: 1..9 全部置位; 10,11,12 为 -1"]
+    R3 --- A3
+  end
+  S1 -->|"next(n) 申请可写的序号"| S2
+  S2 -->|"写入完成, 同时置位 availableBuffer"| S3
+</div>
 防止不同生产者对同一段空间写入的代码，如下所示：
 ```java
 public long tryNext(int n) throws InsufficientCapacityException
@@ -425,4 +617,47 @@ public class DisruptorMain
 LockSupport.parkNanos(1);
 ```
 ## 4.2.消费者的等待策略
-![消费者的等待策略](/images/disruptor/消费者的等待策略.png)
+<div class="mermaid">
+graph LR
+H0["名称"]
+H1["措施"]
+H2["适用场景"]
+H0 --- H1
+H1 --- H2
+A0["BlockingWaitStrategy"]
+A1["加锁"]
+A2["CPU资源紧缺,吞吐量和延迟并不重要的场景"]
+A0 --- A1
+A1 --- A2
+B0["BusySpinWaitStrategy"]
+B1["自旋"]
+B2["通过不断重试,减少切换线程导致的系统调用,而降低延迟。推荐在线程绑定到固定的CPU的场景下使用"]
+B0 --- B1
+B1 --- B2
+C0["PhasedBackoffWaitStrategy"]
+C1["自旋 + yield + 自定义策略"]
+C2["CPU资源紧缺,吞吐量和延迟并不重要的场景"]
+C0 --- C1
+C1 --- C2
+D0["SleepingWaitStrategy"]
+D1["自旋 + yield + sleep"]
+D2["性能和CPU资源之间有很好的折中。延迟不均匀"]
+D0 --- D1
+D1 --- D2
+E0["TimeoutBlockingWaitStrategy"]
+E1["加锁,有超时限制"]
+E2["CPU资源紧缺,吞吐量和延迟并不重要的场景"]
+E0 --- E1
+E1 --- E2
+F0["YieldingWaitStrategy"]
+F1["自旋 + yield + 自旋"]
+F2["性能和CPU资源之间有很好的折中。延迟比较均匀"]
+F0 --- F1
+F1 --- F2
+H0 --- A0
+A0 --- B0
+B0 --- C0
+C0 --- D0
+D0 --- E0
+E0 --- F0
+</div>

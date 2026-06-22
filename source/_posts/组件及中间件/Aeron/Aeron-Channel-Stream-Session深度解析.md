@@ -19,21 +19,28 @@ date: 2026-03-10 20:00:00
 
 三者形成自顶向下的嵌套层级：
 
-```
-Channel（通道层）—— 传输媒体和网络寻址
-    │
-    ├─── Stream 1（流层）—— 逻辑数据流/业务分类
-    │       ├─── Session A（会话层）—— 发布者实例 A
-    │       ├─── Session B
-    │       └─── Session C
-    │
-    ├─── Stream 2
-    │       ├─── Session D
-    │       └─── Session E
-    │
-    └─── Stream N
-            └─── Session N
-```
+<div class="mermaid">
+graph TD
+    C["Channel(通道层)—传输媒体和网络寻址"]
+    S1["Stream 1(流层)—逻辑数据流/业务分类"]
+    S2["Stream 2"]
+    SN["Stream N"]
+    A["Session A(会话层)—发布者实例 A"]
+    B["Session B"]
+    CC["Session C"]
+    D["Session D"]
+    E["Session E"]
+    NN["Session N"]
+    C --> S1
+    C --> S2
+    C --> SN
+    S1 --> A
+    S1 --> B
+    S1 --> CC
+    S2 --> D
+    S2 --> E
+    SN --> NN
+</div>
 
 | 层级 | 作用 | 类比 |
 |------|------|------|
@@ -58,18 +65,11 @@ aeron:<transport>?<param1>=<value1>|<param2>=<value2>...
 
 ### 2.2 三种传输类型
 
-```
-Aeron 传输类型
-
-  UDP Unicast  ──►  aeron:udp?endpoint=host:port
-  （点对点，最常用）
-
-  UDP Multicast ──► aeron:udp?endpoint=224.x.x.x:port|interface=eth0
-  （一对多组播，需硬件/网络支持）
-
-  IPC ──────────►  aeron:ipc
-  （同机进程间共享内存，延迟最低）
-```
+| 传输类型 | URI 格式 | 说明 |
+|----------|----------|------|
+| UDP Unicast | `aeron:udp?endpoint=host:port` | 点对点，最常用 |
+| UDP Multicast | `aeron:udp?endpoint=224.x.x.x:port\|interface=eth0` | 一对多组播，需硬件/网络支持 |
+| IPC | `aeron:ipc` | 同机进程间共享内存，延迟最低 |
 
 **性能对比：**
 
@@ -120,18 +120,16 @@ String channel = "aeron:udp?endpoint=192.168.1.10:40123|mtu=4096|term-length=134
 
 Aeron 是**推模式（Push）**，这是初学者最容易搞混的地方：
 
-```
-✅ 正确理解：
-
-  Publication（发送方）的 channel 填写 Subscription（接收方）的地址
-  ─────────────────────────────────────────────────────────────────
-  Publisher                              Subscriber
-  channel="aeron:udp?endpoint=          channel="aeron:udp?endpoint=
-           192.168.1.10:40123"  ──────►          192.168.1.10:40123"
-  （我要推送数据到这个地址）             （我监听这个端口）
-
-❌ 错误理解（不要写 Subscriber 的本机地址到 Publisher 的 channel）
-```
+<div class="mermaid">
+flowchart LR
+  subgraph OK["正确理解: Publication(发送方)的 channel 填写 Subscription(接收方)的地址"]
+    direction LR
+    P["Publisher 发送方 channel=aeron:udp?endpoint=192.168.1.10:40123 (我要推送数据到这个地址)"]
+    S["Subscriber 接收方 channel=aeron:udp?endpoint=192.168.1.10:40123 (我监听这个端口)"]
+    P -->|推送数据| S
+  end
+  N["错误理解: 不要写 Subscriber 的本机地址到 Publisher 的 channel"]
+</div>
 
 ---
 
@@ -144,20 +142,22 @@ Stream 是 Channel 内的**有序逻辑数据流**，用 32 位整数 `streamId`
 
 ### 3.2 多 Stream 复用同一端口
 
-```
-UDP Channel: 192.168.1.10:40123
-         │
-         ├─── streamId=10 ──► 订单管理流（Order Management）
-         │
-         ├─── streamId=20 ──► 市场行情流（Market Data）
-         │
-         └─── streamId=30 ──► 风控指令流（Risk Control）
+<div class="mermaid">
+graph LR
+    C["UDP Channel: 192.168.1.10:40123"]
+    S10["订单管理流(Order Management)"]
+    S20["市场行情流(Market Data)"]
+    S30["风控指令流(Risk Control)"]
+    C -->|"streamId=10"| S10
+    C -->|"streamId=20"| S20
+    C -->|"streamId=30"| S30
+</div>
 
 优点：
-  • 一个 UDP 端口承载多条业务流
-  • 减少端口占用，简化防火墙配置
-  • 不同业务流完全隔离，互不干扰
-```
+
+- 一个 UDP 端口承载多条业务流
+- 减少端口占用，简化防火墙配置
+- 不同业务流完全隔离，互不干扰
 
 ### 3.3 Stream ID 设计规范
 
@@ -314,19 +314,22 @@ Image 标识          = Channel URI + Stream ID + Session ID
 
 ### 5.2 标识关系图
 
-```
-aeron:udp?endpoint=192.168.1.10:40123    ← Channel（物理通道）
-         │
-         ├── streamId=10                 ← Stream（逻辑数据流）
-         │       │
-         │       ├── sessionId=213897    ← Session / Image（发布者A）
-         │       ├── sessionId=-421387   ← Session / Image（发布者B）
-         │       └── sessionId=2378636   ← Session / Image（发布者C）
-         │
-         └── streamId=20
-                 │
-                 └── sessionId=7654321   ← Session / Image（发布者D）
-```
+<div class="mermaid">
+graph TD
+    C["aeron:udp?endpoint=192.168.1.10:40123 (Channel 物理通道)"]
+    S10["streamId=10 (Stream 逻辑数据流)"]
+    S20["streamId=20 (Stream 逻辑数据流)"]
+    A["sessionId=213897 (Session / Image 发布者A)"]
+    B["sessionId=-421387 (Session / Image 发布者B)"]
+    D["sessionId=2378636 (Session / Image 发布者C)"]
+    E["sessionId=7654321 (Session / Image 发布者D)"]
+    C --> S10
+    C --> S20
+    S10 --> A
+    S10 --> B
+    S10 --> D
+    S20 --> E
+</div>
 
 ### 5.3 AeronStat 中的三元组展示
 
@@ -389,19 +392,20 @@ Subscription poll() 的工作方式：
 
 ### 7.1 架构设计
 
-```
-                    市场数据组播频道（224.10.9.10:40123）
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-         streamId=10    streamId=20    streamId=30
-          (股票行情)     (外汇行情)     (期货行情)
-              │
-    ┌─────────┴─────────┐
-    │                   │
- sessionId=AAA       sessionId=BBB
- (交易所 Feed A)     (交易所 Feed B)
-```
+<div class="mermaid">
+graph TD
+    CH["市场数据组播频道(224.10.9.10:40123)"]
+    S10["streamId=10(股票行情)"]
+    S20["streamId=20(外汇行情)"]
+    S30["streamId=30(期货行情)"]
+    AAA["sessionId=AAA(交易所 Feed A)"]
+    BBB["sessionId=BBB(交易所 Feed B)"]
+    CH --> S10
+    CH --> S20
+    CH --> S30
+    S10 --> AAA
+    S10 --> BBB
+</div>
 
 ### 7.2 完整实现
 
@@ -539,28 +543,30 @@ Session ID 是 32 位有符号随机整数，取值范围为 [-2^31, 2^31-1]。
 
 ## 九、总结
 
-```
-┌───────────────────────────────────────────────────────────────┐
-│                    三层概念速查表                              │
-├──────────┬──────────────────────────────┬────────────────────┤
-│  概念    │         核心作用              │  标识符             │
-├──────────┼──────────────────────────────┼────────────────────┤
-│ Channel  │ 定义传输媒体和网络地址        │ URI 字符串          │
-│          │ (UDP/IPC + 地址参数)          │                    │
-├──────────┼──────────────────────────────┼────────────────────┤
-│ Stream   │ Channel 内的有序逻辑数据流    │ 32位整数 streamId  │
-│          │ 按业务分类，多路复用同一端口   │ (非0，应用层约定)  │
-├──────────┼──────────────────────────────┼────────────────────┤
-│ Session  │ 区分同一 Stream 上的          │ 32位整数 sessionId │
-│          │ 不同 Publication 实例         │ (Aeron 随机生成)   │
-├──────────┴──────────────────────────────┴────────────────────┤
-│ 顺序保证：仅在同一 Image（同一 Channel+Stream+Session）内      │
-│ 跨 Session 无全局顺序，需要全局有序请使用 Aeron Cluster        │
-└───────────────────────────────────────────────────────────────┘
-```
+**三层概念速查表**
+
+| 概念 | 核心作用 | 标识符 |
+| --- | --- | --- |
+| Channel | 定义传输媒体和网络地址（UDP/IPC + 地址参数） | URI 字符串 |
+| Stream | Channel 内的有序逻辑数据流，按业务分类，多路复用同一端口 | 32位整数 streamId（非0，应用层约定） |
+| Session | 区分同一 Stream 上的不同 Publication 实例 | 32位整数 sessionId（Aeron 随机生成） |
+
+> 顺序保证：仅在同一 Image（同一 Channel+Stream+Session）内。跨 Session 无全局顺序，需要全局有序请使用 Aeron Cluster。
 
 **设计建议：**
 - Channel 按**网络隔离需求**划分（高频 vs 管理、IPC vs UDP）
 - Stream ID 按**业务模块**划分，预留区间便于扩展
 - 利用 `availableImageHandler` / `unavailableImageHandler` 感知 Session 生命周期
 - 多 Session 场景下，用 `Map<Integer, State>` 以 sessionId 为 key 管理各客户端状态
+
+---
+
+## Aeron 系列
+
+- [Aeron 概述](/posts/fdcdfbb5/)
+- **Channel、Stream、Session 深度解析**（本文）
+- [Media Driver 深度解析](/posts/bc5589ca/)
+- [传输模式与 NAK 流控深度解析](/posts/fbf83150/)
+- [编程模型深度解析](/posts/406b47f8/)
+- [Aeron Archive 深度解析](/posts/987bb85b/)
+- [Aeron Cluster 与运维工具](/posts/fed0dafe/)

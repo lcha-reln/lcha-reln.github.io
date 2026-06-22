@@ -49,27 +49,18 @@ Agrona 的设计从根本上回避了 Java 生态中常见的性能陷阱：
 
 Agrona 是整个 Real Logic 高性能技术栈的**基础层**，所有上层组件都构建于其之上：
 
-```
-┌─────────────────────┐
-│  Aeron Cluster      │  ← 分布式共识系统（Raft）
-└──────────┬──────────┘
-           │
-┌──────────▼──────────┐
-│  Aeron Archive      │  ← 消息持久化
-└──────────┬──────────┘
-           │
-┌──────────┴───────────────────────┐
-│  Aeron Transport   │  SBE        │  ← 传输层 + 序列化
-└─────────────────────────────────-┘
-                   │
-        ┌──────────▼──────────┐
-        │       Agrona        │  ← 基础工具库（本文重点）
-        └──────────┬──────────┘
-                   │
-        ┌──────────▼──────────┐
-        │    Java 虚拟机 JVM  │
-        └─────────────────────┘
-```
+<div class="mermaid">
+graph TD
+  A["Aeron Cluster (分布式共识系统 Raft)"]
+  B["Aeron Archive (消息持久化)"]
+  C["Aeron Transport + SBE (传输层 + 序列化)"]
+  D["Agrona (基础工具库, 本文重点)"]
+  E["Java 虚拟机 JVM"]
+  A --> B
+  B --> C
+  C --> D
+  D --> E
+</div>
 
 **各层职责：**
 - **Agrona**：高性能数据结构、并发原语、内存管理、Agent 框架
@@ -84,28 +75,46 @@ Agrona 是整个 Real Logic 高性能技术栈的**基础层**，所有上层组
 
 Agrona 的核心组件分为六个层次：
 
-```
-┌────────────── Agrona 核心库 ──────────────────────────────┐
-│                                                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │  数据结构层  │  │  并发工具层  │  │  缓冲区管理层 │  │
-│  ├──────────────┤  ├──────────────┤  ├───────────────┤  │
-│  │Int2ObjectMap │  │ 无锁队列     │  │ DirectBuffer  │  │
-│  │原始类型集合  │  │ ManyToOne    │  │ UnsafeBuffer  │  │
-│  │高效数组队列  │  │ OneToOne     │  │ 堆内/堆外内存 │  │
-│  │零GC设计      │  │ Broadcast    │  │ 零拷贝操作    │  │
-│  └──────────────┘  └──────────────┘  └───────────────┘  │
-│                                                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │  Agent 框架  │  │  时钟系统层  │  │  ID生成器层   │  │
-│  ├──────────────┤  ├──────────────┤  ├───────────────┤  │
-│  │ Agent 接口   │  │ SystemClock  │  │ SnowflakeID   │  │
-│  │ DutyCycle    │  │ CachedClock  │  │ 高性能生成    │  │
-│  │ IdleStrategy │  │ 纳秒精度时间 │  │ 无锁算法      │  │
-│  │ AgentRunner  │  │ 低开销时间源 │  │ 分布式唯一性  │  │
-│  └──────────────┘  └──────────────┘  └───────────────┘  │
-└───────────────────────────────────────────────────────────┘
-```
+<div class="mermaid">
+graph TD
+subgraph CORE["Agrona 核心库"]
+  subgraph L1["数据结构层"]
+    A1["Int2ObjectMap / 原始类型集合"]
+    A2["高效数组队列"]
+    A3["零GC设计"]
+  end
+  subgraph L2["并发工具层"]
+    B1["无锁队列"]
+    B2["ManyToOne"]
+    B3["OneToOne"]
+    B4["Broadcast"]
+  end
+  subgraph L3["缓冲区管理层"]
+    C1["DirectBuffer"]
+    C2["UnsafeBuffer"]
+    C3["堆内/堆外内存"]
+    C4["零拷贝操作"]
+  end
+  subgraph L4["Agent 框架"]
+    D1["Agent 接口"]
+    D2["DutyCycle"]
+    D3["IdleStrategy"]
+    D4["AgentRunner"]
+  end
+  subgraph L5["时钟系统层"]
+    E1["SystemClock"]
+    E2["CachedClock"]
+    E3["纳秒精度时间"]
+    E4["低开销时间源"]
+  end
+  subgraph L6["ID生成器层"]
+    F1["SnowflakeID"]
+    F2["高性能生成"]
+    F3["无锁算法"]
+    F4["分布式唯一性"]
+  end
+end
+</div>
 
 ---
 
@@ -618,13 +627,13 @@ public class MonitoredAgent implements Agent {
 
 ### 7.1 三者的关系
 
-```
-Thread（线程）
-  └── AgentRunner（运行框架）
-        ├── IdleStrategy（空闲策略）
-        └── Agent（工作单元）
-              └── doWork()（= 一次 Duty Cycle）
-```
+<div class="mermaid">
+graph TD
+  T["Thread(线程)"] --> AR["AgentRunner(运行框架)"]
+  AR --> IS["IdleStrategy(空闲策略)"]
+  AR --> A["Agent(工作单元)"]
+  A --> DW["doWork() (= 一次 Duty Cycle)"]
+</div>
 
 - **Thread** 提供执行上下文
 - **AgentRunner** 管理 Agent 生命周期，实现运行循环
@@ -756,22 +765,25 @@ DirectBuffer 是 Agrona 实现零拷贝、零 GC 的核心机制。它提供了�
 
 **传统方式 vs Agrona 方式：**
 
-```
-传统对象方式：                    Agrona DirectBuffer 方式：
-创建 Message 对象 → GC 分配       分配一次 ByteBuffer → 永久重用
-读取字段 → 解引用                 直接按偏移量读取 → 零拷贝
-方法调用 → 可能装箱               原始类型 API → 无装箱
-GC 回收 → 停顿                   无 GC → 零停顿
-```
+| 传统对象方式 | Agrona DirectBuffer 方式 |
+| --- | --- |
+| 创建 Message 对象 → GC 分配 | 分配一次 ByteBuffer → 永久重用 |
+| 读取字段 → 解引用 | 直接按偏移量读取 → 零拷贝 |
+| 方法调用 → 可能装箱 | 原始类型 API → 无装箱 |
+| GC 回收 → 停顿 | 无 GC → 零停顿 |
 
 ### 8.2 接口层次
 
-```
-DirectBuffer（只读接口）
-  └── MutableDirectBuffer（读写接口）
-        ├── UnsafeBuffer（主力实现，使用 Unsafe）
-        └── ExpandableArrayBuffer（可自动扩容）
-```
+<div class="mermaid">
+graph TD
+  A["DirectBuffer(只读接口)"]
+  B["MutableDirectBuffer(读写接口)"]
+  C["UnsafeBuffer(主力实现,使用 Unsafe)"]
+  D["ExpandableArrayBuffer(可自动扩容)"]
+  A --> B
+  B --> C
+  B --> D
+</div>
 
 ### 8.3 UnsafeBuffer 使用详解
 
@@ -1017,17 +1029,17 @@ ManyToManyConcurrentArrayQueue<Event> queue =
 
 ### 9.3 如何选择队列类型
 
-```
-需要使用并发队列？
-│
-├─ 几个线程写？
-│    ├─ 1个 → 几个线程读？
-│    │         ├─ 1个 → OneToOneConcurrentArrayQueue（最快）
-│    │         └─ 多个 → ManyToManyConcurrentArrayQueue
-│    └─ 多个 → 几个线程读？
-│              ├─ 1个 → ManyToOneConcurrentArrayQueue（推荐）
-│              └─ 多个 → ManyToManyConcurrentArrayQueue
-```
+<div class="mermaid">
+graph TD
+    Q["需要使用并发队列？"]
+    Q --> W{"几个线程写？"}
+    W -->|1个| R1{"几个线程读？"}
+    W -->|多个| R2{"几个线程读？"}
+    R1 -->|1个| O1["OneToOneConcurrentArrayQueue（最快）"]
+    R1 -->|多个| O2["ManyToManyConcurrentArrayQueue"]
+    R2 -->|1个| O3["ManyToOneConcurrentArrayQueue（推荐）"]
+    R2 -->|多个| O4["ManyToManyConcurrentArrayQueue"]
+</div>
 
 ### 9.4 广播通信：BroadcastTransmitter & BroadcastReceiver
 
@@ -1068,14 +1080,23 @@ int received = receiver1.receive(handler);
 ```
 
 **广播缓冲区工作原理：**
-```
-单写者                  环形缓冲区
-                ┌───┬───┬───┬───┬───┬───┬───┬───┐
-Transmitter --> │ M1│ M2│ M3│ M4│   │   │ M7│ M8│
-                └───┴───┴───┴───┴───┴───┴───┴───┘
-                                        ↑       ↑
-                                   Recv1.pos  Recv2.pos（各自独立）
-```
+<div class="mermaid">
+graph LR
+  T["单写者 Transmitter"] --> RB
+  subgraph RB["环形缓冲区"]
+    direction LR
+    M1["M1"]
+    M2["M2"]
+    M3["M3"]
+    M4["M4"]
+    E5["空"]
+    E6["空"]
+    M7["M7"]
+    M8["M8"]
+  end
+  R1["Recv1.pos"] -.-> M7
+  R2["Recv2.pos（各自独立）"] -.-> M8
+</div>
 
 ### 9.5 RingBuffer — 高性能环形缓冲区
 
@@ -1444,15 +1465,21 @@ public class OrderIdGenerator {
 
 Agrona Map 默认会缓存迭代器和 Entry 对象（`shouldAvoidAllocation = true`）以避免对象分配，这是生产环境下的正确行为。但这会导致调试器无法正确展示内容。
 
-```
-生产模式（shouldAvoidAllocation = true）：
-  迭代器 → 缓存重用 → 高性能，零 GC
-  调试器 → 看到缓存对象 → 内容不可见
-
-调试模式（shouldAvoidAllocation = false）：
-  迭代器 → 每次新建 → 轻微 GC 压力
-  调试器 → 看到新建对象 → 内容可见
-```
+<div class="mermaid">
+graph LR
+  subgraph PROD["生产模式(shouldAvoidAllocation = true)"]
+    P1["迭代器"] --> P2["缓存重用"]
+    P2 --> P3["高性能,零 GC"]
+    P4["调试器"] --> P5["看到缓存对象"]
+    P5 --> P6["内容不可见"]
+  end
+  subgraph DEBUG["调试模式(shouldAvoidAllocation = false)"]
+    D1["迭代器"] --> D2["每次新建"]
+    D2 --> D3["轻微 GC 压力"]
+    D4["调试器"] --> D5["看到新建对象"]
+    D5 --> D6["内容可见"]
+  end
+</div>
 
 ### 解决方案
 
@@ -1547,22 +1574,28 @@ System.setProperty("agrona.disable.bounds.checks", "true");
 
 ### 风险评估与决策树
 
-```
-是否应该禁用边界检查？
-│
-├─ 性能瓶颈确认在 UnsafeBuffer 操作？
-│    否 → ❌ 不要禁用（先优化算法）
-│    是 ↓
-├─ 代码已经过充分测试（包括边界条件）？
-│    否 → ❌ 不要禁用（先完善测试）
-│    是 ↓
-├─ 系统可以容忍偶尔的 JVM 崩溃？
-│    否 → ❌ 不要禁用
-│    是 ↓
-└─ 已穷尽其他优化手段？
-     否 → ❌ 先尝试其他优化
-     是 → ✅ 可以考虑禁用
-```
+<div class="mermaid">
+graph TD
+  Start[是否应该禁用边界检查?]
+  Q1{性能瓶颈确认在 UnsafeBuffer 操作?}
+  Q2{"代码已经过充分测试(包括边界条件)?"}
+  Q3{系统可以容忍偶尔的 JVM 崩溃?}
+  Q4{已穷尽其他优化手段?}
+  N1["不要禁用(先优化算法)"]
+  N2["不要禁用(先完善测试)"]
+  N3[不要禁用]
+  N4[先尝试其他优化]
+  OK[可以考虑禁用]
+  Start --> Q1
+  Q1 -->|否| N1
+  Q1 -->|是| Q2
+  Q2 -->|否| N2
+  Q2 -->|是| Q3
+  Q3 -->|否| N3
+  Q3 -->|是| Q4
+  Q4 -->|否| N4
+  Q4 -->|是| OK
+</div>
 
 ### 安全使用实践
 
@@ -1860,16 +1893,24 @@ AgentRunner.startOnThread(runner);
 
 ### CompositeAgent 工作原理
 
-```
-AgentRunner 线程
-  └── CompositeAgent.doWork()
-        ├── agent1.doWork() → 返回 3
-        ├── agent2.doWork() → 返回 0
-        ├── agent3.doWork() → 返回 5
-        └── 返回总工作量：3 + 0 + 5 = 8
-              ↓
-        idleStrategy.idle(8)  → 8 > 0，不休眠，继续下一循环
-```
+<div class="mermaid">
+graph TD
+  T[AgentRunner 线程]
+  C["CompositeAgent.doWork()"]
+  A1["agent1.doWork() 返回 3"]
+  A2["agent2.doWork() 返回 0"]
+  A3["agent3.doWork() 返回 5"]
+  S["返回总工作量：3 + 0 + 5 = 8"]
+  I["idleStrategy.idle(8) → 8 > 0，不休眠，继续下一循环"]
+  T --> C
+  C --> A1
+  C --> A2
+  C --> A3
+  A1 --> S
+  A2 --> S
+  A3 --> S
+  S --> I
+</div>
 
 **关键特性：**
 - Agent 按**构造顺序顺序执行**（非并行）
@@ -1960,16 +2001,20 @@ public class CompositeAgentDemo {
 
 `CompositeAgent` 在 Aeron 中被广泛使用。当 Media Driver 以 `SHARED` 线程模式运行时：
 
-```
-SHARED 模式（单线程）：
-  CompositeAgent
-    ├── ConductorAgent（管理连接和资源）
-    ├── SenderAgent（发送网络数据包）
-    └── ReceiverAgent（接收网络数据包）
-
-DEDICATED 模式（三个独立线程）：
-  ConductorThread + SenderThread + ReceiverThread
-```
+<div class="mermaid">
+graph TD
+  subgraph SHARED["SHARED 模式（单线程）"]
+    CA[CompositeAgent]
+    CA --> COND["ConductorAgent（管理连接和资源）"]
+    CA --> SEND["SenderAgent（发送网络数据包）"]
+    CA --> RECV["ReceiverAgent（接收网络数据包）"]
+  end
+  subgraph DEDICATED["DEDICATED 模式（三个独立线程）"]
+    CT[ConductorThread]
+    ST[SenderThread]
+    RT[ReceiverThread]
+  end
+</div>
 
 ### 自定义线程名称
 
@@ -2447,29 +2492,40 @@ public class ProductionThreadFactory implements ThreadFactory {
 
 ## 学习路径建议
 
-```
-Week 1（入门）：
-  ├── 了解 Agrona 定位和技术栈
-  ├── 理解 Duty Cycle 概念
-  ├── 运行第一个 Agent 示例
-  └── 尝试不同的 IdleStrategy
-
-Week 2（核心组件）：
-  ├── 掌握 DirectBuffer / UnsafeBuffer
-  ├── 使用无锁队列进行线程间通信
-  └── 了解 Int2ObjectHashMap 等数据结构
-
-Week 3（进阶）：
-  ├── 构建多 Agent 流水线
-  ├── 实现自定义二进制编解码器
-  └── 理解线程模型和调度策略
-
-Week 4（优化）：
-  ├── 性能分析与调优
-  ├── 尝试 CPU 绑定和自定义 ThreadFactory
-  ├── 实现生产级监控
-  └── 构建完整的实际项目
-```
+<div class="mermaid">
+flowchart TD
+  subgraph W1["Week 1（入门）"]
+    direction TB
+    A1[了解 Agrona 定位和技术栈]
+    A2[理解 Duty Cycle 概念]
+    A3[运行第一个 Agent 示例]
+    A4[尝试不同的 IdleStrategy]
+    A1 --> A2 --> A3 --> A4
+  end
+  subgraph W2["Week 2（核心组件）"]
+    direction TB
+    B1["掌握 DirectBuffer / UnsafeBuffer"]
+    B2[使用无锁队列进行线程间通信]
+    B3[了解 Int2ObjectHashMap 等数据结构]
+    B1 --> B2 --> B3
+  end
+  subgraph W3["Week 3（进阶）"]
+    direction TB
+    C1[构建多 Agent 流水线]
+    C2[实现自定义二进制编解码器]
+    C3[理解线程模型和调度策略]
+    C1 --> C2 --> C3
+  end
+  subgraph W4["Week 4（优化）"]
+    direction TB
+    D1[性能分析与调优]
+    D2[尝试 CPU 绑定和自定义 ThreadFactory]
+    D3[实现生产级监控]
+    D4[构建完整的实际项目]
+    D1 --> D2 --> D3 --> D4
+  end
+  W1 --> W2 --> W3 --> W4
+</div>
 
 ---
 

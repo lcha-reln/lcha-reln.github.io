@@ -30,35 +30,20 @@ Media Driver 既可以作为独立进程运行，也可以以嵌入式模式运�
 
 Media Driver 内部由三个核心 Agent 构成：**Driver Conductor**、**Sender**、**Receiver**。
 
-```
-    Aeron Client
-         │
-         │  Command / Response (共享内存)
-         │
-         v
- ┌───────────────────────────────────────────┐
- │              Media Driver                │
- │                                          │
- │  ┌──────────────────┐                   │
- │  │  Driver Conductor│                   │
- │  │  - 命令解析       │                   │
- │  │  - 资源生命周期   │                   │
- │  │  - 名称解析       │                   │
- │  └────────┬─────────┘                   │
- │           │ 协调                         │
- │    ┌──────┴──────────────┐              │
- │    │                     │              │
- │  ┌─┴──────┐        ┌─────┴─────┐       │
- │  │ Sender │        │ Receiver  │       │
- │  │- Log   │        │- Image    │       │
- │  │  Buffer│        │  处理     │       │
- │  │- 流控   │        │- NAK 重传 │       │
- │  └────┬───┘        └─────┬─────┘       │
- └───────┼─────────────────┼─────────────┘
-         │                 │
-         v                 ^
-     网络/IPC 发送      网络/IPC 接收
-```
+<div class="mermaid">
+graph TD
+  Client[Aeron Client]
+  Client -->|"Command / Response (共享内存)"| DC
+  subgraph MD[Media Driver]
+    DC["Driver Conductor (命令解析 / 资源生命周期 / 名称解析)"]
+    Sender["Sender (Log Buffer / 流控)"]
+    Receiver["Receiver (Image 处理 / NAK 重传)"]
+    DC -->|协调| Sender
+    DC -->|协调| Receiver
+  end
+  Sender --> Send["网络/IPC 发送"]
+  Recv["网络/IPC 接收"] --> Receiver
+</div>
 
 ### 2.1 Driver Conductor
 
@@ -96,26 +81,11 @@ Receiver 负责数据面的入方向接收：
 
 Media Driver 提供三种线程调度模式，通过 `ThreadingMode` 枚举配置，核心区别在于三个 Agent 如何映射到 OS 线程：
 
-```
-SHARED 模式（1 个 OS 线程）
-┌──────────────────────────────────────────────┐
-│  Thread-0: [Conductor] → [Sender] → [Receiver]│
-│            （轮转调度，共享同一线程）            │
-└──────────────────────────────────────────────┘
-
-SHARED_NETWORK 模式（2 个 OS 线程）
-┌──────────────────────────────────────────────┐
-│  Thread-0: [Conductor]                       │
-│  Thread-1: [Sender] → [Receiver]（轮转调度）  │
-└──────────────────────────────────────────────┘
-
-DEDICATED 模式（3 个 OS 线程）
-┌──────────────────────────────────────────────┐
-│  Thread-0: [Conductor]                       │
-│  Thread-1: [Sender]                          │
-│  Thread-2: [Receiver]                        │
-└──────────────────────────────────────────────┘
-```
+| ThreadingMode | OS 线程数 | 线程映射 |
+| --- | --- | --- |
+| SHARED | 1 | Thread-0: Conductor → Sender → Receiver（轮转调度，共享同一线程） |
+| SHARED_NETWORK | 2 | Thread-0: Conductor；Thread-1: Sender → Receiver（轮转调度） |
+| DEDICATED | 3 | Thread-0: Conductor；Thread-1: Sender；Thread-2: Receiver |
 
 ### 3.1 模式选型依据
 
@@ -145,19 +115,16 @@ DEDICATED 模式（3 个 OS 线程）
 
 Aeron Client 与 Media Driver 之间通过共享内存中的两个单向无锁 ring buffer 进行控制面通信，避免了跨进程 IPC 的系统调用开销：
 
-```
-Aeron Client                         Media Driver
-     │                                     │
-     │  ① 写入 Command（控制帧）            │
-     ├──────────────────────────────────>  │
-     │     [Command Ring Buffer]           │
-     │                                     │  ② Conductor 轮询并处理
-     │                                     │
-     │  ④ 读取 Response（响应帧）           │
-     │  <──────────────────────────────────┤
-     │     [Response Ring Buffer]          │
-     │                              ③ Conductor 写入响应
-```
+<div class="mermaid">
+sequenceDiagram
+    participant C as Aeron Client
+    participant D as Media Driver
+    Note over C,D: 共享内存中两个单向无锁 ring buffer
+    C->>D: ① 写入 Command(控制帧) 经 Command Ring Buffer
+    Note over D: ② Conductor 轮询并处理
+    Note over D: ③ Conductor 写入响应
+    D-->>C: ④ 读取 Response(响应帧) 经 Response Ring Buffer
+</div>
 
 **Command Buffer** 传递的典型控制帧类型：
 - `ADD_PUBLICATION` / `REMOVE_PUBLICATION`
@@ -177,29 +144,22 @@ Aeron Client                         Media Driver
 
 Publication 与 Sender、Receiver 与 Subscription 之间的数据传递通过 **Log Buffer** 实现，这是 Aeron 零拷贝、无锁高吞吐的核心数据结构。
 
-```
-Publication（写端）
-     │
-     │  CAS 原子操作写入 term position
-     v
-┌─────────────────────────────────────────────────────┐
-│                    Log Buffer                       │
-│                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────┐ │
-│  │   Term 0     │  │   Term 1     │  │  Term 2   │ │
-│  │ (Active/Full)│  │ (Active/Full)│  │  (Active) │ │
-│  └──────────────┘  └──────────────┘  └───────────┘ │
-│                                                     │
-│  ┌──────────────────────────────────────────────┐  │
-│  │           Log Meta Data                      │  │
-│  │  (active term id, position limit, ...)       │  │
-│  └──────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────┘
-     │
-     │  Sender 轮询读取，写入 Socket
-     v
-   Network
-```
+<div class="mermaid">
+graph TD
+    P["Publication（写端）"]
+    P -->|"CAS 原子操作写入 term position"| LB
+    subgraph LB["Log Buffer"]
+        direction TB
+        T0["Term 0 (Active/Full)"]
+        T1["Term 1 (Active/Full)"]
+        T2["Term 2 (Active)"]
+        META["Log Meta Data (active term id, position limit, ...)"]
+        T0 -.- T1
+        T1 -.- T2
+        T2 -.- META
+    end
+    LB -->|"Sender 轮询读取，写入 Socket"| NET["Network"]
+</div>
 
 Log Buffer 由三个等大小的 Term Buffer 循环使用，每个 Term 是一段连续的内存区域，消息以帧（Frame）为单位追加写入。帧头包含长度、版本、标志位、stream ID、session ID 和 term offset 等字段，接收方可通过 term offset 精确定位任意帧，支持高效重传。
 
@@ -215,24 +175,16 @@ Log Buffer 由三个等大小的 Term Buffer 循环使用，每个 Term 是一�
 
 ### 5.1 嵌入式模式（Embedded Media Driver）
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Application JVM                      │
-│                                                         │
-│  ┌──────────────────────┐    ┌────────────────────────┐ │
-│  │   Application Code   │    │     Aeron Client       │ │
-│  └──────────────────────┘    └───────────┬────────────┘ │
-│                                          │              │
-│                                    共享内存通信           │
-│                                          │              │
-│                               ┌──────────v───────────┐  │
-│                               │  Embedded            │  │
-│                               │  Media Driver        │  │
-│                               └──────────┬───────────┘  │
-└──────────────────────────────────────────┼──────────────┘
-                                           │
-                                      网络 / IPC
-```
+<div class="mermaid">
+graph TD
+  subgraph JVM["Application JVM"]
+    APP["Application Code"]
+    CLIENT["Aeron Client"]
+    MD["Embedded Media Driver"]
+    CLIENT -->|共享内存通信| MD
+  end
+  MD --> NET["网络 / IPC"]
+</div>
 
 嵌入式模式下，Media Driver 与 Aeron Client 运行于同一 JVM 进程。共享内存通信退化为进程内的内存映射，进一步降低通信开销。
 
@@ -242,26 +194,21 @@ Log Buffer 由三个等大小的 Term Buffer 循环使用，每个 Term 是一�
 
 ### 5.2 独立进程模式（Standalone Media Driver）
 
-```
-┌─────────────────────┐      ┌─────────────────────┐
-│   Application       │      │   Application       │
-│   Process 1         │      │   Process 2         │
-│  ┌───────────────┐  │      │  ┌───────────────┐  │
-│  │ Aeron Client  │  │      │  │ Aeron Client  │  │
-│  └───────┬───────┘  │      │  └───────┬───────┘  │
-└──────────┼──────────┘      └──────────┼──────────┘
-           │                            │
-           │        共享内存              │
-           └──────────────┬─────────────┘
-                          │
-               ┌──────────v───────────┐
-               │   Media Driver       │
-               │   Process            │
-               │  (独立 JVM / C 进程)  │
-               └──────────┬───────────┘
-                          │
-                     网络 / IPC
-```
+<div class="mermaid">
+graph TD
+  subgraph P1["Application Process 1"]
+    C1["Aeron Client"]
+  end
+  subgraph P2["Application Process 2"]
+    C2["Aeron Client"]
+  end
+  subgraph MD["Media Driver Process (独立 JVM / C 进程)"]
+    M["Media Driver"]
+  end
+  C1 -->|"共享内存"| M
+  C2 -->|"共享内存"| M
+  M -->|"网络 / IPC"| NET["网络 / IPC"]
+</div>
 
 独立进程模式下，Media Driver 以独立进程运行，多个应用进程通过共享内存与其通信。
 
@@ -364,30 +311,28 @@ final MediaDriver.Context ctx = new MediaDriver.Context()
 
 Media Driver 通过 `CountersReader`（映射共享内存中的 Counters 文件）暴露丰富的运行时指标：
 
-```
-Media Driver Counters
-├── Sender
-│   ├── bytes-sent（累计发送字节数）
-│   ├── messages-sent（累计发送消息数）
-│   ├── send-channel-status（Socket 状态，ACTIVE=1）
-│   └── sender-flow-control-limits（流控触发次数）
-│
-├── Receiver
-│   ├── bytes-received（累计接收字节数）
-│   ├── messages-received（累计接收消息数）
-│   ├── nak-messages-sent（发送的 NAK 帧数）
-│   ├── status-messages-sent（发送的 SM 帧数）
-│   └── receive-channel-status
-│
-├── Conductor
-│   ├── client-timeouts（客户端超时次数）
-│   ├── publication-unblocked（解除阻塞次数）
-│   └── conductor-max-cycle-time（最大 duty cycle 耗时 ns）
-│
-└── System
-    ├── error-count（错误计数，关键告警指标）
-    └── free-distinct-errors（最近不重复错误条目）
-```
+<div class="mermaid">
+graph LR
+ROOT["Media Driver Counters"]
+ROOT --> S["Sender"]
+ROOT --> R["Receiver"]
+ROOT --> C["Conductor"]
+ROOT --> SY["System"]
+S --> S1["bytes-sent(累计发送字节数)"]
+S --> S2["messages-sent(累计发送消息数)"]
+S --> S3["send-channel-status(Socket 状态, ACTIVE=1)"]
+S --> S4["sender-flow-control-limits(流控触发次数)"]
+R --> R1["bytes-received(累计接收字节数)"]
+R --> R2["messages-received(累计接收消息数)"]
+R --> R3["nak-messages-sent(发送的 NAK 帧数)"]
+R --> R4["status-messages-sent(发送的 SM 帧数)"]
+R --> R5["receive-channel-status"]
+C --> C1["client-timeouts(客户端超时次数)"]
+C --> C2["publication-unblocked(解除阻塞次数)"]
+C --> C3["conductor-max-cycle-time(最大 duty cycle 耗时 ns)"]
+SY --> SY1["error-count(错误计数, 关键告警指标)"]
+SY --> SY2["free-distinct-errors(最近不重复错误条目)"]
+</div>
 
 通过 `AeronStat` 工具可实时查看所有 Counter：
 
@@ -473,3 +418,15 @@ java -cp aeron-all.jar io.aeron.samples.StreamStat
 5. **Sender/Receiver 使用 `BusySpinIdleStrategy`**，Conductor 使用 `BackoffIdleStrategy`，在延迟与 CPU 开销之间取得合理平衡
 
 6. **独立部署场景下，Media Driver 进程应配置为系统服务（systemd）**，并设置合理的重启策略（`Restart=on-failure`）
+
+---
+
+## Aeron 系列
+
+- [Aeron 概述](/posts/fdcdfbb5/)
+- [Channel、Stream、Session 深度解析](/posts/43d5f152/)
+- **Media Driver 深度解析**（本文）
+- [传输模式与 NAK 流控深度解析](/posts/fbf83150/)
+- [编程模型深度解析](/posts/406b47f8/)
+- [Aeron Archive 深度解析](/posts/987bb85b/)
+- [Aeron Cluster 与运维工具](/posts/fed0dafe/)
