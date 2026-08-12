@@ -1,0 +1,197 @@
+---
+import { SITE } from "../config";
+
+const pathname = Astro.url.pathname;
+const nav = [
+  { href: "/series/", label: "专题" },
+  { href: "/posts/", label: "归档" },
+  { href: "/about/", label: "关于" },
+];
+---
+
+<header class="site-header" data-header>
+  <div class="header-inner">
+    <a class="brand" href="/" aria-label={`${SITE.shortTitle} 首页`}>
+      <span class="brand-mark" aria-hidden="true">
+        <i></i><i></i><i></i>
+      </span>
+      <span class="brand-name">{SITE.shortTitle}</span>
+      <span class="brand-status"><i></i> ONLINE</span>
+    </a>
+
+    <nav class="primary-nav" aria-label="主导航">
+      {nav.map((item) => (
+        <a href={item.href} aria-current={pathname.startsWith(item.href) ? "page" : undefined}>
+          {item.label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="header-actions">
+      <button class="icon-button search-trigger" type="button" data-search-open aria-label="搜索文章">
+        <span aria-hidden="true">⌕</span>
+        <kbd>⌘ K</kbd>
+      </button>
+      <button class="icon-button theme-trigger" type="button" data-theme-toggle aria-label="切换明暗主题">
+        <span class="theme-icon" aria-hidden="true"></span>
+      </button>
+      <button class="menu-trigger" type="button" data-menu-toggle aria-label="打开导航" aria-expanded="false">
+        <i></i><i></i>
+      </button>
+    </div>
+  </div>
+
+  <nav class="mobile-nav" data-mobile-nav aria-label="移动端导航">
+    {nav.map((item) => <a href={item.href}>{item.label}</a>)}
+    <a href={SITE.cms} target="_blank" rel="noreferrer">写文章 ↗</a>
+  </nav>
+</header>
+
+<dialog class="search-dialog" data-search-dialog aria-labelledby="search-title">
+  <div class="search-shell">
+    <div class="search-head">
+      <div>
+        <span class="eyebrow">COMMAND PALETTE</span>
+        <h2 id="search-title">搜索知识库</h2>
+      </div>
+      <button class="dialog-close" type="button" data-search-close aria-label="关闭搜索">ESC</button>
+    </div>
+    <label class="search-input-wrap">
+      <span aria-hidden="true">⌕</span>
+      <input type="search" data-search-input placeholder="输入 Aeron、Raft、保证金…" autocomplete="off" />
+    </label>
+    <p class="search-hint" data-search-hint>输入关键词，搜索全部文章的标题、摘要与标签。</p>
+    <ol class="search-results" data-search-results></ol>
+  </div>
+</dialog>
+
+<script>
+  const root = document.documentElement;
+  const toggle = document.querySelector<HTMLButtonElement>("[data-theme-toggle]");
+
+  toggle?.addEventListener("click", () => {
+    const next = root.dataset.theme === "light" ? "dark" : "light";
+    root.dataset.theme = next;
+    localStorage.setItem("signal-grid-theme", next);
+    window.dispatchEvent(new CustomEvent("signal-grid:theme", { detail: next }));
+  });
+
+  const menuToggle = document.querySelector<HTMLButtonElement>("[data-menu-toggle]");
+  const mobileNav = document.querySelector<HTMLElement>("[data-mobile-nav]");
+  menuToggle?.addEventListener("click", () => {
+    const open = menuToggle.getAttribute("aria-expanded") !== "true";
+    menuToggle.setAttribute("aria-expanded", String(open));
+    mobileNav?.toggleAttribute("data-open", open);
+  });
+
+  const dialog = document.querySelector<HTMLDialogElement>("[data-search-dialog]");
+  const input = dialog?.querySelector<HTMLInputElement>("[data-search-input]");
+  const results = dialog?.querySelector<HTMLOListElement>("[data-search-results]");
+  const hint = dialog?.querySelector<HTMLElement>("[data-search-hint]");
+  type SearchEntry = { title: string; description: string; url: string; tags: string[]; series: string };
+  type PagefindData = { url: string; excerpt: string; meta: { title?: string } };
+  type PagefindApi = {
+    init: () => Promise<void>;
+    search: (query: string) => Promise<{ results: Array<{ data: () => Promise<PagefindData> }> }>;
+  };
+  let searchIndex: SearchEntry[] = [];
+  let pagefind: PagefindApi | undefined;
+  let searchLoad: Promise<void> | undefined;
+
+  async function loadSearch() {
+    if (searchLoad) return searchLoad;
+    searchLoad = (async () => {
+      try {
+        const pagefindUrl = "/pagefind/pagefind.js";
+        pagefind = (await import(/* @vite-ignore */ pagefindUrl)) as PagefindApi;
+        await pagefind.init();
+      } catch {
+        const response = await fetch("/search.json");
+        searchIndex = await response.json();
+      }
+    })();
+    return searchLoad;
+  }
+
+  async function openSearch() {
+    dialog?.showModal();
+    document.body.classList.add("dialog-open");
+    input?.focus();
+    await loadSearch();
+  }
+
+  function closeSearch() {
+    dialog?.close();
+    document.body.classList.remove("dialog-open");
+  }
+
+  document.querySelector("[data-search-open]")?.addEventListener("click", openSearch);
+  dialog?.querySelector("[data-search-close]")?.addEventListener("click", closeSearch);
+  dialog?.addEventListener("click", (event) => {
+    if (event.target === dialog) closeSearch();
+  });
+  dialog?.addEventListener("close", () => document.body.classList.remove("dialog-open"));
+  document.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      openSearch();
+    }
+  });
+
+  input?.addEventListener("input", async () => {
+    if (!results || !hint) return;
+    const query = input.value.trim().toLocaleLowerCase("zh-CN");
+    results.replaceChildren();
+    if (!query) {
+      hint.textContent = "输入关键词，搜索全部文章的标题、摘要与标签。";
+      return;
+    }
+
+    await loadSearch();
+    let matches: Array<{ entry: SearchEntry; score: number }>;
+    if (pagefind) {
+      const response = await pagefind.search(query);
+      const data = await Promise.all(response.results.slice(0, 8).map((result) => result.data()));
+      matches = data.map((item) => {
+        const excerpt = document.createElement("span");
+        excerpt.innerHTML = item.excerpt;
+        return {
+          score: 1,
+          entry: {
+            title: (item.meta.title ?? "未命名文章").replace(/ · RE\/LN$/, ""),
+            description: excerpt.textContent?.trim() ?? "",
+            url: item.url,
+            tags: [],
+            series: "全文匹配",
+          },
+        };
+      });
+    } else {
+      matches = searchIndex
+        .map((entry) => {
+          const haystack = `${entry.title} ${entry.description} ${entry.tags.join(" ")} ${entry.series}`.toLocaleLowerCase("zh-CN");
+          const score = entry.title.toLocaleLowerCase("zh-CN").includes(query) ? 2 : haystack.includes(query) ? 1 : 0;
+          return { entry, score };
+        })
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 8);
+    }
+
+    if (input.value.trim().toLocaleLowerCase("zh-CN") !== query) return;
+
+    hint.textContent = matches.length ? `找到 ${matches.length} 个匹配结果` : "没有找到匹配文章，换个关键词试试。";
+    for (const { entry } of matches) {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      const title = document.createElement("strong");
+      const meta = document.createElement("span");
+      link.href = entry.url;
+      title.textContent = entry.title;
+      meta.textContent = `${entry.series} · ${entry.description}`;
+      link.append(title, meta);
+      item.append(link);
+      results.append(item);
+    }
+  });
+</script>

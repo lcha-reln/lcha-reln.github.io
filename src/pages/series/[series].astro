@@ -1,0 +1,41 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PostCard from "../../components/PostCard.astro";
+import { SERIES } from "../../config";
+import { getPostsInSeries, readingMinutes } from "../../lib/content";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("posts", ({ data }) => !data.draft);
+  return SERIES.map((series) => ({
+    params: { series: series.key },
+    props: { series, posts: getPostsInSeries(posts, series.key) },
+  }));
+}
+
+const { series, posts } = Astro.props;
+const totalMinutes = posts.reduce((sum, post) => sum + readingMinutes(post), 0);
+---
+
+<BaseLayout title={series.title} description={series.description}>
+  <header class="page-hero">
+    <span class="eyebrow">{series.eyebrow} / PATH {series.index}</span>
+    <h1>{series.title}</h1>
+    <p>{series.description}</p>
+    <div class="page-hero-meta">
+      <span>{String(posts.length).padStart(2, "0")} ARTICLES</span>
+      <span>≈ {totalMinutes} MIN TOTAL</span>
+      <span>CURATED PATH</span>
+    </div>
+  </header>
+
+  <section class="section">
+    {posts.length > 0 ? (
+      <div class="post-grid">
+        {posts.map((post, index) => <PostCard post={post} index={index} />)}
+      </div>
+    ) : (
+      <div class="empty-state">这个专题正在构建中。</div>
+    )}
+  </section>
+</BaseLayout>

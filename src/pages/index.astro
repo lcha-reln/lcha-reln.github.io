@@ -1,0 +1,51 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SignalHero from "../components/SignalHero.astro";
+import SeriesCard from "../components/SeriesCard.astro";
+import PostCard from "../components/PostCard.astro";
+import { SERIES } from "../config";
+import { getPostsInSeries, sortPosts } from "../lib/content";
+
+const posts = sortPosts(await getCollection("posts", ({ data }) => !data.draft));
+const featured = posts.filter((post) => post.data.featured);
+const latest = (featured.length >= 3 ? featured : posts).slice(0, 6);
+---
+
+<BaseLayout>
+  <SignalHero postCount={posts.length} seriesCount={SERIES.length} />
+
+  <section class="section" aria-labelledby="series-heading">
+    <div class="section-head">
+      <div class="section-heading">
+        <span class="section-index">01</span>
+        <div>
+          <span class="eyebrow">KNOWLEDGE SYSTEMS</span>
+          <h2 id="series-heading">选择一条学习路径</h2>
+        </div>
+      </div>
+      <a href="/series/">查看全部专题 →</a>
+    </div>
+    <div class="series-grid">
+      {SERIES.map((series) => (
+        <SeriesCard series={series} count={getPostsInSeries(posts, series.key).length} />
+      ))}
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="latest-heading">
+    <div class="section-head">
+      <div class="section-heading">
+        <span class="section-index">02</span>
+        <div>
+          <span class="eyebrow">LATEST TRANSMISSIONS</span>
+          <h2 id="latest-heading">最新发布</h2>
+        </div>
+      </div>
+      <a href="/posts/">浏览全部文章 →</a>
+    </div>
+    <div class="post-grid">
+      {latest.map((post, index) => <PostCard post={post} index={index} />)}
+    </div>
+  </section>
+</BaseLayout>

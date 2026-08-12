@@ -1,0 +1,21 @@
+---
+import { SITE } from "../config";
+---
+
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <span class="brand-name">{SITE.shortTitle}</span>
+      <p>{SITE.description}</p>
+    </div>
+    <div class="footer-links">
+      <a href="/rss.xml">RSS</a>
+      <a href={SITE.github} target="_blank" rel="noreferrer">GitHub ↗</a>
+      <a href={SITE.cms} target="_blank" rel="noreferrer">Pages CMS ↗</a>
+    </div>
+  </div>
+  <div class="footer-line">
+    <span>© {new Date().getFullYear()} {SITE.author}</span>
+    <span>ASTRO / GITHUB PAGES / STATIC BY DESIGN</span>
+  </div>
+</footer>

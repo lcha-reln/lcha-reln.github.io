@@ -1,0 +1,45 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { SITE } from "../config";
+---
+
+<BaseLayout title="关于" description="关于 RE/LN 与 Signal Grid 技术博客。">
+  <header class="page-hero">
+    <span class="eyebrow">ABOUT THE GRID</span>
+    <h1>把工程经验<br />变成可复用的知识。</h1>
+    <p>这里记录实时消息、分布式系统、高性能 Java 和交易系统。目标不是复述 API，而是把系统为什么这样设计、边界在哪里、故障时会发生什么讲明白。</p>
+    <div class="page-hero-meta">
+      <span>AUTHOR / {SITE.author}</span>
+      <span>LANG / ZH-CN</span>
+      <span>STATUS / BUILDING</span>
+    </div>
+  </header>
+
+  <section class="section about-grid">
+    <div>
+      <span class="eyebrow">01 / PRINCIPLES</span>
+      <h2>写作原则</h2>
+      <p>优先解释机制，再讨论方案；明确写出适用边界和工程权衡；代码、图表与结论都尽量能被验证。</p>
+    </div>
+    <div>
+      <span class="eyebrow">02 / STACK</span>
+      <h2>站点技术</h2>
+      <p>Astro 生成纯静态页面，Pages CMS 直接编辑 GitHub 里的 Markdown，GitHub Pages 负责发布。内容不锁在数据库或平台中。</p>
+    </div>
+    <div>
+      <span class="eyebrow">03 / CONTACT</span>
+      <h2>参与与反馈</h2>
+      <p>发现错误或希望补充案例，可以在 GitHub 提交 Issue；每篇文章也保留了直接编辑源码的入口。</p>
+      <a class="button ghost" href={SITE.github} target="_blank" rel="noreferrer">访问 GitHub ↗</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .about-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .about-grid > div { min-height: 250px; padding: 25px; border: 1px solid var(--border); border-radius: 15px; background: var(--surface); }
+  .about-grid h2 { margin: 14px 0 10px; color: var(--text-strong); font-size: 24px; }
+  .about-grid p { margin: 0; color: var(--muted); line-height: 1.8; }
+  .about-grid .button { margin-top: 24px; }
+  @media (max-width: 820px) { .about-grid { grid-template-columns: 1fr; } }
+</style>

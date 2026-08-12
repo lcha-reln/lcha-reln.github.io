@@ -1,0 +1,65 @@
+<script>
+  const originals = new WeakMap<HTMLElement, string>();
+
+  function collectNodes(): HTMLElement[] {
+    document.querySelectorAll<HTMLElement>("pre > code.language-mermaid").forEach((code) => {
+      const pre = code.parentElement;
+      if (!pre) return;
+      const replacement = document.createElement("div");
+      replacement.className = "mermaid";
+      replacement.textContent = code.textContent ?? "";
+      pre.replaceWith(replacement);
+    });
+
+    return [...document.querySelectorAll<HTMLElement>(".article-body .mermaid")];
+  }
+
+  async function renderMermaid() {
+    const nodes = collectNodes();
+    if (nodes.length === 0) return;
+    const { default: mermaid } = await import("mermaid");
+
+    for (const node of nodes) {
+      if (!originals.has(node)) originals.set(node, node.textContent ?? "");
+      node.removeAttribute("data-processed");
+      node.textContent = originals.get(node) ?? "";
+    }
+
+    const isDark = document.documentElement.dataset.theme !== "light";
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: "base",
+      themeVariables: isDark
+        ? {
+            background: "#101722",
+            primaryColor: "#172131",
+            primaryTextColor: "#e8eef6",
+            primaryBorderColor: "#35d6ff",
+            lineColor: "#718096",
+            secondaryColor: "#171b36",
+            tertiaryColor: "#111b25",
+            fontFamily: "ui-sans-serif, system-ui, sans-serif",
+          }
+        : {
+            background: "#ffffff",
+            primaryColor: "#eef9fc",
+            primaryTextColor: "#111827",
+            primaryBorderColor: "#007e9b",
+            lineColor: "#637083",
+            secondaryColor: "#f2f0ff",
+            tertiaryColor: "#f5faec",
+            fontFamily: "ui-sans-serif, system-ui, sans-serif",
+          },
+    });
+
+    try {
+      await mermaid.run({ nodes });
+    } catch (error) {
+      console.warn("Mermaid diagram could not be rendered", error);
+    }
+  }
+
+  renderMermaid();
+  window.addEventListener("signal-grid:theme", renderMermaid);
+</script>

@@ -1,0 +1,33 @@
+---
+import type { Post } from "../lib/content";
+import { formatDate, getExcerpt, getPostPath, getSeries, normalizeList, readingMinutes } from "../lib/content";
+
+interface Props {
+  post: Post;
+  featured?: boolean;
+  index?: number;
+}
+
+const { post, featured = false, index = 0 } = Astro.props;
+const series = getSeries(post);
+const tags = normalizeList(post.data.tags).slice(0, 3);
+---
+
+<article class:list={["post-card", `accent-${series.color}`, { featured }]}>
+  <a class="post-card-link" href={getPostPath(post)} aria-label={`阅读：${post.data.title}`}>
+    <div class="post-card-top">
+      <span class="post-index">{String(index + 1).padStart(2, "0")}</span>
+      <span class="signal-tag"><i></i>{series.title}</span>
+    </div>
+    <div class="post-card-body">
+      <h3>{post.data.title}</h3>
+      <p>{getExcerpt(post)}</p>
+    </div>
+    <div class="post-card-meta">
+      <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+      <span>{readingMinutes(post)} MIN</span>
+      {tags.length > 0 && <span class="post-tag">#{tags[0]}</span>}
+      <span class="arrow" aria-hidden="true">↗</span>
+    </div>
+  </a>
+</article>

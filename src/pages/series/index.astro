@@ -1,0 +1,22 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import SeriesCard from "../../components/SeriesCard.astro";
+import { SERIES } from "../../config";
+import { getPostsInSeries } from "../../lib/content";
+
+const posts = await getCollection("posts", ({ data }) => !data.draft);
+---
+
+<BaseLayout title="技术专题" description="按知识路径组织的实时消息、分布式系统、交易系统和高性能组件文章。">
+  <header class="page-hero">
+    <span class="eyebrow">STRUCTURED KNOWLEDGE / {String(SERIES.length).padStart(2, "0")}</span>
+    <h1>技术专题</h1>
+    <p>专题不是标签堆积，而是一条有上下文的学习路径。选择一个系统，从概念地图一路读到实现与运维。</p>
+  </header>
+  <section class="section">
+    <div class="series-grid">
+      {SERIES.map((series) => <SeriesCard series={series} count={getPostsInSeries(posts, series.key).length} />)}
+    </div>
+  </section>
+</BaseLayout>
