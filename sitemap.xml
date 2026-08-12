@@ -2,15 +2,6 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/162cdd4b/</loc>
-    
-    <lastmod>2026-06-22</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
     <loc>https://lcha-reln.github.io/posts/bc6db31/</loc>
     
     <lastmod>2026-06-22</lastmod>
@@ -20,7 +11,16 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/ff1d84c0/</loc>
+    <loc>https://lcha-reln.github.io/posts/162cdd4b/</loc>
+    
+    <lastmod>2026-06-22</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://lcha-reln.github.io/posts/72b127fa/</loc>
     
     <lastmod>2026-06-22</lastmod>
     
@@ -38,16 +38,7 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/e0b4d7e1/</loc>
-    
-    <lastmod>2026-06-22</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
-    <loc>https://lcha-reln.github.io/posts/d655f623/</loc>
+    <loc>https://lcha-reln.github.io/posts/ff1d84c0/</loc>
     
     <lastmod>2026-06-22</lastmod>
     
@@ -57,6 +48,15 @@
   
   <url>
     <loc>https://lcha-reln.github.io/posts/3355172c/</loc>
+    
+    <lastmod>2026-06-22</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://lcha-reln.github.io/posts/e0b4d7e1/</loc>
     
     <lastmod>2026-06-22</lastmod>
     
@@ -75,15 +75,6 @@
   
   <url>
     <loc>https://lcha-reln.github.io/posts/129667d0/</loc>
-    
-    <lastmod>2026-06-22</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
-    <loc>https://lcha-reln.github.io/posts/72b127fa/</loc>
     
     <lastmod>2026-06-22</lastmod>
     
@@ -128,15 +119,6 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/43d5f152/</loc>
-    
-    <lastmod>2026-06-22</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
     <loc>https://lcha-reln.github.io/posts/fed0dafe/</loc>
     
     <lastmod>2026-06-22</lastmod>
@@ -146,7 +128,7 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/987bb85b/</loc>
+    <loc>https://lcha-reln.github.io/posts/d655f623/</loc>
     
     <lastmod>2026-06-22</lastmod>
     
@@ -155,16 +137,7 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/bc5589ca/</loc>
-    
-    <lastmod>2026-06-22</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
-    <loc>https://lcha-reln.github.io/posts/fbf83150/</loc>
+    <loc>https://lcha-reln.github.io/posts/43d5f152/</loc>
     
     <lastmod>2026-06-22</lastmod>
     
@@ -182,7 +155,25 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/c4f433c1/</loc>
+    <loc>https://lcha-reln.github.io/posts/bc5589ca/</loc>
+    
+    <lastmod>2026-06-22</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://lcha-reln.github.io/posts/987bb85b/</loc>
+    
+    <lastmod>2026-06-22</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://lcha-reln.github.io/posts/fbf83150/</loc>
     
     <lastmod>2026-06-22</lastmod>
     
@@ -201,6 +192,15 @@
   
   <url>
     <loc>https://lcha-reln.github.io/posts/2e6f521c/</loc>
+    
+    <lastmod>2026-06-22</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://lcha-reln.github.io/posts/c4f433c1/</loc>
     
     <lastmod>2026-06-22</lastmod>
     
@@ -236,7 +236,7 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/62a67ace/</loc>
+    <loc>https://lcha-reln.github.io/posts/2b7b1ffc/</loc>
     
     <lastmod>2026-06-11</lastmod>
     
@@ -245,7 +245,7 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/2b7b1ffc/</loc>
+    <loc>https://lcha-reln.github.io/posts/62a67ace/</loc>
     
     <lastmod>2026-06-11</lastmod>
     
@@ -263,7 +263,7 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/5ebb723b/</loc>
+    <loc>https://lcha-reln.github.io/posts/2d7c540/</loc>
     
     <lastmod>2026-06-11</lastmod>
     
@@ -272,7 +272,7 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/2d7c540/</loc>
+    <loc>https://lcha-reln.github.io/posts/5ebb723b/</loc>
     
     <lastmod>2026-06-11</lastmod>
     
@@ -290,7 +290,7 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/bdd76024/</loc>
+    <loc>https://lcha-reln.github.io/posts/11ad5f70/</loc>
     
     <lastmod>2026-06-11</lastmod>
     
@@ -299,7 +299,7 @@
   </url>
   
   <url>
-    <loc>https://lcha-reln.github.io/posts/11ad5f70/</loc>
+    <loc>https://lcha-reln.github.io/posts/bdd76024/</loc>
     
     <lastmod>2026-06-11</lastmod>
     
@@ -337,7 +337,7 @@
 
   <url>
     <loc>https://lcha-reln.github.io/</loc>
-    <lastmod>2026-06-22</lastmod>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
